@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -12,7 +13,7 @@ import {
   Ticket,
   TestTube,
 } from 'lucide-react';
-
+import { useAuthRole } from '@/hooks/use-auth-role';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenu,
@@ -55,6 +56,7 @@ const adminNavItems = [
     href: '/dashboard/admin/users',
     icon: Users,
     label: 'User Management',
+    requiredRole: 'Super Admin',
   },
   {
     href: '/dashboard/admin/settings',
@@ -70,6 +72,7 @@ const adminNavItems = [
 
 export function DashboardNav() {
   const pathname = usePathname();
+  const { role } = useAuthRole();
 
   return (
     <SidebarMenu>
@@ -88,19 +91,24 @@ export function DashboardNav() {
       ))}
       <SidebarGroup className="p-0 pt-4">
         <SidebarGroupLabel className="px-2">Admin</SidebarGroupLabel>
-        {adminNavItems.map((item) => (
-          <SidebarMenuItem key={item.href}>
-            <Link href={item.href}>
-              <SidebarMenuButton
-                isActive={pathname.startsWith(item.href)}
-                tooltip={item.label}
-              >
-                <item.icon className="size-4" />
-                <span>{item.label}</span>
-              </SidebarMenuButton>
-            </Link>
-          </SidebarMenuItem>
-        ))}
+        {adminNavItems.map((item) => {
+          if (item.requiredRole && item.requiredRole !== role) {
+            return null;
+          }
+          return (
+            <SidebarMenuItem key={item.href}>
+              <Link href={item.href}>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith(item.href)}
+                  tooltip={item.label}
+                >
+                  <item.icon className="size-4" />
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          );
+        })}
       </SidebarGroup>
     </SidebarMenu>
   );

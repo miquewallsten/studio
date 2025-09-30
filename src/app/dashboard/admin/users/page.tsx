@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, PlusCircle } from 'lucide-react';
+import { AlertCircle, PlusCircle, ShieldOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
@@ -17,6 +17,7 @@ import { UserProfileDialog } from '@/components/user-profile-dialog';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import type { User } from './schema';
+import { useAuthRole } from '@/hooks/use-auth-role';
 
 
 export default function AdminUsersPage() {
@@ -26,6 +27,7 @@ export default function AdminUsersPage() {
     const [error, setError] = useState<string | null>(null);
     const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const { role, isLoading: isRoleLoading } = useAuthRole();
 
 
     const fetchUsers = async () => {
@@ -48,8 +50,10 @@ export default function AdminUsersPage() {
     };
 
     useEffect(() => {
-        fetchUsers();
-    }, []);
+        if (role === 'Super Admin') {
+            fetchUsers();
+        }
+    }, [role]);
     
     const handleUserInvitedOrUpdated = () => {
         fetchUsers(); // Re-fetch the user list after a new user is invited or updated
@@ -60,6 +64,26 @@ export default function AdminUsersPage() {
     }
 
     const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
+
+    if (isRoleLoading) {
+      return <p>Loading access rights...</p>
+    }
+
+    if (role !== 'Super Admin') {
+      return (
+         <Card className="mt-8">
+          <CardHeader className="items-center text-center">
+            <ShieldOff className="size-12 text-destructive" />
+            <CardTitle className="text-2xl">Access Denied</CardTitle>
+            <CardDescription>
+              You do not have the required permissions to view this page.
+              <br/>
+              Access is restricted to Super Admins only.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )
+    }
 
   return (
     <div className="flex-1 space-y-4">
