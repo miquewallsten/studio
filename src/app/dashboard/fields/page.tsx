@@ -27,15 +27,15 @@ import { useToast } from '@/hooks/use-toast';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import type { Field } from './schema';
-import { useRouter } from 'next/navigation';
+import { FieldEditorDialog } from '@/components/field-editor-dialog';
 
 
 export default function FieldsPage() {
   const [fields, setFields] = useState<Field[]>([]);
   const [loading, setLoading] = useState(true);
   const [fieldToDelete, setFieldToDelete] = useState<Field | null>(null);
+  const [fieldToEdit, setFieldToEdit] = useState<Field | null>(null);
   const { toast } = useToast();
-  const router = useRouter();
 
   useEffect(() => {
     const q = query(collection(db, 'fields'), orderBy('label'));
@@ -48,6 +48,9 @@ export default function FieldsPage() {
           label: data.label,
           type: data.type,
           required: data.required,
+          subFields: data.subFields || [],
+          aiInstructions: data.aiInstructions || '',
+          internalFields: data.internalFields || [],
         });
       });
       setFields(fieldsData);
@@ -77,9 +80,14 @@ export default function FieldsPage() {
       }
     }
   };
+  
+  const handleEditDialogClose = () => {
+    setFieldToEdit(null);
+  }
 
   const memoizedColumns = useMemo(() => columns({
     onDeleteField: (field) => setFieldToDelete(field),
+    onEditField: (field) => setFieldToEdit(field),
   }), []);
 
   return (
@@ -102,6 +110,12 @@ export default function FieldsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <FieldEditorDialog 
+        field={fieldToEdit}
+        isOpen={!!fieldToEdit}
+        onOpenChange={handleEditDialogClose}
+      />
+
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">Field Library</h1>
         <Button asChild className="bg-accent hover:bg-accent/90">
@@ -115,7 +129,7 @@ export default function FieldsPage() {
         <CardHeader>
           <CardTitle>Reusable Fields</CardTitle>
           <CardDescription>
-            Manage the reusable fields that can be added to any form template.
+            Manage the reusable fields that can be added to any form template. Click a row to edit.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,7 +139,7 @@ export default function FieldsPage() {
                 <DataTable 
                     columns={memoizedColumns}
                     data={fields}
-                    onRowClick={(row) => router.push(`/dashboard/fields/${row.original.id}`)}
+                    onRowClick={(row) => setFieldToEdit(row.original)}
                 />
             )}
         </CardContent>

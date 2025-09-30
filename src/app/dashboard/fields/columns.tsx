@@ -3,7 +3,6 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import {
   DropdownMenu,
@@ -12,15 +11,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, ArrowRight, Trash2 } from "lucide-react"
-import Link from "next/link"
+import { MoreHorizontal, Edit, Trash2 } from "lucide-react"
 import type { Field } from "./schema"
 
 type ColumnsProps = {
   onDeleteField: (field: Field) => void;
+  onEditField: (field: Field) => void;
 }
 
-export const columns = ({ onDeleteField }: ColumnsProps): ColumnDef<Field>[] => [
+export const columns = ({ onDeleteField, onEditField }: ColumnsProps): ColumnDef<Field>[] => [
   {
     accessorKey: "label",
     header: ({ column }) => (
@@ -67,11 +66,9 @@ export const columns = ({ onDeleteField }: ColumnsProps): ColumnDef<Field>[] => 
               align="end"
               onClick={(e) => e.stopPropagation()}
             >
-              <DropdownMenuItem asChild>
-                <Link href={`/dashboard/fields/${field.id}`}>
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
+              <DropdownMenuItem onClick={() => onEditField(field)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
