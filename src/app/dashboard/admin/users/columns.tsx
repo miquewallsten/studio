@@ -6,12 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { DataTableRowActions } from "./data-table-row-actions"
 import type { User } from "./schema"
+import { InlineTagEditor } from "@/components/inline-tag-editor"
 
 type ColumnsProps = {
   onSelectUser: (user: User) => void;
+  allTags: string[];
+  onUserUpdated: () => void;
 }
 
-export const columns = ({ onSelectUser }: ColumnsProps): ColumnDef<User>[] => [
+export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps): ColumnDef<User>[] => [
   {
     accessorKey: "displayName",
     header: ({ column }) => (
@@ -62,18 +65,16 @@ export const columns = ({ onSelectUser }: ColumnsProps): ColumnDef<User>[] => [
         <DataTableColumnHeader column={column} title="Tags" />
     ),
     cell: ({ row }) => {
-        const tags = row.getValue("tags") as string[] | undefined;
-        if (!tags || tags.length === 0) {
-            return null;
-        }
+        const user = row.original;
         return (
-            <div className="flex flex-wrap gap-1">
-                {tags.map((tag, i) => (
-                    <Badge key={i} variant="outline">{tag}</Badge>
-                ))}
-            </div>
+            <InlineTagEditor 
+                user={user} 
+                allTags={allTags}
+                onUserUpdated={onUserUpdated}
+            />
         )
-    }
+    },
+    enableSorting: false,
   },
   {
     accessorKey: "tenantName",

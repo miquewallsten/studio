@@ -144,7 +144,7 @@ FIREBASE_PRIVATE_KEY="..."`}
              <p>Loading users...</p>
            ) : (
             <DataTable 
-                columns={columns({ onSelectUser: setSelectedUser })} 
+                columns={columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated })} 
                 data={users}
                 onRowClick={(row) => setSelectedUser(row.original)}
             />
