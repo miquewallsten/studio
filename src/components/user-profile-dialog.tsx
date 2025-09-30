@@ -64,9 +64,9 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     const [isEditMode, setIsEditMode] = useState(false);
     const [isChangeRoleOpen, setChangeRoleOpen] = useState(false);
     const [formData, setFormData] = useState({
-        displayName: '',
-        phone: '',
-        tags: [] as string[],
+        displayName: user?.displayName || '',
+        phone: user?.phone || '',
+        tags: user?.tags || [] as string[],
     });
 
     // For the multi-select combobox
@@ -85,14 +85,13 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         }
     }, [user]);
 
-    if (!user) return null;
-
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSaveChanges = async () => {
+        if (!user) return;
         try {
             const currentUser = auth.currentUser;
             if (!currentUser) {
@@ -175,6 +174,8 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     }, [formData.tags, allTags]);
     
     const showCreateOption = inputValue && !availableTags.some(tag => tag.toLowerCase() === inputValue.toLowerCase()) && !formData.tags.some(tag => tag.toLowerCase() === inputValue.toLowerCase());
+
+    if (!user) return null;
 
 
     return (
@@ -293,7 +294,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                        <Command onKeyDown={(e) => { if (e.key === 'Enter' && showCreateOption) { handleTagCreate(inputValue); } }}>
+                                                        <Command onKeyDown={(e) => { if (e.key === 'Enter' && showCreateOption) { e.preventDefault(); handleTagCreate(inputValue); } }}>
                                                             <CommandInput 
                                                                 ref={inputRef}
                                                                 value={inputValue}
@@ -400,6 +401,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         </>
     );
 }
+
 
 
 
