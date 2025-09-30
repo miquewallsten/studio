@@ -1,7 +1,6 @@
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import admin from 'firebase-admin';
 
 export const dynamic = 'force-dynamic';
@@ -44,14 +43,16 @@ async function getTicketCountsByTenant() {
 
 export async function POST(request: NextRequest) {
     try {
-        const idToken = cookies().get('firebaseIdToken')?.value;
-        if (!idToken) {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
         }
+        const idToken = authHeader.split('Bearer ')[1];
+
         const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         if (decodedToken.role !== 'Super Admin') {
-            return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+            return NextResponse.json({ error: 'Forbidden. Only Super Admins can create tenants.' }, { status: 403 });
         }
 
         const { companyName, companyUrl, adminName, adminEmail, adminPhone } = await request.json();
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
             adminUserRecord = await adminAuth.createUser({
                 email: adminEmail,
                 displayName: adminName,
-                phoneNumber: adminPhone,
+                phoneNumber: adminPhone || undefined,
                 emailVerified: false,
             });
         } catch (error: any) {
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
         await adminDb.collection('users').doc(adminUserRecord.uid).set({
             displayName: adminName,
             email: adminEmail,
-            phone: adminPhone,
+            phone: adminPhone || null,
             role: 'Tenant Admin',
             tenantId: tenantRef.id,
         }, { merge: true });

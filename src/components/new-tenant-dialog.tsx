@@ -17,6 +17,8 @@ import { useState } from 'react';
 import { Textarea } from './ui/textarea';
 import { Copy } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { auth } from '@/lib/firebase';
+import { getIdToken } from 'firebase/auth';
 
 interface NewTenantDialogProps {
   isOpen: boolean;
@@ -63,9 +65,18 @@ export function NewTenantDialog({
     setIsLoading(true);
 
     try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            throw new Error("You must be logged in to create a tenant.");
+        }
+        const token = await getIdToken(currentUser);
+
         const response = await fetch('/api/tenants', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ companyName, companyUrl, adminName, adminEmail, adminPhone }),
         });
 
