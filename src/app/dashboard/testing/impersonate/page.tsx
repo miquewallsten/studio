@@ -21,6 +21,8 @@ import { EndUserPortalWidget } from '@/components/testing/end-user-portal-widget
 import { WorkflowWidget } from '@/components/testing/workflow-widget';
 import { AnalystPortalWidget } from '@/components/testing/analyst-portal-widget';
 import { InvitationInboxWidget } from '@/components/testing/invitation-inbox-widget';
+import { MobileEndUserPortalWidget } from '@/components/testing/mobile-end-user-portal-widget';
+
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -36,23 +38,27 @@ const WIDGET_DEFINITIONS: {
   } = {
     'client-portal': {
       title: 'Client Portal',
-      defaultLayout: { i: 'client-portal', x: 0, y: 0, w: 1, h: 2, minW: 1, minH: 2 },
+      defaultLayout: { i: 'client-portal', x: 0, y: 0, w: 2, h: 3, minW: 2, minH: 3 },
     },
     'invitation-inbox': {
       title: 'Invitation Inbox',
-      defaultLayout: { i: 'invitation-inbox', x: 1, y: 0, w: 1, h: 2, minW: 1, minH: 2 },
+      defaultLayout: { i: 'invitation-inbox', x: 2, y: 0, w: 2, h: 3, minW: 2, minH: 2 },
     },
     'end-user-portal': {
       title: 'End-User Portal',
-      defaultLayout: { i: 'end-user-portal', x: 0, y: 2, w: 1, h: 2, minW: 1, minH: 2 },
+      defaultLayout: { i: 'end-user-portal', x: 0, y: 3, w: 2, h: 3, minW: 2, minH: 3 },
+    },
+    'mobile-end-user-portal': {
+      title: 'Mobile End-User Portal',
+      defaultLayout: { i: 'mobile-end-user-portal', x: 2, y: 3, w: 1, h: 4, minW: 1, minH: 4 },
     },
     'workflow': {
         title: 'Manager\'s Workflow',
-        defaultLayout: { i: 'workflow', x: 0, y: 4, w: 2, h: 2, minW: 2, minH: 2 },
+        defaultLayout: { i: 'workflow', x: 3, y: 3, w: 3, h: 4, minW: 2, minH: 3 },
     },
     'analyst-portal': {
         title: 'Analyst Portal',
-        defaultLayout: { i: 'analyst-portal', x: 1, y: 2, w: 1, h: 2, minW: 1, minH: 2 },
+        defaultLayout: { i: 'analyst-portal', x: 4, y: 0, w: 2, h: 3, minW: 2, minH: 3 },
     }
   };
 
@@ -140,13 +146,19 @@ export default function ImpersonateUserPage() {
         // Load layout from localStorage
         setIsClient(true);
         try {
-            const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts');
+            const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts-v2');
             if (savedLayouts && isMounted) setLayouts(JSON.parse(savedLayouts));
-            // For now, all widgets are active by default
-            setActiveWidgets(['client-portal', 'invitation-inbox', 'end-user-portal', 'workflow', 'analyst-portal']);
+            
+            const savedWidgets = window.localStorage.getItem('testing-dashboard-widgets-v2');
+            if (savedWidgets && isMounted) {
+                setActiveWidgets(JSON.parse(savedWidgets));
+            } else {
+                 // For now, all widgets are active by default
+                setActiveWidgets(['client-portal', 'invitation-inbox', 'end-user-portal', 'workflow', 'analyst-portal', 'mobile-end-user-portal']);
+            }
         } catch (error) {
             console.error('Could not load layout from localStorage', error);
-            setActiveWidgets(['client-portal', 'invitation-inbox', 'end-user-portal', 'workflow', 'analyst-portal']);
+            setActiveWidgets(['client-portal', 'invitation-inbox', 'end-user-portal', 'workflow', 'analyst-portal', 'mobile-end-user-portal']);
         }
 
 
@@ -190,7 +202,7 @@ export default function ImpersonateUserPage() {
     const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
         if (isEditMode) {
             try {
-                window.localStorage.setItem('testing-dashboard-layouts', JSON.stringify(allLayouts));
+                window.localStorage.setItem('testing-dashboard-layouts-v2', JSON.stringify(allLayouts));
                 setLayouts(allLayouts);
             } catch (error) {
                 console.error('Could not save layouts to localStorage', error);
@@ -212,6 +224,44 @@ export default function ImpersonateUserPage() {
       .map(id => WIDGET_DEFINITIONS[id].defaultLayout);
     
     const finalLayout = [...currentLayout, ...defaultLayoutForActive];
+    
+    const getWidgetContent = (widgetId: string) => {
+        switch(widgetId) {
+            case 'client-portal':
+                return <ClientPortalWidget 
+                    users={clientUsers}
+                    onImpersonate={handleImpersonate}
+                    onUserCreated={handleRefreshUsers}
+                    isImpersonating={!!impersonatingUid}
+                />
+            case 'invitation-inbox':
+                return <InvitationInboxWidget
+                    onImpersonate={handleImpersonate}
+                    isImpersonating={!!impersonatingUid}
+                />
+            case 'end-user-portal':
+                return <EndUserPortalWidget 
+                    users={endUsers}
+                    onImpersonate={handleImpersonate}
+                    isImpersonating={!!impersonatingUid}
+                />
+            case 'mobile-end-user-portal':
+                return <MobileEndUserPortalWidget />
+            case 'workflow':
+                return <WorkflowWidget 
+                    analysts={analystUsers}
+                />
+            case 'analyst-portal':
+                return <AnalystPortalWidget 
+                    users={analystUsers}
+                    onImpersonate={handleImpersonate}
+                    isImpersonating={!!impersonatingUid}
+                />
+            default:
+                return null;
+        }
+    }
+
 
   return (
     <div className="flex-1 space-y-4">
@@ -246,45 +296,17 @@ export default function ImpersonateUserPage() {
             layout={finalLayout}
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 2, md: 2, sm: 1, xs: 1, xxs: 1 }}
+            cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
             rowHeight={150}
             isDraggable={isEditMode}
             isResizable={isEditMode}
             draggableCancel=".non-draggable"
         >
-             <div key="client-portal" className="overflow-hidden relative group/widget">
-                <ClientPortalWidget 
-                    users={clientUsers}
-                    onImpersonate={handleImpersonate}
-                    onUserCreated={handleRefreshUsers}
-                    isImpersonating={!!impersonatingUid}
-                />
-            </div>
-            <div key="invitation-inbox" className="overflow-hidden relative group/widget">
-                <InvitationInboxWidget
-                    onImpersonate={handleImpersonate}
-                    isImpersonating={!!impersonatingUid}
-                />
-            </div>
-             <div key="end-user-portal" className="overflow-hidden relative group/widget">
-                <EndUserPortalWidget 
-                    users={endUsers}
-                    onImpersonate={handleImpersonate}
-                    isImpersonating={!!impersonatingUid}
-                />
-            </div>
-             <div key="workflow" className="overflow-hidden relative group/widget">
-                <WorkflowWidget 
-                    analysts={analystUsers}
-                />
-            </div>
-             <div key="analyst-portal" className="overflow-hidden relative group/widget">
-                 <AnalystPortalWidget 
-                    users={analystUsers}
-                    onImpersonate={handleImpersonate}
-                    isImpersonating={!!impersonatingUid}
-                />
-            </div>
+             {activeWidgets.map((widgetId) => (
+                <div key={widgetId} className="overflow-hidden">
+                    {getWidgetContent(widgetId)}
+                </div>
+            ))}
       </ResponsiveGridLayout>
     }
      <style jsx global>{`
@@ -300,3 +322,4 @@ export default function ImpersonateUserPage() {
     </div>
   );
 }
+
