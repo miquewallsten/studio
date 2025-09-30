@@ -34,9 +34,9 @@ const navItems = [
     label: 'Workflow',
   },
   {
-    href: '/dashboard/tickets',
+    href: '/dashboard/tickets/new',
     icon: ClipboardList,
-    label: 'Tickets',
+    label: 'New Ticket',
   },
   {
     href: '/dashboard/forms',
