@@ -1,3 +1,5 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import {
   SidebarProvider,
@@ -14,8 +16,62 @@ import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useEffect, useState } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        router.push('/');
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  if (loading) {
+    return (
+       <div className="flex min-h-screen w-full">
+        <div className="hidden md:flex md:w-64 flex-col border-r">
+            <div className="flex h-16 items-center px-6">
+                <Skeleton className="h-6 w-32" />
+            </div>
+            <div className="flex flex-col gap-2 p-4">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+            </div>
+        </div>
+        <div className="flex flex-1 flex-col">
+            <header className="flex h-16 items-center justify-between border-b px-6">
+                <Skeleton className="h-8 w-8 md:hidden" />
+                <div className="flex items-center gap-4">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-9 w-9 rounded-full" />
+                </div>
+            </header>
+            <main className="flex-1 p-6">
+                <Skeleton className="h-96 w-full" />
+            </main>
+        </div>
+    </div>
+    );
+  }
+
+  if (!user) {
+    return null; // or a redirect component
+  }
+  
   return (
     <SidebarProvider>
       <Sidebar
