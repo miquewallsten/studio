@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 // Predefined roles
-const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only'];
+const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin'];
 
 export async function POST(request: NextRequest) {
   try {

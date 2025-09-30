@@ -10,6 +10,7 @@ import {
   Library,
   Building,
   Ticket,
+  TestTube,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -60,6 +61,11 @@ const adminNavItems = [
     icon: Settings,
     label: 'System Settings',
   },
+  {
+    href: '/dashboard/testing/impersonate',
+    icon: TestTube,
+    label: 'Testing',
+  }
 ];
 
 export function DashboardNav() {

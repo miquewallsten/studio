@@ -14,13 +14,67 @@ import { UserNav } from '@/components/user-nav';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { Search, LogIn, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithCustomToken, getIdToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+
+function ImpersonationBanner() {
+    const { toast } = useToast();
+    const [impersonatorUid, setImpersonatorUid] = useState<string | null>(null);
+
+    useEffect(() => {
+        // A bit of a hack to read the cookie on the client
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('impersonatorUid='))
+            ?.split('=')[1];
+        setImpersonatorUid(cookieValue || null);
+    }, []);
+
+    const stopImpersonating = async () => {
+        const response = await fetch('/api/auth/stop-impersonating', { method: 'POST' });
+        const data = await response.json();
+
+        if (response.ok) {
+            // Re-sign in with the original token.
+            // This is a simplified approach. In a production app, you might handle token refresh differently.
+            await auth.signOut(); // Sign out the impersonated user
+            
+            // Re-authenticating with the original token is complex from the client.
+            // A full page reload is the most reliable way to force re-authentication
+            // with the server-set cookies.
+            document.cookie = 'impersonatorUid=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            window.location.href = '/dashboard'; // Redirect and force reload
+
+            toast({ title: 'Impersonation stopped.' });
+        } else {
+            toast({ title: 'Error', description: data.error, variant: 'destructive' });
+        }
+    };
+    
+    if (!impersonatorUid) {
+        return null;
+    }
+
+    return (
+        <div className="flex items-center justify-center gap-x-6 bg-yellow-500 px-6 py-2 sm:px-3.5">
+            <div className="flex items-center text-sm leading-6 text-white">
+                <AlertTriangle className="mr-2 h-5 w-5" />
+                <p>
+                    <strong>Impersonation Mode:</strong> You are currently viewing the app as another user.
+                </p>
+            </div>
+             <Button size="sm" onClick={stopImpersonating} variant="outline" className="text-yellow-700">
+                Stop Impersonating
+            </Button>
+        </div>
+    );
+}
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -28,10 +82,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
+        // Store the ID token in a cookie for server-side access
+        const token = await getIdToken(user);
+        document.cookie = `firebaseIdToken=${token}; path=/;`;
       } else {
+        // Clear the cookie on logout
+        document.cookie = 'firebaseIdToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         router.push('/');
       }
       setLoading(false);
@@ -92,6 +151,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </SidebarContent>
       </Sidebar>
       <SidebarInset className="bg-background">
+         <ImpersonationBanner />
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card/95 px-4 backdrop-blur-sm sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
           <SidebarTrigger className="sm:hidden" />
           
