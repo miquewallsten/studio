@@ -24,12 +24,14 @@ type Field = {
 
 
 export default function FieldDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [field, setField] = useState<Field | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!id) return;
     const getFieldData = async () => {
-      const docSnap = await getDoc(doc(db, 'fields', params.id));
+      const docSnap = await getDoc(doc(db, 'fields', id));
       if (docSnap.exists()) {
         const data = docSnap.data();
         setField({
@@ -44,7 +46,7 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
     };
 
     getFieldData();
-  }, [params.id]);
+  }, [id]);
 
 
   if (loading) {
