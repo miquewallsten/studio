@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -23,9 +24,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, AlertCircle } from 'lucide-react';
+import { MoreHorizontal, AlertCircle, PlusCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { InviteUserDialog } from '@/components/invite-user-dialog';
 
 type User = {
     uid: string;
@@ -38,34 +40,51 @@ export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
+
+
+    const fetchUsers = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('/api/users');
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch users');
+            }
+            setUsers(data.users);
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchUsers = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const response = await fetch('/api/users');
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to fetch users');
-                }
-                setUsers(data.users);
-            } catch (err: any) {
-                console.error(err);
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchUsers();
     }, []);
+    
+    const handleUserInvited = () => {
+        fetchUsers(); // Re-fetch the user list after a new user is invited
+    }
 
     const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
 
   return (
     <div className="flex-1 space-y-4">
-      <h1 className="text-3xl font-bold font-headline">User Management</h1>
+        <InviteUserDialog 
+            isOpen={isInviteDialogOpen} 
+            onOpenChange={setInviteDialogOpen}
+            onUserInvited={handleUserInvited}
+        />
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold font-headline">User Management</h1>
+        <Button className="bg-accent hover:bg-accent/90" onClick={() => setInviteDialogOpen(true)}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          New User
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>All Authenticated Users</CardTitle>
