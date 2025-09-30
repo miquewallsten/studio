@@ -95,6 +95,13 @@ export function FieldEditor({ field: initialField, onFieldUpdated, onDeleteField
             />
         )}
 
+        <SubFieldsEditor 
+            title="Internal Analyst Fields"
+            description="Define fields that are only visible to internal analysts for notes and validation."
+            subFields={field.internalFields || []}
+            onSubFieldsChange={(newFields) => setField(f => ({...f, internalFields: newFields}))}
+        />
+
         <Card>
             <CardHeader>
             <CardTitle>AI Automation</CardTitle>
@@ -113,13 +120,6 @@ export function FieldEditor({ field: initialField, onFieldUpdated, onDeleteField
             />
             </CardContent>
         </Card>
-
-        <SubFieldsEditor 
-            title="Internal Analyst Fields"
-            description="Define fields that are only visible to internal analysts for notes and validation."
-            subFields={field.internalFields || []}
-            onSubFieldsChange={(newFields) => setField(f => ({...f, internalFields: newFields}))}
-        />
         
         <Card>
             <CardFooter className="justify-end gap-2">
