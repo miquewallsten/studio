@@ -103,8 +103,13 @@ export function NewTenantDialog({
             description: `"${companyName}" is now in an INVITED state.`,
         });
 
-        setOnboardingLink(data.onboardingLink);
-        generateEmailContent(data.onboardingLink);
+        // Construct the full onboarding URL for the new /onboard page
+        const passwordResetLink = data.onboardingLink;
+        const actionCode = new URL(passwordResetLink).searchParams.get('oobCode');
+        const fullOnboardingUrl = `${window.location.origin}/onboard?oobCode=${actionCode}`;
+
+        setOnboardingLink(fullOnboardingUrl);
+        generateEmailContent(fullOnboardingUrl);
         onTenantCreated();
         setStep(2);
 
