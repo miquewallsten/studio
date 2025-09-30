@@ -23,8 +23,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type User = {
     uid: string;
@@ -36,20 +37,22 @@ type User = {
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchUsers = async () => {
             setLoading(true);
+            setError(null);
             try {
                 const response = await fetch('/api/users');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch users');
-                }
                 const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch users');
+                }
                 setUsers(data.users);
-            } catch (error) {
-                console.error(error);
-                // Handle error (e.g., show a toast message)
+            } catch (err: any) {
+                console.error(err);
+                setError(err.message);
             } finally {
                 setLoading(false);
             }
@@ -69,6 +72,13 @@ export default function AdminUsersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+            {error && (
+                 <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error Fetching Users</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
            <Table>
             <TableHeader>
               <TableRow>
@@ -85,7 +95,7 @@ export default function AdminUsersPage() {
                     <TableRow>
                         <TableCell colSpan={4} className="h-24 text-center">Loading users...</TableCell>
                     </TableRow>
-                ) : users.length === 0 ? (
+                ) : !error && users.length === 0 ? (
                     <TableRow>
                         <TableCell colSpan={4} className="h-24 text-center">No users found.</TableCell>
                     </TableRow>
