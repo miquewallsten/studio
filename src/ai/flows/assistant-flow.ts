@@ -109,7 +109,7 @@ const getTicketMetricsTool = ai.defineTool(
   {
     name: 'getTicketMetrics',
     description: 'Retrieves the current count of tickets for each status.',
-    inputSchema: z.null(),
+    inputSchema: z.object({}),
     outputSchema: z.object({
       New: z.number(),
       'In Progress': z.number(),
@@ -143,7 +143,7 @@ const getUserCountTool = ai.defineTool(
     {
         name: 'getUserCount',
         description: 'Retrieves the total number of registered users.',
-        inputSchema: z.null(),
+        inputSchema: z.object({}),
         outputSchema: z.object({
             totalUsers: z.number(),
         })
@@ -188,7 +188,7 @@ const assistantFlow = ai.defineFlow(
   async ({ history, prompt }) => {
     const llmResponse = await ai.generate({
       prompt: prompt,
-      model: 'googleai/gemini-2.5-flash',
+      model: 'googleai/gemini-1.5-flash',
       history: history,
       tools: [createTenantTool, createTicketTool, getTicketMetricsTool, getUserCountTool],
       system: systemPrompt,

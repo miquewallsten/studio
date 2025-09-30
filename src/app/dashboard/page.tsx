@@ -23,6 +23,7 @@ import {
   CheckCircle,
   Users,
   LayoutDashboard,
+  Bot,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
@@ -39,6 +40,8 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { WidgetLibrary } from '@/components/dashboard/widget-library';
+import { AssistantWidget } from '@/components/dashboard/assistant-widget';
+
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -85,6 +88,10 @@ const WIDGET_DEFINITIONS: {
     title: 'New Tenants',
     defaultLayout: { i: 'new-tenants', x: 4, y: 0, w: 2, h: 3, minW: 2, minH: 2 },
   },
+  'ai-assistant': {
+    title: 'AI Assistant',
+    defaultLayout: { i: 'ai-assistant', x: 0, y: 3, w: 6, h: 3, minW: 3, minH: 2 },
+  },
 };
 
 
@@ -114,12 +121,12 @@ export default function DashboardPage() {
         setActiveWidgets(JSON.parse(savedWidgets));
       } else {
         // Default widgets
-        setActiveWidgets(['new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants']);
+        setActiveWidgets(['new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant']);
       }
 
     } catch (error) {
       console.error('Could not load layout from localStorage', error);
-      setActiveWidgets(['new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants']);
+      setActiveWidgets(['new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant']);
     }
 
     const ticketQuery = query(
@@ -417,6 +424,8 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         );
+        case 'ai-assistant':
+            return <AssistantWidget />;
       default:
         return null;
     }
