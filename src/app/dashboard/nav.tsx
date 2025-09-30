@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   ClipboardList,
   Users,
-  CreditCard,
   Settings,
 } from 'lucide-react';
 
@@ -30,16 +29,6 @@ const navItems = [
     href: '/dashboard/tickets',
     icon: ClipboardList,
     label: 'Tickets',
-  },
-  {
-    href: '/dashboard/reports',
-    icon: FileText,
-    label: 'Reports',
-  },
-  {
-    href: '/dashboard/billing',
-    icon: CreditCard,
-    label: 'Billing',
   },
 ];
 
