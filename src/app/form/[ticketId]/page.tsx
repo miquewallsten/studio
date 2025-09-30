@@ -44,7 +44,7 @@ export default function FormPage({ params, onFormSubmitted }: { params: { ticket
   const { toast } = useToast();
 
   useEffect(() => {
-    if (loadingAuth) return;
+    if (loadingAuth && !onFormSubmitted) return;
     if (!user && !onFormSubmitted) { // Allow unauthenticated access only in widget context
       router.push('/client/login'); 
       return;

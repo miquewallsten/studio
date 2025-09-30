@@ -58,8 +58,7 @@ export function EndUserPortalWidget() {
       const q = query(
         collection(db, 'tickets'),
         where('endUserId', '==', user.uid),
-        where('status', '==', 'New'),
-        orderBy('createdAt', 'desc')
+        where('status', '==', 'New')
       );
       const unsubscribe = onSnapshot(
         q,
@@ -75,7 +74,7 @@ export function EndUserPortalWidget() {
               createdAt: data.createdAt,
             });
           });
-          setTickets(ticketsData);
+          setTickets(ticketsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
           setLoading(false);
         },
         (error) => {
@@ -89,8 +88,7 @@ export function EndUserPortalWidget() {
       // If no user is impersonated, we show all "New" tickets as a proxy
       const q = query(
         collection(db, 'tickets'),
-        where('status', '==', 'New'),
-        orderBy('createdAt', 'desc')
+        where('status', '==', 'New')
       );
        const unsubscribe = onSnapshot(
         q,
@@ -106,7 +104,7 @@ export function EndUserPortalWidget() {
               createdAt: data.createdAt,
             });
           });
-          setTickets(ticketsData);
+          setTickets(ticketsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
           setLoading(false);
         }, (error) => {
             console.error('Error fetching all new tickets:', error);
@@ -160,7 +158,7 @@ export function EndUserPortalWidget() {
                 <DialogTitle>Fill Information Request Form</DialogTitle>
             </DialogHeader>
             <div className="flex-1 overflow-auto -mx-6 px-6">
-             {selectedTicketId && <FormPage params={{ticketId: selectedTicketId}} />}
+             {selectedTicketId && <FormPage params={{ticketId: selectedTicketId}} onFormSubmitted={handleFormSubmitted} />}
             </div>
         </DialogContent>
     </Dialog>
@@ -210,4 +208,3 @@ export function EndUserPortalWidget() {
     </>
   );
 }
-

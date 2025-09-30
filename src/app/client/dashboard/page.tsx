@@ -48,8 +48,7 @@ export default function ClientDashboardPage() {
     if (user) {
       const q = query(
         collection(db, 'tickets'),
-        where('clientId', '==', user.uid),
-        orderBy('createdAt', 'desc')
+        where('clientId', '==', user.uid)
       );
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const requestsData: Request[] = [];
@@ -63,7 +62,7 @@ export default function ClientDashboardPage() {
             createdAt: data.createdAt,
           });
         });
-        setRequests(requestsData);
+        setRequests(requestsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
         setLoading(false);
       });
 
