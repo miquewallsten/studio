@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -30,7 +31,7 @@ import { db } from '@/lib/firebase';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -50,15 +51,45 @@ type Tenant = {
 
 type TicketStatus = 'New' | 'In Progress' | 'Pending Review' | 'Completed';
 
+const defaultLayouts = {
+    lg: [
+      { i: 'new-tickets', x: 0, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
+      { i: 'in-progress', x: 1, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
+      { i: 'total-users', x: 2, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
+      { i: 'completed', x: 3, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
+      { i: 'recent-tickets', x: 0, y: 1, w: 4, h: 2, minW: 2, minH: 2 },
+      { i: 'new-tenants', x: 4, y: 0, w: 2, h: 3, minW: 2, minH: 2 },
+    ],
+};
+
+
 export default function DashboardPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [userCount, setUserCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [layouts, setLayouts] = useState<{[key: string]: Layout[]}>(() => {
+    if (typeof window !== 'undefined') {
+        const savedLayouts = window.localStorage.getItem('dashboard-layouts');
+        return savedLayouts ? JSON.parse(savedLayouts) : defaultLayouts;
+    }
+    return defaultLayouts;
+  });
 
   useEffect(() => {
     let isMounted = true;
     
+    // Attempt to load layouts from localStorage on mount
+    try {
+        const savedLayouts = window.localStorage.getItem('dashboard-layouts');
+        if (savedLayouts && isMounted) {
+            setLayouts(JSON.parse(savedLayouts));
+        }
+    } catch (error) {
+        console.error("Could not load layouts from localStorage", error);
+    }
+
+
     const ticketQuery = query(
       collection(db, 'tickets'),
       orderBy('createdAt', 'desc')
@@ -109,6 +140,16 @@ export default function DashboardPage() {
     };
   }, [loading]);
 
+  const onLayoutChange = (layout: Layout[], allLayouts: {[key: string]: Layout[]}) => {
+    try {
+        window.localStorage.setItem('dashboard-layouts', JSON.stringify(allLayouts));
+        setLayouts(allLayouts);
+    } catch (error) {
+        console.error("Could not save layouts to localStorage", error);
+    }
+  };
+
+
   const getTicketCountByStatus = (status: TicketStatus) => {
     return tickets.filter((ticket) => ticket.status === status).length;
   };
@@ -126,16 +167,6 @@ export default function DashboardPage() {
 
   const recentTickets = tickets.slice(0, 5);
 
-  const layouts = {
-    lg: [
-      { i: 'new-tickets', x: 0, y: 0, w: 1, h: 1 },
-      { i: 'in-progress', x: 1, y: 0, w: 1, h: 1 },
-      { i: 'total-users', x: 2, y: 0, w: 1, h: 1 },
-      { i: 'completed', x: 3, y: 0, w: 1, h: 1 },
-      { i: 'recent-tickets', x: 0, y: 1, w: 4, h: 2 },
-      { i: 'new-tenants', x: 4, y: 0, w: 2, h: 3 },
-    ],
-  };
 
   return (
     <div className="flex-1 space-y-4">
@@ -143,6 +174,7 @@ export default function DashboardPage() {
       <ResponsiveGridLayout
         className="layout"
         layouts={layouts}
+        onLayoutChange={onLayoutChange}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
         rowHeight={150}
@@ -345,3 +377,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
