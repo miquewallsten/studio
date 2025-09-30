@@ -140,9 +140,6 @@ export default function NewFieldPage() {
                     <SelectItem value="date">Date</SelectItem>
                     <SelectItem value="file">File Upload</SelectItem>
                     <SelectItem value="composite">Composite Field</SelectItem>
-                    <SelectItem value="text-with-file">
-                      Text with File Upload
-                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

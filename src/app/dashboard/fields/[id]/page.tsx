@@ -166,27 +166,6 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
         />
       )}
 
-      {field.type === 'text-with-file' && (
-         <Card>
-            <CardHeader>
-                <CardTitle>Preview</CardTitle>
-                <CardDescription>This is how the text with file upload field will appear in a form.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="p-4 border rounded-md bg-muted/50 space-y-4">
-                    <div>
-                        <Label>{field.label}</Label>
-                        <Input disabled placeholder="User text input..." />
-                    </div>
-                     <div>
-                        <Label>Proof Document</Label>
-                        <Input disabled type="file" />
-                    </div>
-                </div>
-            </CardContent>
-         </Card>
-      )}
-
         <Card>
             <CardHeader>
             <CardTitle>AI Automation</CardTitle>

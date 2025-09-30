@@ -114,9 +114,10 @@ export default function SubFieldsEditor({
                       <SelectContent>
                         <SelectItem value="text">Text</SelectItem>
                         <SelectItem value="textarea">Text Area</SelectItem>
+                        <SelectItem value="date">Date</SelectItem>
+                        <SelectItem value="file">File Upload</SelectItem>
                         <SelectItem value="boolean">Yes / No</SelectItem>
                         <SelectItem value="select">Select</SelectItem>
-                        <SelectItem value="date">Date</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
