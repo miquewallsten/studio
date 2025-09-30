@@ -169,12 +169,10 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                              <Button variant="destructive" className="w-full col-span-2">
                                 {user.disabled ? 'Enable User' : 'Disable User'}
                             </Button>
-                        </CardContent>
-                         <DialogFooter className="pt-4 pr-6">
-                            <Button onClick={handleImpersonate} className="w-full">
-                                <UserCheck className="mr-2 size-4" /> Impersonate User
+                            <Button onClick={handleImpersonate} className="w-full col-span-2">
+                                <UserCheck className="mr-2 size-4" /> Impersonate
                             </Button>
-                        </DialogFooter>
+                        </CardContent>
                     </Card>
 
                 </div>
