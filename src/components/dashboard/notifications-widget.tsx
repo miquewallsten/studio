@@ -21,6 +21,8 @@ import { useEffect, useState } from 'react';
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
 import { AlertTriangle, RefreshCw, Bell } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ResendInviteDialog } from '../resend-invite-dialog';
+
 
 type TenantInvite = {
   id: string;
@@ -33,6 +35,8 @@ const EXPIRATION_DAYS = 5;
 export function NotificationsWidget() {
   const [invites, setInvites] = useState<TenantInvite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTenant, setSelectedTenant] = useState<TenantInvite | null>(null);
+  const [isResendDialogOpen, setResendDialogOpen] = useState(false);
 
   useEffect(() => {
     const q = query(
@@ -54,11 +58,15 @@ export function NotificationsWidget() {
     return () => unsubscribe();
   }, []);
 
-  const handleResend = (tenantId: string) => {
-    // This will be implemented in the next step.
-    console.log(`Resending invite for tenant ${tenantId}`);
-    alert('Resend functionality will be implemented next.');
+  const handleResendClick = (invite: TenantInvite) => {
+    setSelectedTenant(invite);
+    setResendDialogOpen(true);
   };
+  
+  const handleDialogClose = () => {
+    setResendDialogOpen(false);
+    setSelectedTenant(null);
+  }
 
   const expiringInvites = invites.filter((invite) => {
     const sentAt = invite.invitationSentAt.toDate();
@@ -66,64 +74,71 @@ export function NotificationsWidget() {
   });
 
   return (
-    <Card className="h-full flex flex-col non-draggable">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="flex items-center gap-2">
-                <Bell className="text-accent" />
-                Notifications
-            </CardTitle>
-            <CardDescription>
-              Recent system alerts and required actions.
-            </CardDescription>
+    <>
+      <ResendInviteDialog 
+        isOpen={isResendDialogOpen}
+        onOpenChange={handleDialogClose}
+        tenant={selectedTenant}
+      />
+      <Card className="h-full flex flex-col non-draggable">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="flex items-center gap-2">
+                  <Bell className="text-accent" />
+                  Notifications
+              </CardTitle>
+              <CardDescription>
+                Recent system alerts and required actions.
+              </CardDescription>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-hidden p-0">
-        <ScrollArea className="h-full">
-        <div className="p-6 pt-0">
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading alerts...</p>
-        ) : expiringInvites.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground py-10">
-            <p>No notifications right now.</p>
-            <p className="text-xs">Your inbox is clear.</p>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {expiringInvites.map((invite) => (
-              <li
-                key={invite.id}
-                className="flex items-center justify-between rounded-md border p-3"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="size-4 text-destructive" />
-                    <p className="font-semibold text-destructive">Expired Invite</p>
-                  </div>
-                  <p className="text-sm mt-1">
-                    The invite for <span className="font-medium">{invite.name}</span> was sent{' '}
-                    {formatDistanceToNow(invite.invitationSentAt.toDate(), {
-                      addSuffix: true,
-                    })}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => handleResend(invite.id)}
+        </CardHeader>
+        <CardContent className="flex-1 overflow-hidden p-0">
+          <ScrollArea className="h-full">
+          <div className="p-6 pt-0">
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading alerts...</p>
+          ) : expiringInvites.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-10">
+              <p>No notifications right now.</p>
+              <p className="text-xs">Your inbox is clear.</p>
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {expiringInvites.map((invite) => (
+                <li
+                  key={invite.id}
+                  className="flex items-center justify-between rounded-md border p-3"
                 >
-                  <RefreshCw className="mr-2 size-3" />
-                  Resend
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-        </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="size-4 text-destructive" />
+                      <p className="font-semibold text-destructive">Expired Invite</p>
+                    </div>
+                    <p className="text-sm mt-1">
+                      The invite for <span className="font-medium">{invite.name}</span> was sent{' '}
+                      {formatDistanceToNow(invite.invitationSentAt.toDate(), {
+                        addSuffix: true,
+                      })}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleResendClick(invite)}
+                  >
+                    <RefreshCw className="mr-2 size-3" />
+                    Resend
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </>
   );
 }
