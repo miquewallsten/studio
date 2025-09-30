@@ -53,14 +53,20 @@ export async function GET(request: NextRequest) {
     
     const listUsersResult = await adminAuth.listUsers();
     
-    const users = listUsersResult.users.map(userRecord => {
+    const userProcessingPromises = listUsersResult.users.map(async (userRecord) => {
         const tenantId = userRecord.customClaims?.tenantId;
         let role = userRecord.customClaims?.role || 'Unassigned';
         const profile = profiles[userRecord.uid];
 
-        // Ensure the primary user is always a Super Admin
-        if (userRecord.email === 'mikewallsten@me.com') {
+        // Ensure the primary user is always a Super Admin by setting their custom claim if not already set.
+        if (userRecord.email === 'mikewallsten@me.com' && userRecord.customClaims?.role !== 'Super Admin') {
             role = 'Super Admin';
+            try {
+                await adminAuth.setCustomUserClaims(userRecord.uid, { ...userRecord.customClaims, role: 'Super Admin' });
+            } catch (claimError) {
+                console.error(`Failed to set Super Admin claim for ${userRecord.email}:`, claimError);
+                // Continue with the role set in-memory for the current response
+            }
         }
 
 
@@ -79,6 +85,8 @@ export async function GET(request: NextRequest) {
             ticketsCreated: tickets[userRecord.uid] || 0,
         }
     });
+
+    const users = await Promise.all(userProcessingPromises);
 
     return NextResponse.json({ users, allTags });
   } catch (error: any) {
