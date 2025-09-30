@@ -95,7 +95,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                             <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <DialogTitle className="text-xl font-bold font-headline">{user.displayName || user.email?.split('@')[0]}</DialogTitle>
+                            <DialogTitle className="text-xl font-bold font-headline">{user.displayName || user.email}</DialogTitle>
                             <DialogDescription className="text-sm text-muted-foreground">{user.email}</DialogDescription>
                         </div>
                     </div>
