@@ -35,10 +35,14 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Filter by email..."
+          placeholder="Filter by name or email..."
           value={(table.getColumn("displayName")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("displayName")?.setFilterValue(event.target.value)
+          onChange={(event) => {
+            const emailColumn = table.getColumn("email");
+            const nameColumn = table.getColumn("displayName");
+            emailColumn?.setFilterValue(event.target.value);
+            nameColumn?.setFilterValue(event.target.value);
+          }
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />

@@ -26,15 +26,25 @@ export const columns = ({ onSelectUser }: ColumnsProps): ColumnDef<User>[] => [
                     <AvatarImage src={user.photoURL ?? undefined} />
                     <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col">
-                    <span className="font-medium">{user.displayName || 'No Name'}</span>
-                    <span className="text-xs text-muted-foreground">{user.email}</span>
-                </div>
+                <span className="font-medium">{user.displayName || 'No Name'}</span>
             </div>
         )
     },
     enableSorting: true,
     enableHiding: false,
+  },
+  {
+    accessorKey: "email",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Email" />
+    ),
+    cell: ({ row }) => {
+        return (
+            <div className="flex items-center">
+                <span>{row.original.email}</span>
+            </div>
+        )
+    },
   },
   {
     accessorKey: "role",

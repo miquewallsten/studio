@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
             phone: profile?.phone || null,
             tags: profile?.tags || [],
             tenantId: tenantId,
-            tenantName: tenantId ? tenants[tenantId] : null,
+            tenantName: tenantId ? tenants[tenantId] : 'Internal Staff',
             role: role,
             createdAt: userRecord.metadata.creationTime,
         }
