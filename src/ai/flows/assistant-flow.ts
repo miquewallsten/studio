@@ -188,7 +188,6 @@ const assistantFlow = ai.defineFlow(
   async ({ history, prompt }) => {
     const llmResponse = await ai.generate({
       prompt: prompt,
-      model: 'googleai/gemini-pro',
       history: history,
       tools: [createTenantTool, createTicketTool, getTicketMetricsTool, getUserCountTool],
       system: systemPrompt,
