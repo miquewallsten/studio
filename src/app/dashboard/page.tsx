@@ -42,7 +42,7 @@ import { format } from 'date-fns';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { WidgetLibrary } from '@/components/dashboard/widget-library';
 import { AssistantWidget } from '@/components/dashboard/assistant-widget';
-import { ExpiringInvitesWidget } from '@/components/dashboard/expiring-invites-widget';
+import { NotificationsWidget } from '@/components/dashboard/notifications-widget';
 
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -66,9 +66,9 @@ type TicketStatus = 'New' | 'In Progress' | 'Pending Review' | 'Completed';
 const WIDGET_DEFINITIONS: {
   [key: string]: { title: string; defaultLayout: Layout };
 } = {
-  'expiring-invites': {
-    title: 'Expiring Invites',
-    defaultLayout: { i: 'expiring-invites', x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+  'notifications': {
+    title: 'Notifications',
+    defaultLayout: { i: 'notifications', x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
   },
   'new-tickets': {
     title: 'New Tickets',
@@ -127,12 +127,12 @@ export default function DashboardPage() {
         setActiveWidgets(JSON.parse(savedWidgets));
       } else {
         // Default widgets
-        setActiveWidgets(['expiring-invites', 'new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant']);
+        setActiveWidgets(['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant']);
       }
 
     } catch (error) {
       console.error('Could not load layout from localStorage', error);
-      setActiveWidgets(['expiring-invites', 'new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant']);
+      setActiveWidgets(['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant']);
     }
 
     const ticketQuery = query(
@@ -231,8 +231,8 @@ export default function DashboardPage() {
 
   const getWidgetContent = (widgetId: string) => {
     switch (widgetId) {
-      case 'expiring-invites':
-        return <ExpiringInvitesWidget />;
+      case 'notifications':
+        return <NotificationsWidget />;
       case 'new-tickets':
         return (
           <Card className="h-full">
