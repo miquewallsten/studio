@@ -144,22 +144,19 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     };
 
     const handleTagSelect = (tag: string) => {
-        setInputValue("");
         const lowercasedTags = formData.tags.map(t => t.toLowerCase());
         if (!lowercasedTags.includes(tag.toLowerCase())) {
             setFormData(prev => ({...prev, tags: [...prev.tags, tag]}));
         }
+        setInputValue("");
     }
     
     const handleTagCreate = (tagName: string) => {
         const newTag = tagName.trim();
-        setInputValue("");
         if (newTag) {
-            const lowercasedTags = formData.tags.map(t => t.toLowerCase());
-            if (!lowercasedTags.includes(newTag.toLowerCase())) {
-                setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
-            }
+            handleTagSelect(newTag);
         }
+        setInputValue("");
         inputRef.current?.blur();
     }
 
@@ -167,9 +164,10 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         setFormData(prev => ({...prev, tags: prev.tags.filter(t => t !== tag)}));
     }
 
-    const availableTags = allTags.filter(tag => 
-        !formData.tags.some(selectedTag => selectedTag.toLowerCase() === tag.toLowerCase())
-    );
+    const availableTags = React.useMemo(() => {
+        const lowercasedSelectedTags = formData.tags.map(t => t.toLowerCase());
+        return allTags.filter(tag => !lowercasedSelectedTags.includes(tag.toLowerCase()));
+    }, [formData.tags, allTags]);
     
     const showCreateOption = inputValue && !availableTags.some(tag => tag.toLowerCase() === inputValue.toLowerCase()) && !formData.tags.some(tag => tag.toLowerCase() === inputValue.toLowerCase());
 
@@ -299,7 +297,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                             />
                                                             <CommandList>
                                                                 <CommandEmpty>
-                                                                    {`No results found. Press Enter to create.`}
+                                                                    No results found.
                                                                 </CommandEmpty>
                                                                 <CommandGroup>
                                                                     {showCreateOption && (
@@ -396,5 +394,6 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         </>
     );
 }
+
 
 
