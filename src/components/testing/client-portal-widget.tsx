@@ -50,7 +50,8 @@ export function ClientPortalWidget() {
     if (user) {
       const q = query(
         collection(db, 'tickets'),
-        where('clientId', '==', user.uid)
+        where('clientId', '==', user.uid),
+        orderBy('createdAt', 'desc')
       );
       const unsubscribe = onSnapshot(
         q,
@@ -66,7 +67,7 @@ export function ClientPortalWidget() {
               createdAt: data.createdAt,
             });
           });
-          setRequests(requestsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+          setRequests(requestsData);
           setLoading(false);
         },
         (error) => {
