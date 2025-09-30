@@ -29,6 +29,7 @@ export default function OnboardingPage() {
     const [email, setEmail] = useState<string | null>(null);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -56,16 +57,16 @@ export default function OnboardingPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
+        setIsSubmitting(true);
 
         if (password !== confirmPassword) {
             toast({ title: 'Error', description: 'Passwords do not match.', variant: 'destructive'});
-            setIsLoading(false);
+            setIsSubmitting(false);
             return;
         }
         if (!oobCode) {
              toast({ title: 'Error', description: 'Missing onboarding code.', variant: 'destructive'});
-             setIsLoading(false);
+             setIsSubmitting(false);
              return;
         }
 
@@ -76,8 +77,9 @@ export default function OnboardingPage() {
             // 2. Mark the user's email as verified
             await applyActionCode(auth, oobCode);
             
-            // 3. Update the status of the Tenant and associated User
+            // 3. Update the status of the Tenant
             if (email) {
+                // Find the user document to get their tenantId
                 const q = query(collection(db, "users"), where("email", "==", email), where("role", "==", "Tenant Admin"));
                 const userQuerySnapshot = await getDocs(q);
 
@@ -86,15 +88,10 @@ export default function OnboardingPage() {
                     const tenantId = userDoc.data().tenantId;
                     
                     if (tenantId) {
+                        // Use a batch to update tenant status to ACTIVE
                         const batch = writeBatch(db);
-                        
-                        // Update tenant status
                         const tenantRef = doc(db, "tenants", tenantId);
                         batch.update(tenantRef, { status: "ACTIVE" });
-
-                        // Update user status (if you have a status field)
-                        // For now, activating the tenant is enough.
-
                         await batch.commit();
                     }
                 }
@@ -115,7 +112,7 @@ export default function OnboardingPage() {
                 description: err.message || 'An unexpected error occurred.',
                 variant: 'destructive',
             });
-            setIsLoading(false);
+            setIsSubmitting(false);
         }
     }
 
@@ -148,14 +145,14 @@ export default function OnboardingPage() {
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="password">New Password</Label>
-                            <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
+                            <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} disabled={isSubmitting} />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="confirm-password">Confirm Password</Label>
-                            <Input id="confirm-password" type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                            <Input id="confirm-password" type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} disabled={isSubmitting} />
                         </div>
-                         <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isLoading}>
-                            {isLoading ? 'Activating...' : 'Set Password & Login'}
+                         <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isSubmitting}>
+                            {isSubmitting ? 'Activating...' : 'Set Password & Login'}
                          </Button>
                     </div>
                 </form>
