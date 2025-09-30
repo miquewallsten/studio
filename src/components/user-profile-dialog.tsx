@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import { Briefcase, KeyRound, Ticket, UserCheck, Mail, Phone, User as UserIcon } from 'lucide-react';
+import { Briefcase, KeyRound, Ticket, UserCheck, Mail, Phone, User as UserIcon, Calendar, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
@@ -69,7 +69,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
             });
             
             onOpenChange(false);
-            if (user.role.startsWith('Tenant')) {
+            if (user.role.startsWith('Tenant') || user.role === 'End User') {
                  window.location.href = '/client/dashboard';
             } else {
                  window.location.href = '/dashboard';
@@ -91,11 +91,11 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                 <DialogHeader>
                     <div className="flex items-center gap-4">
                         <Avatar className="h-16 w-16">
-                            <AvatarImage src={user.photoURL} alt={user.displayName} />
+                            <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
                             <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <DialogTitle className="text-lg font-semibold">{user.displayName || user.email?.split('@')[0]}</DialogTitle>
+                            <DialogTitle className="text-xl font-bold font-headline">{user.displayName || user.email?.split('@')[0]}</DialogTitle>
                             <DialogDescription className="text-sm text-muted-foreground">{user.email}</DialogDescription>
                         </div>
                     </div>
@@ -103,7 +103,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                 <div className="space-y-4 pt-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Details</CardTitle>
+                            <CardTitle className="text-lg">Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 text-sm">
                              <div className="flex items-center justify-between">
@@ -127,22 +127,22 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                                 <span>{user.tenantName || 'Internal Staff'}</span>
                             </div>
                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">User ID</span>
+                                <span className="text-muted-foreground flex items-center gap-2"><Info className="size-4" /> User ID</span>
                                 <span className="font-mono text-xs bg-muted p-1 rounded">{user.uid}</span>
                             </div>
                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">Created At</span>
+                                <span className="text-muted-foreground flex items-center gap-2"><Calendar className="size-4" /> Created At</span>
                                 <span>{format(new Date(user.createdAt), 'PPP')}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">Status</span>
+                                <span className="text-muted-foreground flex items-center gap-2"><Info className="size-4" /> Status</span>
                                 <Badge variant={user.disabled ? 'destructive' : 'default'}>{user.disabled ? 'Disabled' : 'Active'}</Badge>
                             </div>
                         </CardContent>
                     </Card>
                      <Card>
                         <CardHeader>
-                            <CardTitle>User Activity</CardTitle>
+                            <CardTitle className="text-lg">User Activity</CardTitle>
                         </CardHeader>
                          <CardContent className="space-y-4 text-sm">
                              <div className="flex items-center justify-between">
@@ -154,7 +154,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
 
                      <Card>
                         <CardHeader>
-                            <CardTitle>Admin Actions</CardTitle>
+                            <CardTitle className="text-lg">Admin Actions</CardTitle>
                             <CardDescription>These actions are only available to Super Admins.</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-2 gap-2">
@@ -163,7 +163,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                              <Button variant="destructive" className="w-full col-span-2">
                                 {user.disabled ? 'Enable User' : 'Disable User'}
                             </Button>
-                            <Button onClick={handleImpersonate} className="w-full col-span-2">
+                            <Button onClick={handleImpersonate} className="w-full col-span-2 bg-accent hover:bg-accent/90">
                                 <UserCheck className="mr-2 size-4" /> Impersonate
                             </Button>
                         </CardContent>
