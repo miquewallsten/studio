@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import {
   FileText,
   LayoutDashboard,
-  ClipboardList,
   Users,
   Settings,
   Library,
@@ -32,11 +31,6 @@ const navItems = [
     href: '/dashboard/tickets',
     icon: Ticket,
     label: 'Tickets',
-  },
-  {
-    href: '/dashboard/tickets/new',
-    icon: ClipboardList,
-    label: 'New Ticket',
   },
   {
     href: '/dashboard/forms',
