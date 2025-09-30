@@ -7,7 +7,6 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter,
 } from '@/components/ui/dialog';
 import {
     Card,
@@ -88,7 +87,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>User Profile</DialogTitle>
                     <DialogDescription>
