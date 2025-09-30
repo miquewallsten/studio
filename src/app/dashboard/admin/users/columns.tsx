@@ -13,6 +13,17 @@ type ColumnsProps = {
   onUserUpdated: () => void;
 }
 
+const getRoleVariant = (role: string) => {
+    switch (role) {
+        case 'Super Admin': return 'default';
+        case 'Admin': return 'default';
+        case 'Unassigned': return 'destructive';
+        case 'Tenant Admin': return 'outline';
+        default: return 'secondary';
+    }
+}
+
+
 export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps): ColumnDef<User>[] => [
   {
     accessorKey: "displayName",
@@ -50,7 +61,7 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
       const role = row.getValue("role") as string;
       return (
         <div className="flex space-x-2">
-          <Badge variant={role === 'Unassigned' ? 'destructive' : 'secondary'}>{role}</Badge>
+          <Badge variant={getRoleVariant(role)}>{role}</Badge>
         </div>
       )
     },

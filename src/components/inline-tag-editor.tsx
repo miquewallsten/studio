@@ -129,7 +129,7 @@ export function InlineTagEditor({ user, allTags, onUserUpdated }: InlineTagEdito
                     }}
                 >
                     {selectedTags.length > 0 ? selectedTags.map(tag => (
-                        <Badge key={tag} variant="secondary">
+                        <Badge key={tag} variant="default" className="bg-slate-700 hover:bg-slate-600">
                             {tag}
                             <div
                                 role="button"
