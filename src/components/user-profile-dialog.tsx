@@ -153,11 +153,13 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     
     const handleTagCreate = (tagName: string) => {
         const newTag = tagName.trim();
-        const lowercasedTags = formData.tags.map(t => t.toLowerCase());
-        if (newTag && !lowercasedTags.includes(newTag.toLowerCase())) {
-             setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
-        }
         setInputValue("");
+        if (newTag) {
+            const lowercasedTags = formData.tags.map(t => t.toLowerCase());
+            if (!lowercasedTags.includes(newTag.toLowerCase())) {
+                setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
+            }
+        }
         inputRef.current?.blur();
     }
 
@@ -165,7 +167,9 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         setFormData(prev => ({...prev, tags: prev.tags.filter(t => t !== tag)}));
     }
 
-    const availableTags = allTags.filter(tag => !formData.tags.some(selectedTag => selectedTag.toLowerCase() === tag.toLowerCase()));
+    const availableTags = allTags.filter(tag => 
+        !formData.tags.some(selectedTag => selectedTag.toLowerCase() === tag.toLowerCase())
+    );
     
     const showCreateOption = inputValue && !availableTags.some(tag => tag.toLowerCase() === inputValue.toLowerCase()) && !formData.tags.some(tag => tag.toLowerCase() === inputValue.toLowerCase());
 
@@ -392,4 +396,5 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         </>
     );
 }
+
 
