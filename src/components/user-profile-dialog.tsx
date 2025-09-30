@@ -2,6 +2,7 @@
 
 'use client';
 
+import * as React from 'react';
 import {
     Dialog,
     DialogContent,
@@ -149,15 +150,19 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
             setFormData(prev => ({...prev, tags: [...prev.tags, tag]}));
         }
         setInputValue("");
+        inputRef.current?.blur();
+        setOpen(false);
     }
     
     const handleTagCreate = (tagName: string) => {
         const newTag = tagName.trim();
-        if (newTag) {
-            handleTagSelect(newTag);
+        const lowercasedTags = formData.tags.map(t => t.toLowerCase());
+        if (newTag && !lowercasedTags.includes(newTag.toLowerCase())) {
+            setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
         }
         setInputValue("");
         inputRef.current?.blur();
+        setOpen(false);
     }
 
     const handleTagRemove = (tag: string) => {
@@ -303,6 +308,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                                     {showCreateOption && (
                                                                         <CommandItem
                                                                             onSelect={() => handleTagCreate(inputValue)}
+                                                                            value={`__create__${inputValue}`}
                                                                         >
                                                                             <Check className="mr-2 h-4 w-4 opacity-0" />
                                                                             Create "{inputValue}"
@@ -312,7 +318,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                                     <CommandItem
                                                                         key={tag}
                                                                         value={tag}
-                                                                        onSelect={() => handleTagSelect(tag)}
+                                                                        onSelect={handleTagSelect}
                                                                     >
                                                                         <Check className={cn("mr-2 h-4 w-4", formData.tags.includes(tag) ? "opacity-100" : "opacity-0")} />
                                                                         {tag}
@@ -394,6 +400,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         </>
     );
 }
+
 
 
 
