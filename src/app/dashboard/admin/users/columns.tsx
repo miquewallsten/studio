@@ -4,7 +4,6 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
-import { DataTableRowActions } from "./data-table-row-actions"
 import type { User } from "./schema"
 import { InlineTagEditor } from "@/components/inline-tag-editor"
 
@@ -103,10 +102,5 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
       const formattedDate = date.toLocaleDateString()
       return <div>{formattedDate}</div>
     },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} onSelectUser={onSelectUser} />,
-    enableResizing: false,
   },
 ]
