@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A conversational AI assistant for Super Admins.
@@ -155,6 +156,26 @@ const getUserCountTool = ai.defineTool(
     }
 );
 
+const impersonateUserTool = ai.defineTool(
+    {
+        name: 'impersonateUser',
+        description: 'Generates a custom sign-in token to impersonate another user. This should only be used when the Super Admin explicitly asks to impersonate or "log in as" another user.',
+        inputSchema: z.object({
+            uid: z.string().describe("The UID of the user to impersonate."),
+        }),
+        outputSchema: z.object({
+            customToken: z.string(),
+        })
+    },
+    async ({ uid }) => {
+        const adminAuth = getAdminAuth();
+        const targetUser = await adminAuth.getUser(uid);
+        const impersonationClaims = targetUser.customClaims || {};
+        const customToken = await adminAuth.createCustomToken(uid, impersonationClaims);
+        return { customToken };
+    }
+);
+
 
 // //////////////////////////////////////////////////////////////////
 // Flow Definition
@@ -189,7 +210,7 @@ const assistantFlow = ai.defineFlow(
     const llmResponse = await ai.generate({
       prompt: prompt,
       history: history,
-      tools: [createTenantTool, createTicketTool, getTicketMetricsTool, getUserCountTool],
+      tools: [createTenantTool, createTicketTool, getTicketMetricsTool, getUserCountTool, impersonateUserTool],
       system: systemPrompt,
     });
 

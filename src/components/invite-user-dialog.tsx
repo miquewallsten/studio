@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -23,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { Separator } from './ui/separator';
 
 interface InviteUserDialogProps {
   isOpen: boolean;
@@ -89,7 +91,7 @@ export function InviteUserDialog({
         <DialogHeader>
           <DialogTitle>Invite New User</DialogTitle>
           <DialogDescription>
-            Create a new user account. They will be created in Firebase Authentication.
+            Create a user account. Internal users access the main dashboard, while client-facing users access a specific tenant portal.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -123,8 +125,9 @@ export function InviteUserDialog({
                     <SelectItem value="Analyst">Analyst</SelectItem>
                     <SelectItem value="View Only">View Only</SelectItem>
                 </SelectGroup>
+                <Separator />
                 <SelectGroup>
-                    <SelectLabel>Tenant Roles</SelectLabel>
+                    <SelectLabel>Client-Facing Roles</SelectLabel>
                     <SelectItem value="Tenant Admin">Tenant Admin</SelectItem>
                     <SelectItem value="Tenant User">Tenant User</SelectItem>
                 </SelectGroup>
@@ -144,3 +147,4 @@ export function InviteUserDialog({
     </Dialog>
   );
 }
+

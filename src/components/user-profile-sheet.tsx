@@ -7,6 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
+  SheetFooter,
 } from '@/components/ui/sheet';
 import {
     Card,
@@ -19,6 +20,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
+import { Briefcase, KeyRound, Ticket, UserCheck } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
+import { signInWithCustomToken } from 'firebase/auth';
 
 type User = {
     uid: string;
@@ -39,7 +44,48 @@ interface UserProfileSheetProps {
 }
 
 export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileSheetProps) {
+    const { toast } = useToast();
+
     if (!user) return null;
+
+    const handleImpersonate = async () => {
+        try {
+            const res = await fetch('/api/auth/impersonate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUid: user.uid }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to start impersonation');
+            }
+            
+            await auth.signOut();
+            await signInWithCustomToken(auth, data.customToken);
+
+            toast({
+                title: 'Impersonation Started',
+                description: `You are now logged in as ${user.email || 'user'}.`,
+            });
+            
+            // Close the sheet and redirect to the appropriate dashboard
+            onOpenChange(false);
+            if (user.role.startsWith('Tenant')) {
+                 window.location.href = '/client/dashboard';
+            } else {
+                 window.location.href = '/dashboard';
+            }
+            
+        } catch (err: any) {
+            toast({
+                title: 'Impersonation Failed',
+                description: err.message,
+                variant: 'destructive',
+            });
+        }
+    };
+
 
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -47,7 +93,7 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
                 <SheetHeader>
                     <SheetTitle>User Profile</SheetTitle>
                     <SheetDescription>
-                        Manage user details, roles, and permissions.
+                        View user details, metrics, and perform administrative actions.
                     </SheetDescription>
                 </SheetHeader>
                 <div className="py-6 space-y-6">
@@ -67,13 +113,13 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
                             <CardTitle>Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Role</span>
+                             <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground flex items-center gap-2"><KeyRound className="size-4"/> Role</span>
                                 <Badge variant={user.role === 'Unassigned' ? 'destructive' : 'secondary'}>{user.role}</Badge>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Tenant</span>
-                                <span>{user.tenantName || 'N/A'}</span>
+                            <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground flex items-center gap-2"><Briefcase className="size-4"/> Company/Tenant</span>
+                                <span>{user.tenantName || 'Internal Staff'}</span>
                             </div>
                              <div className="flex justify-between">
                                 <span className="text-muted-foreground">User ID</span>
@@ -83,24 +129,40 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
                                 <span className="text-muted-foreground">Created At</span>
                                 <span>{format(new Date(user.createdAt), 'PPP')}</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground">Status</span>
                                 <Badge variant={user.disabled ? 'destructive' : 'default'}>{user.disabled ? 'Disabled' : 'Active'}</Badge>
+                            </div>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>User Activity</CardTitle>
+                        </CardHeader>
+                         <CardContent className="space-y-4 text-sm">
+                             <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground flex items-center gap-2"><Ticket className="size-4"/> Tickets Created</span>
+                                <span className="font-bold">0</span>
                             </div>
                         </CardContent>
                     </Card>
 
                      <Card>
                         <CardHeader>
-                            <CardTitle>Actions</CardTitle>
+                            <CardTitle>Admin Actions</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-2">
-                            <Button variant="outline" className="w-full">Change Role</Button>
-                            <Button variant="outline" className="w-full">Assign to Tenant</Button>
-                            <Button variant="destructive" className="w-full">
+                        <CardContent className="grid grid-cols-2 gap-2">
+                             <Button variant="outline">Change Role</Button>
+                             <Button variant="outline">Assign Tenant</Button>
+                             <Button variant="destructive" className="w-full col-span-2">
                                 {user.disabled ? 'Enable User' : 'Disable User'}
                             </Button>
                         </CardContent>
+                         <SheetFooter className="pt-4 pr-6">
+                            <Button onClick={handleImpersonate} className="w-full">
+                                <UserCheck className="mr-2 size-4" /> Impersonate User
+                            </Button>
+                        </SheetFooter>
                     </Card>
 
                 </div>
