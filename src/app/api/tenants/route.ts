@@ -69,7 +69,10 @@ export async function POST(request: NextRequest) {
             adminUserRecord = await adminAuth.createUser({
                 email: adminEmail,
                 displayName: adminName,
-                phoneNumber: adminPhone || undefined,
+                // Only include phoneNumber if it's a non-empty string.
+                // Firebase requires E.164 format, so this might still fail if format is wrong,
+                // but it won't fail for an empty string.
+                phoneNumber: adminPhone ? adminPhone : undefined,
                 emailVerified: false,
             });
         } catch (error: any) {
@@ -77,7 +80,10 @@ export async function POST(request: NextRequest) {
                  // If user exists, we can still proceed to create the tenant and associate them.
                  // This assumes an existing user can be made a tenant admin.
                 adminUserRecord = await adminAuth.getUserByEmail(adminEmail);
-            } else {
+            } else if (error.code === 'auth/invalid-phone-number') {
+                return NextResponse.json({ error: 'The phone number must be a valid E.164-compliant identifier.' }, { status: 400 });
+            }
+            else {
                 throw error; // Rethrow other user creation errors
             }
         }
