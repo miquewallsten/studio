@@ -30,6 +30,8 @@ import { WidgetLibrary } from '@/components/dashboard/widget-library';
 import { ClientPortalWidget } from '@/components/testing/client-portal-widget';
 import { WorkflowWidget } from '@/components/testing/workflow-widget';
 import { EndUserPortalWidget } from '@/components/testing/end-user-portal-widget';
+import { AnalystPortalWidget } from '@/components/testing/analyst-portal-widget';
+
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -57,8 +59,12 @@ const WIDGET_DEFINITIONS: {
     defaultLayout: { i: 'end-user-portal', x: 4, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
   'manager-portal': {
-    title: '4. Manager Assigns Ticket',
-    defaultLayout: { i: 'manager-portal', x: 0, y: 4, w: 6, h: 4, minW: 3, minH: 4},
+    title: '4 & 6. Manager\'s Portal',
+    defaultLayout: { i: 'manager-portal', x: 0, y: 4, w: 4, h: 4, minW: 3, minH: 4},
+  },
+  'analyst-portal': {
+    title: '5. Analyst\'s Portal',
+    defaultLayout: { i: 'analyst-portal', x: 4, y: 4, w: 2, h: 4, minW: 2, minH: 3 },
   }
 };
 
@@ -89,11 +95,11 @@ export default function ImpersonateUserPage() {
             if (savedWidgets && isMounted) {
                 setActiveWidgets(JSON.parse(savedWidgets));
             } else {
-                setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'manager-portal']);
+                setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'manager-portal', 'analyst-portal']);
             }
         } catch (error) {
             console.error('Could not load layout from localStorage', error);
-            setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'manager-portal']);
+            setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'manager-portal', 'analyst-portal']);
         }
         
         const fetchUsers = async () => {
@@ -262,7 +268,9 @@ export default function ImpersonateUserPage() {
             case 'end-user-portal':
                 return <EndUserPortalWidget />
             case 'manager-portal':
-                return <WorkflowWidget title="4. Manager Assigns Ticket" description="Drag tickets between columns to update status. This represents the manager's workflow view." />
+                return <WorkflowWidget title="4 & 6. Manager's Portal" description="Drag tickets between columns to update status. This represents the manager's workflow view for assignment and final review." />
+            case 'analyst-portal':
+                return <AnalystPortalWidget />
             default:
                 return (
                     <Card>
@@ -350,3 +358,5 @@ export default function ImpersonateUserPage() {
     </div>
   );
 }
+
+    
