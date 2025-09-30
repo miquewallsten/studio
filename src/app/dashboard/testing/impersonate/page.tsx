@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { WidgetLibrary } from '@/components/dashboard/widget-library';
+import { ClientPortalWidget } from '@/components/testing/client-portal-widget';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -43,11 +44,11 @@ const WIDGET_DEFINITIONS: {
 } = {
   'impersonation-list': {
     title: 'Impersonation',
-    defaultLayout: { i: 'impersonation-list', x: 0, y: 0, w: 4, h: 3, minW: 3, minH: 2 },
+    defaultLayout: { i: 'impersonation-list', x: 0, y: 0, w: 3, h: 4, minW: 3, minH: 2 },
   },
-  'workflow-overview': {
-    title: 'Workflow Overview',
-    defaultLayout: { i: 'workflow-overview', x: 4, y: 0, w: 2, h: 3, minW: 2, minH: 2 },
+  'client-portal': {
+    title: 'Client Portal',
+    defaultLayout: { i: 'client-portal', x: 3, y: 0, w: 3, h: 4, minW: 2, minH: 3 },
   },
 };
 
@@ -70,19 +71,19 @@ export default function ImpersonateUserPage() {
         let isMounted = true;
 
         try {
-            const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts');
-            const savedWidgets = window.localStorage.getItem('testing-dashboard-widgets');
+            const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts-v2');
+            const savedWidgets = window.localStorage.getItem('testing-dashboard-widgets-v2');
             
             if (savedLayouts && isMounted) setLayouts(JSON.parse(savedLayouts));
             
             if (savedWidgets && isMounted) {
                 setActiveWidgets(JSON.parse(savedWidgets));
             } else {
-                setActiveWidgets(['impersonation-list', 'workflow-overview']);
+                setActiveWidgets(['impersonation-list', 'client-portal']);
             }
         } catch (error) {
             console.error('Could not load layout from localStorage', error);
-            setActiveWidgets(['impersonation-list', 'workflow-overview']);
+            setActiveWidgets(['impersonation-list', 'client-portal']);
         }
         
         const fetchUsers = async () => {
@@ -117,7 +118,7 @@ export default function ImpersonateUserPage() {
     const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
         if (isEditMode) {
             try {
-                window.localStorage.setItem('testing-dashboard-layouts', JSON.stringify(allLayouts));
+                window.localStorage.setItem('testing-dashboard-layouts-v2', JSON.stringify(allLayouts));
                 setLayouts(allLayouts);
             } catch (error) {
                 console.error('Could not save layouts to localStorage', error);
@@ -128,7 +129,7 @@ export default function ImpersonateUserPage() {
     const handleWidgetChange = (newWidgets: string[]) => {
         setActiveWidgets(newWidgets);
         try {
-            window.localStorage.setItem('testing-dashboard-widgets', JSON.stringify(newWidgets));
+            window.localStorage.setItem('testing-dashboard-widgets-v2', JSON.stringify(newWidgets));
         } catch (error) {
             console.error('Could not save widgets to localStorage', error);
         }
@@ -162,10 +163,11 @@ export default function ImpersonateUserPage() {
 
             toast({
                 title: 'Impersonation Started',
-                description: `You are now logged in as ${targetEmail || 'user'}.`,
+                description: `You are now logged in as ${targetEmail || 'user'}. Other widgets will now reflect this user.`,
             });
             
-            router.push('/dashboard');
+            // We don't need to redirect anymore, the widgets will update
+            // router.push('/dashboard'); 
 
         } catch (err: any) {
             toast({
@@ -173,6 +175,7 @@ export default function ImpersonateUserPage() {
                 description: err.message,
                 variant: 'destructive',
             });
+        } finally {
             setImpersonatingUid(null);
         }
     }
@@ -185,9 +188,9 @@ export default function ImpersonateUserPage() {
                 return (
                     <Card className="h-full flex flex-col">
                         <CardHeader>
-                            <CardTitle>Impersonate User</CardTitle>
+                            <CardTitle>1. Impersonate User</CardTitle>
                             <CardDescription>
-                            Select a user to temporarily log in as them to test their permissions and perspective.
+                            Select a user to log in as them. Other widgets will update to reflect their view.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-auto">
@@ -246,24 +249,19 @@ export default function ImpersonateUserPage() {
                         </CardContent>
                     </Card>
                 )
-            case 'workflow-overview':
+            case 'client-portal':
+                return <ClientPortalWidget />
+            default:
                 return (
-                    <Card className="h-full">
+                    <Card>
                         <CardHeader>
-                            <CardTitle>Workflow Simulator</CardTitle>
-                            <CardDescription>
-                                An interactive overview of the entire application workflow.
-                            </CardDescription>
+                            <CardTitle>Unknown Widget</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex h-48 items-center justify-center rounded-md border-2 border-dashed">
-                                <p className="text-muted-foreground flex items-center gap-2"><Workflow /> Mini-app widgets coming soon.</p>
-                            </div>
+                            <p>Widget not found: {widgetId}</p>
                         </CardContent>
                     </Card>
-                )
-            default:
-                return null;
+                );
         }
     }
 
@@ -304,7 +302,7 @@ export default function ImpersonateUserPage() {
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
-            rowHeight={150}
+            rowHeight={100}
             isDraggable={isEditMode}
             isResizable={isEditMode}
             draggableCancel=".non-draggable"
@@ -340,4 +338,3 @@ export default function ImpersonateUserPage() {
     </div>
   );
 }
-
