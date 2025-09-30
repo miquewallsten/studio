@@ -38,6 +38,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ users });
   } catch (error: any) {
     console.error('Error listing users:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    let errorMessage = 'An unexpected error occurred.';
+    if (error.code === 'app/invalid-credential' || error.message.includes('credential')) {
+        errorMessage = 'Firebase Admin SDK credential error. Please ensure server-side environment variables (FIREBASE_PROJECT_ID, etc.) are set correctly.';
+    } else if (error.message) {
+        errorMessage = error.message;
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
