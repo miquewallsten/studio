@@ -40,7 +40,6 @@ export function NewTenantDialog({
   const [companyUrl, setCompanyUrl] = useState('');
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
-  const [adminPhone, setAdminPhone] = useState('');
   
   const [onboardingLink, setOnboardingLink] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -53,7 +52,6 @@ export function NewTenantDialog({
     setCompanyUrl('');
     setAdminName('');
     setAdminEmail('');
-    setAdminPhone('');
     setOnboardingLink('');
     setEmailSubject('');
     setEmailBody('');
@@ -90,7 +88,7 @@ export function NewTenantDialog({
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ companyName, companyUrl, adminName, adminEmail, adminPhone }),
+            body: JSON.stringify({ companyName, companyUrl, adminName, adminEmail }),
         });
 
         const data = await response.json();
@@ -186,10 +184,6 @@ export function NewTenantDialog({
                      <div className="grid gap-2">
                         <Label htmlFor="admin-email">Admin Email</Label>
                         <Input id="admin-email" type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} required disabled={isLoading} />
-                    </div>
-                     <div className="grid gap-2">
-                        <Label htmlFor="admin-phone">Admin Phone</Label>
-                        <Input id="admin-phone" type="tel" value={adminPhone} onChange={(e) => setAdminPhone(e.target.value)} disabled={isLoading} />
                     </div>
                 </div>
                 <DialogFooter>

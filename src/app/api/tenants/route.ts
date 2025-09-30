@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Forbidden. Only Super Admins can create tenants.' }, { status: 403 });
         }
 
-        const { companyName, companyUrl, adminName, adminEmail, adminPhone } = await request.json();
+        const { companyName, companyUrl, adminName, adminEmail } = await request.json();
 
         if (!companyName || !adminEmail) {
             return NextResponse.json({ error: 'Company Name and Admin Email are required.' }, { status: 400 });
@@ -69,10 +69,6 @@ export async function POST(request: NextRequest) {
             adminUserRecord = await adminAuth.createUser({
                 email: adminEmail,
                 displayName: adminName,
-                // Only include phoneNumber if it's a non-empty string.
-                // Firebase requires E.164 format, so this might still fail if format is wrong,
-                // but it won't fail for an empty string.
-                phoneNumber: adminPhone ? adminPhone : undefined,
                 emailVerified: false,
             });
         } catch (error: any) {
@@ -80,10 +76,7 @@ export async function POST(request: NextRequest) {
                  // If user exists, we can still proceed to create the tenant and associate them.
                  // This assumes an existing user can be made a tenant admin.
                 adminUserRecord = await adminAuth.getUserByEmail(adminEmail);
-            } else if (error.code === 'auth/invalid-phone-number') {
-                return NextResponse.json({ error: 'The phone number must be a valid E.164-compliant identifier.' }, { status: 400 });
-            }
-            else {
+            } else {
                 throw error; // Rethrow other user creation errors
             }
         }
@@ -107,7 +100,6 @@ export async function POST(request: NextRequest) {
         await adminDb.collection('users').doc(adminUserRecord.uid).set({
             displayName: adminName,
             email: adminEmail,
-            phone: adminPhone || null,
             role: 'Tenant Admin',
             tenantId: tenantRef.id,
         }, { merge: true });
