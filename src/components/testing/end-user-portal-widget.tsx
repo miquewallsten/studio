@@ -85,31 +85,11 @@ export function EndUserPortalWidget() {
         }
       );
     } else {
-      // If no user is impersonated, we show all "New" tickets as a proxy
-      const q = query(
-        collection(db, 'tickets'),
-        where('status', '==', 'New')
-      );
-       unsubscribe = onSnapshot(
-        q,
-        (querySnapshot) => {
-          const ticketsData: Ticket[] = [];
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            ticketsData.push({
-              id: doc.id,
-              subjectName: data.subjectName,
-              reportType: data.reportType,
-              status: data.status,
-              createdAt: data.createdAt,
-            });
-          });
-          setTickets(ticketsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
-          setLoading(false);
-        }, (error) => {
-            console.error('Error fetching all new tickets:', error);
-            setLoading(false);
-        });
+        // If no user is logged in, there are no tickets to show.
+        setTickets([]);
+        setLoading(false);
+        // We need an empty unsubscribe function for the cleanup
+        unsubscribe = () => {};
     }
      return () => unsubscribe();
   }, [user]);
@@ -139,14 +119,47 @@ export function EndUserPortalWidget() {
                         No user impersonated.
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        Showing all pending forms. Impersonate an End-User to see their specific view.
+                        Impersonate an End-User to see their pending forms.
                     </p>
                 </div>
             </div>
       );
     }
     
-    return null; // The table will be shown outside this conditional
+    return (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Subject / Report</TableHead>
+              <TableHead className="text-right text-xs">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tickets.length === 0 && !loading ? (
+              <TableRow>
+                <TableCell colSpan={2} className="h-24 text-center text-sm">
+                  No pending forms for this user.
+                </TableCell>
+              </TableRow>
+            ) : (
+              tickets.map((ticket) => (
+                <TableRow key={ticket.id}>
+                  <TableCell className="font-medium text-xs py-2">
+                    <p>{ticket.subjectName}</p>
+                    <p className="text-muted-foreground">{ticket.reportType}</p>
+                  </TableCell>
+                  <TableCell className="text-right py-2">
+                    <Button variant="outline" size="sm" onClick={() => setSelectedTicketId(ticket.id)}>
+                        <FilePenLine className="mr-2"/>
+                        Fill Form
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+    );
   };
 
 
@@ -168,7 +181,7 @@ export function EndUserPortalWidget() {
             <div>
                 <CardTitle>3. End-User Portal</CardTitle>
                 <CardDescription className="text-xs">
-                {user ? `Viewing as: ${user.email}`: "Pending forms for all End-Users."}
+                {user ? `Viewing as: ${user.email}`: "Impersonate an End-User to see their forms."}
                 </CardDescription>
             </div>
             <Button asChild variant="outline" size="sm" disabled={!user || tickets.length === 0}>
@@ -180,38 +193,6 @@ export function EndUserPortalWidget() {
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-2">
         {renderContent()}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs">Subject / Report</TableHead>
-              <TableHead className="text-right text-xs">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tickets.length === 0 && !loading ? (
-              <TableRow>
-                <TableCell colSpan={2} className="h-24 text-center text-sm">
-                  No pending forms.
-                </TableCell>
-              </TableRow>
-            ) : (
-              tickets.map((ticket) => (
-                <TableRow key={ticket.id}>
-                  <TableCell className="font-medium text-xs py-2">
-                    <p>{ticket.subjectName}</p>
-                    <p className="text-muted-foreground">{ticket.reportType}</p>
-                  </TableCell>
-                  <TableCell className="text-right py-2">
-                    <Button variant="outline" size="sm" onClick={() => setSelectedTicketId(ticket.id)}>
-                        <FilePenLine className="mr-2"/>
-                        Fill Form
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
       </CardContent>
     </Card>
     </>

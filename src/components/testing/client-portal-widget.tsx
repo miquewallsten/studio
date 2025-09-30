@@ -16,6 +16,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, PlusCircle, UserCircle, ExternalLink } from 'lucide-react';
@@ -27,10 +35,24 @@ import {
   where,
   orderBy,
   Timestamp,
+  addDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { suggestComplianceQuestions } from '@/ai/flows/compliance-question-suggestions';
 
 type Request = {
   id: string;
@@ -44,14 +66,14 @@ export function ClientPortalWidget() {
   const [user, loadingUser] = useAuthState(auth);
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRequestDialogOpen, setRequestDialogOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     if (user) {
       const q = query(
         collection(db, 'tickets'),
-        where('clientId', '==', user.uid),
-        orderBy('createdAt', 'desc')
+        where('clientId', '==', user.uid)
       );
       const unsubscribe = onSnapshot(
         q,
@@ -67,7 +89,7 @@ export function ClientPortalWidget() {
               createdAt: data.createdAt,
             });
           });
-          setRequests(requestsData);
+          setRequests(requestsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
           setLoading(false);
         },
         (error) => {
@@ -152,6 +174,12 @@ export function ClientPortalWidget() {
   };
 
   return (
+    <>
+    <NewRequestDialog 
+        isOpen={isRequestDialogOpen}
+        onOpenChange={setRequestDialogOpen}
+        clientUser={user}
+    />
     <Card className="h-full flex flex-col non-draggable">
       <CardHeader>
         <div className="flex items-start justify-between">
@@ -167,7 +195,7 @@ export function ClientPortalWidget() {
                 <ExternalLink className="mr-2" /> View Full Portal
               </Link>
             </Button>
-            <Button variant="outline" size="sm" disabled={!user}>
+            <Button variant="outline" size="sm" disabled={!user} onClick={() => setRequestDialogOpen(true)}>
                 <PlusCircle className="mr-2" /> New Request
             </Button>
           </div>
@@ -177,5 +205,151 @@ export function ClientPortalWidget() {
         {renderContent()}
       </CardContent>
     </Card>
+    </>
   );
 }
+
+
+function NewRequestDialog({isOpen, onOpenChange, clientUser}: {isOpen: boolean, onOpenChange: (open: boolean) => void, clientUser: any}) {
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+  
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setIsLoading(true);
+      const formData = new FormData(event.currentTarget);
+      const subjectName = formData.get('subject-name') as string;
+      const email = formData.get('email') as string;
+      const reportType = formData.get('report-type') as string;
+      const description = formData.get('description') as string;
+  
+      if (!clientUser) {
+          toast({
+              title: 'Error',
+              description: 'You must be logged in as a client to create a request.',
+              variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+      }
+  
+      try {
+        const inviteResponse = await fetch('/api/users/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, tenantId: clientUser.uid }), 
+        });
+  
+        const inviteData = await inviteResponse.json();
+        
+        if (!inviteResponse.ok && inviteData.error !== 'A user with this email address already exists.') {
+          throw new Error(inviteData.error || 'Failed to create the end-user account.');
+        }
+  
+        const { suggestedQuestions } = await suggestComplianceQuestions({
+          reportType,
+          description,
+        });
+  
+        await addDoc(collection(db, 'tickets'), {
+          subjectName,
+          email,
+          reportType,
+          description,
+          suggestedQuestions,
+          status: 'New',
+          createdAt: serverTimestamp(),
+          clientId: clientUser.uid,
+          clientEmail: clientUser.email,
+          endUserId: inviteData.uid, 
+        });
+  
+        toast({
+          title: 'Request Created',
+          description: `The new End-User will now appear in the Impersonation list. A new form is pending in the End-User Portal.`,
+          variant: 'default',
+          duration: 6000,
+        });
+  
+        onOpenChange(false);
+  
+      } catch (error: any) {
+        console.error('Error creating request:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to create request. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+          setIsLoading(false);
+      }
+    };
+  
+    return (
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Request</DialogTitle>
+            <DialogDescription>
+              Provide details about the person or company to be investigated. This will create a new End-User and dispatch a form.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+                <Label htmlFor="subject-name">Subject Name/Company</Label>
+                <Input id="subject-name" name="subject-name" required disabled={isLoading} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Subject's Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="The form will be sent to this email"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="report-type">Report Type</Label>
+                <Select name="report-type" required disabled={isLoading}>
+                  <SelectTrigger id="report-type">
+                    <SelectValue placeholder="Select a report type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="background-check">
+                      Background Check
+                    </SelectItem>
+                    <SelectItem value="tenant-screening">
+                      Tenant Screening
+                    </SelectItem>
+                    <SelectItem value="employment-verification">
+                      Employment Verification
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description & Notes</Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  placeholder="Include any specific instructions or details."
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button type="submit" className="bg-accent hover:bg-accent/90" disabled={isLoading}>
+                    {isLoading ? 'Creating...' : 'Create and Send Form'}
+                </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
+  
