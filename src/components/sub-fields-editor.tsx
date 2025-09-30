@@ -19,8 +19,6 @@ import {
   SelectValue,
 } from './ui/select';
 import { Switch } from './ui/switch';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 
@@ -32,19 +30,18 @@ type SubField = {
 };
 
 interface SubFieldsEditorProps {
-  fieldId?: string; // Optional: only for saving to an existing field
+  title: string;
+  description: string;
   subFields: SubField[];
   onSubFieldsChange: (subFields: SubField[]) => void;
 }
 
 export default function SubFieldsEditor({
-  fieldId,
+  title,
+  description,
   subFields,
   onSubFieldsChange,
 }: SubFieldsEditorProps) {
-    const { toast } = useToast();
-    const [isSaving, setIsSaving] = useState(false);
-
 
   const handleAddSubField = () => {
     const newSubField: SubField = {
@@ -67,39 +64,14 @@ export default function SubFieldsEditor({
       onSubFieldsChange(updatedSubFields);
   };
 
-  const handleSaveChanges = async () => {
-    if (!fieldId) return;
-
-    setIsSaving(true);
-    try {
-        const fieldRef = doc(db, 'fields', fieldId);
-        await updateDoc(fieldRef, {
-            subFields: subFields
-        });
-        toast({
-            title: 'Sub-Fields Saved',
-            description: 'Your changes have been saved successfully.',
-        });
-    } catch (error) {
-        console.error("Error saving sub-fields: ", error);
-        toast({
-            title: 'Error',
-            description: 'Failed to save sub-fields. Please try again.',
-            variant: 'destructive'
-        });
-    } finally {
-        setIsSaving(false);
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Composite Field Builder</CardTitle>
+            <CardTitle>{title}</CardTitle>
             <CardDescription>
-              Define the sub-fields that make up this composite field.
+              {description}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -107,11 +79,6 @@ export default function SubFieldsEditor({
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Sub-Field
             </Button>
-            {fieldId && (
-                <Button onClick={handleSaveChanges} size="sm" className="bg-accent hover:bg-accent/90" disabled={isSaving}>
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-            )}
           </div>
         </div>
       </CardHeader>
@@ -147,7 +114,8 @@ export default function SubFieldsEditor({
                       <SelectContent>
                         <SelectItem value="text">Text</SelectItem>
                         <SelectItem value="textarea">Text Area</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="boolean">Yes / No</SelectItem>
+                        <SelectItem value="select">Select</SelectItem>
                         <SelectItem value="date">Date</SelectItem>
                       </SelectContent>
                     </Select>

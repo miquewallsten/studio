@@ -1,4 +1,3 @@
-
 'use client';
 
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -13,6 +12,10 @@ import {
 import SubFieldsEditor from '@/components/sub-fields-editor';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 type SubField = {
   id: string;
@@ -27,6 +30,8 @@ type Field = {
   type: string;
   required: boolean;
   subFields: SubField[];
+  aiInstructions?: string;
+  internalFields?: SubField[];
 };
 
 
@@ -34,6 +39,8 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
   const { id } = params;
   const [field, setField] = useState<Field | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -47,6 +54,8 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
           type: data.type,
           required: data.required,
           subFields: data.subFields || [],
+          aiInstructions: data.aiInstructions || '',
+          internalFields: data.internalFields || [],
         });
       }
       setLoading(false);
@@ -55,9 +64,30 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
     getFieldData();
   }, [id]);
 
-  const handleSubFieldsChange = (newSubFields: SubField[]) => {
-    if (field) {
-        setField({...field, subFields: newSubFields});
+ const handleSaveAll = async () => {
+    if (!field) return;
+    setIsSaving(true);
+    try {
+        const fieldRef = doc(db, 'fields', field.id);
+        // We only save the fields that can be edited on this page
+        await updateDoc(fieldRef, {
+            subFields: field.subFields,
+            aiInstructions: field.aiInstructions,
+            internalFields: field.internalFields,
+        });
+        toast({
+            title: 'Field Saved',
+            description: 'Your changes have been saved successfully.',
+        });
+    } catch (error) {
+        console.error("Error saving field: ", error);
+        toast({
+            title: 'Error',
+            description: 'Failed to save field changes. Please try again.',
+            variant: 'destructive'
+        });
+    } finally {
+        setIsSaving(false);
     }
   }
 
@@ -103,13 +133,16 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
         <h1 className="text-3xl font-semibold font-headline">
           Edit Field: {field.label}
         </h1>
+         <Button onClick={handleSaveAll} className="bg-accent hover:bg-accent/90" disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save All Changes'}
+        </Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Field Configuration</CardTitle>
           <CardDescription>
-            Editing details for the "{field.label}" field.
+            Basic details for the "{field.label}" field.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -126,9 +159,10 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
 
       {field.type === 'composite' && (
         <SubFieldsEditor 
-            fieldId={field.id} 
+            title="Composite Field Builder"
+            description="Define the user-facing sub-fields that make up this composite field."
             subFields={field.subFields}
-            onSubFieldsChange={handleSubFieldsChange}
+            onSubFieldsChange={(newSubFields) => setField(f => f ? {...f, subFields: newSubFields} : null)}
         />
       )}
 
@@ -139,13 +173,45 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
                 <CardDescription>This is how the text with file upload field will appear in a form.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="p-4 border rounded-md bg-muted/50">
-                    <p className="text-sm text-muted-foreground">A text input will appear here, followed by a file upload button.</p>
+                <div className="p-4 border rounded-md bg-muted/50 space-y-4">
+                    <div>
+                        <Label>{field.label}</Label>
+                        <Input disabled placeholder="User text input..." />
+                    </div>
+                     <div>
+                        <Label>Proof Document</Label>
+                        <Input disabled type="file" />
+                    </div>
                 </div>
             </CardContent>
          </Card>
       )}
 
+        <Card>
+            <CardHeader>
+            <CardTitle>AI Automation</CardTitle>
+            <CardDescription>
+                Provide instructions for AI tools to automate validation for this field.
+            </CardDescription>
+            </CardHeader>
+            <CardContent>
+            <Label htmlFor="ai-instructions">AI Instructions / Script</Label>
+            <Textarea
+                id="ai-instructions"
+                placeholder="e.g., Scrape https://gov-site.com/validate?curp={{value}} and check for a 'valid' status."
+                value={field.aiInstructions}
+                onChange={(e) => setField(f => f ? {...f, aiInstructions: e.target.value} : null)}
+                className="min-h-24 font-mono text-xs"
+            />
+            </CardContent>
+        </Card>
+
+        <SubFieldsEditor 
+            title="Internal Analyst Fields"
+            description="Define fields that are only visible to internal analysts for notes and validation."
+            subFields={field.internalFields || []}
+            onSubFieldsChange={(newFields) => setField(f => f ? {...f, internalFields: newFields} : null)}
+        />
     </div>
   );
 }

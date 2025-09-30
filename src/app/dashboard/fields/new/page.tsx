@@ -25,6 +25,7 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
 import SubFieldsEditor from '@/components/sub-fields-editor';
+import { Textarea } from '@/components/ui/textarea';
 
 type SubField = {
   id: string;
@@ -41,6 +42,9 @@ export default function NewFieldPage() {
   const [type, setType] = useState('');
   const [required, setRequired] = useState(false);
   const [subFields, setSubFields] = useState<SubField[]>([]);
+  const [aiInstructions, setAiInstructions] = useState('');
+  const [internalFields, setInternalFields] = useState<SubField[]>([]);
+
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -61,6 +65,8 @@ export default function NewFieldPage() {
         label,
         type,
         required,
+        aiInstructions,
+        internalFields,
         createdAt: serverTimestamp(),
       };
 
@@ -75,13 +81,7 @@ export default function NewFieldPage() {
         description: `The "${label}" field has been added to your library.`,
       });
 
-      // If it's a composite field, go to the edit page to continue building.
-      // Otherwise, go back to the list.
-      if (type === 'composite') {
-        router.push(`/dashboard/fields/${docRef.id}`);
-      } else {
-        router.push('/dashboard/fields');
-      }
+      router.push(`/dashboard/fields/${docRef.id}`);
 
     } catch (error) {
       console.error('Error creating field:', error);
@@ -160,10 +160,38 @@ export default function NewFieldPage() {
 
           {type === 'composite' && (
             <SubFieldsEditor 
+              title="Composite Field Builder"
+              description="Define the user-facing sub-fields that make up this composite field."
               subFields={subFields}
               onSubFieldsChange={setSubFields}
             />
           )}
+
+          <Card>
+             <CardHeader>
+                <CardTitle>AI Automation</CardTitle>
+                <CardDescription>
+                    Provide instructions for AI tools to automate validation for this field.
+                </CardDescription>
+             </CardHeader>
+             <CardContent>
+                <Label htmlFor="ai-instructions">AI Instructions / Script</Label>
+                <Textarea
+                    id="ai-instructions"
+                    placeholder="e.g., Scrape https://gov-site.com/validate?curp={{value}} and check for a 'valid' status."
+                    value={aiInstructions}
+                    onChange={(e) => setAiInstructions(e.target.value)}
+                    className="min-h-24 font-mono text-xs"
+                />
+             </CardContent>
+          </Card>
+
+           <SubFieldsEditor 
+              title="Internal Analyst Fields"
+              description="Define fields that are only visible to internal analysts for notes and validation."
+              subFields={internalFields}
+              onSubFieldsChange={setInternalFields}
+            />
 
           <div className="flex items-center justify-end gap-2">
             <Button variant="outline" asChild>
