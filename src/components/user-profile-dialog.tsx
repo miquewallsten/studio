@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -238,7 +239,11 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                                     {tag}
                                                                     <button
                                                                         className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                                                        onClick={() => handleTagRemove(tag)}
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            handleTagRemove(tag);
+                                                                        }}
                                                                     >
                                                                         <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                                                                     </button>
