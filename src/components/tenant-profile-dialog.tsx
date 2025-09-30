@@ -84,8 +84,38 @@ export function TenantProfileDialog({ tenant, isOpen, onOpenChange, onTenantUpda
     };
 
     const handleDeleteTenant = async () => {
-        toast({ title: 'Note', description: 'Deleting tenants is not implemented in this prototype.' });
-        setDeleteDialogOpen(false);
+        if (!tenant) return;
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) throw new Error("Not authenticated.");
+            const token = await getIdToken(currentUser);
+
+            const res = await fetch(`/api/tenants/${tenant.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to delete tenant');
+            }
+
+            toast({
+                title: 'Tenant Deleted',
+                description: `Tenant "${tenant.name}" and all associated users have been deleted.`,
+            });
+            
+            setDeleteDialogOpen(false);
+            onOpenChange(false);
+            onTenantUpdated();
+
+        } catch (error: any) {
+            toast({
+                title: 'Deletion Failed',
+                description: error.message,
+                variant: 'destructive',
+            });
+        }
     }
 
     const handleCancelEdit = () => {
