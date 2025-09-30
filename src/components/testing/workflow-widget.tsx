@@ -10,7 +10,7 @@ import {
   doc,
   updateDoc,
   Timestamp,
-  getDocs,
+  where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
@@ -28,11 +28,9 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import Link from 'next/link';
-import { ExternalLink, UserPlus } from 'lucide-react';
-import { AssignTicketDialog } from './assign-ticket-dialog';
+import { ExternalLink } from 'lucide-react';
 
 type Ticket = {
   id: string;
@@ -40,6 +38,12 @@ type Ticket = {
   reportType: string;
   status: 'New' | 'In Progress' | 'Pending Review' | 'Completed';
   createdAt: Timestamp;
+  assignedAnalystId?: string;
+};
+
+type Analyst = {
+  uid: string;
+  email: string;
 };
 
 type Columns = {
@@ -49,48 +53,10 @@ type Columns = {
   };
 };
 
-type Analyst = {
-  uid: string;
-  email: string;
-};
-
-
-const statusMap: {
-  [key: string]: 'New' | 'In Progress' | 'Pending Review' | 'Completed';
-} = {
-  new: 'New',
-  'in-progress': 'In Progress',
-  'pending-review': 'Pending Review',
-  completed: 'Completed',
-};
-
-const initialColumns: Columns = {
-  new: {
-    name: 'New',
-    items: [],
-  },
-  'in-progress': {
-    name: 'In Progress',
-    items: [],
-  },
-  'pending-review': {
-    name: 'Pending Review',
-    items: [],
-  },
-  completed: {
-    name: 'Completed',
-    items: [],
-  },
-};
-
-const getStatusFromColumnId = (columnId: string) => {
-  return statusMap[columnId];
-};
-
-const getColumnIdFromStatus = (status: string) => {
-  return (
-    Object.keys(statusMap).find((key) => statusMap[key] === status) || 'new'
-  );
+const STATIC_COLUMNS = {
+    'new': { name: 'New', items: [] },
+    'pending-review': { name: 'Pending Review', items: [] },
+    'completed': { name: 'Completed', items: [] },
 };
 
 interface WorkflowWidgetProps {
@@ -99,94 +65,119 @@ interface WorkflowWidgetProps {
 }
 
 export function WorkflowWidget({ title, description }: WorkflowWidgetProps) {
-  const [columns, setColumns] = useState<Columns>(initialColumns);
-  const [loading, setLoading] = useState(true);
+  const [columns, setColumns] = useState<Columns>(STATIC_COLUMNS);
   const [analysts, setAnalysts] = useState<Analyst[]>([]);
-  const [ticketToAssign, setTicketToAssign] = useState<Ticket | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const newColumns = JSON.parse(JSON.stringify(initialColumns));
-      querySnapshot.forEach((doc) => {
-        const ticket = { id: doc.id, ...doc.data() } as Ticket;
-        const columnId = getColumnIdFromStatus(ticket.status);
-        if (newColumns[columnId]) {
-          newColumns[columnId].items.push(ticket);
-        }
-      });
-      setColumns(newColumns);
-      setLoading(false);
-    });
-    
-    const fetchAnalysts = async () => {
+    const fetchAnalystsAndTickets = async () => {
+        setLoading(true);
         try {
-            const response = await fetch('/api/users');
-            const data = await response.json();
-            if (response.ok) {
-                const analystUsers = data.users.filter((u: any) => u.role === 'Analyst');
-                setAnalysts(analystUsers);
-            }
+            const usersResponse = await fetch('/api/users');
+            const usersData = await usersResponse.json();
+            if (!usersResponse.ok) throw new Error('Failed to fetch users');
+            
+            const fetchedAnalysts: Analyst[] = usersData.users.filter((u: any) => u.role === 'Analyst');
+            setAnalysts(fetchedAnalysts);
+
+            const dynamicAnalystColumns = fetchedAnalysts.reduce((acc, analyst) => {
+                acc[analyst.uid] = { name: analyst.email, items: [] };
+                return acc;
+            }, {} as Columns);
+
+            const initialColumns = { ...STATIC_COLUMNS, ...dynamicAnalystColumns };
+            Object.keys(initialColumns).forEach(key => {
+                initialColumns[key].items = [];
+            });
+
+
+            const ticketsQuery = query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
+            const unsubscribe = onSnapshot(ticketsQuery, (querySnapshot) => {
+                const newColumns = JSON.parse(JSON.stringify(initialColumns));
+                
+                querySnapshot.forEach((doc) => {
+                    const ticket = { id: doc.id, ...doc.data() } as Ticket;
+                    let columnId: string;
+
+                    if (ticket.status === 'In Progress' && ticket.assignedAnalystId) {
+                        columnId = ticket.assignedAnalystId;
+                    } else {
+                        columnId = Object.keys(STATIC_COLUMNS).find(key => STATIC_COLUMNS[key as keyof typeof STATIC_COLUMNS].name === ticket.status) || 'new';
+                    }
+
+                    if (newColumns[columnId]) {
+                        newColumns[columnId].items.push(ticket);
+                    }
+                });
+                setColumns(newColumns);
+            });
+
+            setLoading(false);
+            return unsubscribe;
+
         } catch (error) {
-            console.error("Failed to fetch analysts", error);
+            console.error("Error initializing workflow widget: ", error);
+            setLoading(false);
         }
     }
-    fetchAnalysts();
 
-    return () => unsubscribe();
+    const unsubscribePromise = fetchAnalystsAndTickets();
+
+    return () => {
+        unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+    };
+
   }, []);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const { source, destination, draggableId } = result;
 
-    if (source.droppableId === destination.droppableId) {
-      // Reordering within the same column
-      return; // For this widget, no reordering action is needed
-    } else {
-      // Moving to a different column
-      const sourceColumn = columns[source.droppableId];
-      const destColumn = columns[destination.droppableId];
-      const sourceItems = [...sourceColumn.items];
-      const destItems = [...destColumn.items];
-      const [removed] = sourceItems.splice(source.index, 1);
-      
-      // If moving from 'New' to 'In Progress', require assignment
-      if (source.droppableId === 'new' && destination.droppableId === 'in-progress') {
-        setTicketToAssign(removed);
-        return; // Stop processing the drag, let the dialog handle it
-      }
+    if (source.droppableId === destination.droppableId) return; // No change
 
-      destItems.splice(destination.index, 0, removed);
-
-      // Optimistically update UI
-      setColumns({
+    const sourceColumn = columns[source.droppableId];
+    const destColumn = columns[destination.droppableId];
+    const sourceItems = [...sourceColumn.items];
+    const destItems = [...destColumn.items];
+    const [removed] = sourceItems.splice(source.index, 1);
+    
+    // Update UI optimistically
+    destItems.splice(destination.index, 0, removed);
+    setColumns({
         ...columns,
-        [source.droppableId]: {
-          ...sourceColumn,
-          items: sourceItems,
-        },
-        [destination.droppableId]: {
-          ...destColumn,
-          items: destItems,
-        },
-      });
-      
-      // Update ticket status in Firestore
-      const newStatus = getStatusFromColumnId(destination.droppableId);
-      const ticketRef = doc(db, 'tickets', draggableId);
-      updateDoc(ticketRef, { status: newStatus });
+        [source.droppableId]: { ...sourceColumn, items: sourceItems },
+        [destination.droppableId]: { ...destColumn, items: destItems },
+    });
+
+    // Determine new status and analyst assignment
+    const ticketRef = doc(db, 'tickets', draggableId);
+    const destColumnId = destination.droppableId;
+    let newStatus: Ticket['status'] = 'New';
+    let assignedAnalystId: string | null = null;
+    
+    if (analysts.some(a => a.uid === destColumnId)) {
+        newStatus = 'In Progress';
+        assignedAnalystId = destColumnId;
+    } else if (destColumnId === 'pending-review') {
+        newStatus = 'Pending Review';
+    } else if (destColumnId === 'completed') {
+        newStatus = 'Completed';
     }
+
+    updateDoc(ticketRef, {
+        status: newStatus,
+        assignedAnalystId: assignedAnalystId || null
+    }).catch(err => {
+        // Revert UI on failure
+        console.error("Failed to update ticket: ", err);
+        setColumns(columns);
+    });
   };
+
+  const orderedColumnIds = ['new', ...analysts.map(a => a.uid), 'pending-review', 'completed'];
 
   return (
     <>
-      <AssignTicketDialog
-        isOpen={!!ticketToAssign}
-        onOpenChange={() => setTicketToAssign(null)}
-        ticket={ticketToAssign}
-        analysts={analysts}
-      />
       <Card className="h-full flex flex-col non-draggable">
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -207,63 +198,57 @@ export function WorkflowWidget({ title, description }: WorkflowWidgetProps) {
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="grid grid-cols-4 gap-2 h-full">
               {loading
-                ? Object.values(initialColumns).map((column, index) => (
-                    <div key={index} className="bg-muted/50 rounded-lg p-2">
+                ? orderedColumnIds.map((id) => (
+                    <div key={id} className="bg-muted/50 rounded-lg p-2">
                       <Skeleton className="h-5 w-20 mb-2" />
                       <Skeleton className="h-16 w-full" />
                     </div>
                   ))
-                : Object.entries(columns).map(([columnId, column]) => (
-                    <Droppable key={columnId} droppableId={columnId}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={`p-1 rounded-lg transition-colors h-full overflow-y-auto ${
-                            snapshot.isDraggingOver ? 'bg-muted' : 'bg-muted/40'
-                          }`}
-                        >
-                          <h3 className="text-sm font-semibold p-1 flex justify-between items-center">
-                              {column.name}
-                              <Badge variant="secondary" className="rounded-full">{column.items.length}</Badge>
-                          </h3>
-                          <div className="space-y-1 min-h-[50px]">
-                          {column.items.map((item, index) => (
-                            <Draggable
-                              key={item.id}
-                              draggableId={item.id}
-                              index={index}
+                : orderedColumnIds.map((columnId) => {
+                    const column = columns[columnId];
+                    if (!column) return null;
+                    return (
+                        <Droppable key={columnId} droppableId={columnId}>
+                        {(provided, snapshot) => (
+                            <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`p-1 rounded-lg transition-colors h-full overflow-y-auto ${
+                                snapshot.isDraggingOver ? 'bg-muted' : 'bg-muted/40'
+                            }`}
                             >
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
+                            <h3 className="text-sm font-semibold p-1 flex justify-between items-center truncate">
+                                <span className="truncate">{column.name}</span>
+                                <Badge variant="secondary" className="rounded-full">{column.items.length}</Badge>
+                            </h3>
+                            <div className="space-y-1 min-h-[50px]">
+                            {column.items.map((item, index) => (
+                                <Draggable
+                                key={item.id}
+                                draggableId={item.id}
+                                index={index}
                                 >
-                                  <Card className="p-2 text-xs relative group/ticket">
-                                    <p className="font-semibold truncate">{item.subjectName}</p>
-                                    <p className="text-muted-foreground">{item.reportType}</p>
-                                     {columnId === 'new' && (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="absolute bottom-1 right-1 h-6 px-2 opacity-0 group-hover/ticket:opacity-100 transition-opacity"
-                                            onClick={() => setTicketToAssign(item)}
-                                        >
-                                           <UserPlus className="mr-1 h-3 w-3" /> Assign
-                                        </Button>
-                                     )}
-                                  </Card>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                          </div>
-                        </div>
-                      )}
-                    </Droppable>
-                  ))}
+                                {(provided) => (
+                                    <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    >
+                                    <Card className="p-2 text-xs relative group/ticket">
+                                        <p className="font-semibold truncate">{item.subjectName}</p>
+                                        <p className="text-muted-foreground">{item.reportType}</p>
+                                    </Card>
+                                    </div>
+                                )}
+                                </Draggable>
+                            ))}
+                            {provided.placeholder}
+                            </div>
+                            </div>
+                        )}
+                        </Droppable>
+                    )
+                })}
             </div>
           </DragDropContext>
         </CardContent>

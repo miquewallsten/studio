@@ -59,11 +59,11 @@ const WIDGET_DEFINITIONS: {
     defaultLayout: { i: 'end-user-portal', x: 4, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
   'manager-portal': {
-    title: '4 & 6. Manager\'s Portal',
+    title: "4 & 6. Manager's Portal",
     defaultLayout: { i: 'manager-portal', x: 0, y: 4, w: 4, h: 4, minW: 3, minH: 4},
   },
   'analyst-portal': {
-    title: '5. Analyst\'s Portal',
+    title: "5. Analyst's Portal",
     defaultLayout: { i: 'analyst-portal', x: 4, y: 4, w: 2, h: 4, minW: 2, minH: 3 },
   }
 };
@@ -113,7 +113,7 @@ export default function ImpersonateUserPage() {
                 }
                 if(isMounted) {
                     const filteredUsers = data.users.filter((u: User) => u.role === 'End User' || u.tenantName !== null);
-                    setUsers(filteredUsers);
+                    setUsers(data.users);
                 }
             } catch (err: any) {
                 console.error(err);
@@ -204,7 +204,7 @@ export default function ImpersonateUserPage() {
                         <CardHeader>
                             <CardTitle>1. Impersonate User</CardTitle>
                             <CardDescription>
-                            Start by logging in as a Client. This creates a ticket (Step 2). Then, log in as the End-User to fill the form (Step 3).
+                            Start the workflow by impersonating a user. The other widgets will update to reflect their perspective.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-auto">
@@ -268,7 +268,7 @@ export default function ImpersonateUserPage() {
             case 'end-user-portal':
                 return <EndUserPortalWidget />
             case 'manager-portal':
-                return <WorkflowWidget title="4 & 6. Manager's Portal" description="Drag tickets between columns to update status. This represents the manager's workflow view for assignment and final review." />
+                return <WorkflowWidget title="4 & 6. Manager's Portal" description="Drag tickets from 'New' to an analyst's column to assign them. Drag tickets to other columns to update status." />
             case 'analyst-portal':
                 return <AnalystPortalWidget />
             default:
@@ -358,5 +358,3 @@ export default function ImpersonateUserPage() {
     </div>
   );
 }
-
-    
