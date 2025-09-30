@@ -122,7 +122,7 @@ export function DataTable<TData, TValue>({
                   className="cursor-pointer"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-2 px-4">
+                    <TableCell key={cell.id} className="py-1 px-4">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
