@@ -34,28 +34,33 @@ export function DataTableToolbar<TData>({
 
   const tenantNames = React.useMemo(() => {
     const names = new Set<string>();
-    table.getCoreRowModel().rows.forEach(row => {
+    table.getPreFilteredRowModel().rows.forEach(row => {
         const tenantName = (row.original as any).tenantName;
         if (tenantName) names.add(tenantName);
     });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table.getCoreRowModel().rows]);
+  }, [table]);
 
+
+  // Find a generic column to filter by text, like 'name' or 'displayName'
+  const filterColumn = table.getAllColumns().find(c => {
+    const id = c.id.toLowerCase();
+    return id.includes('name') || id.includes('email') || id.includes('subject');
+  });
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
-        <Input
-          placeholder="Filter by name or email..."
-          value={(table.getColumn("displayName")?.getFilterValue() as string) ?? ""}
-          onChange={(event) => {
-            // This is a bit of a hack to filter multiple columns with one input
-            // A more robust solution would use a global filter
-            table.getColumn("displayName")?.setFilterValue(event.target.value)
-            table.getColumn("email")?.setFilterValue(event.target.value)
-          }}
-          className="h-8 w-[150px] lg:w-[250px]"
-        />
+        {filterColumn && (
+            <Input
+            placeholder={`Filter by ${filterColumn.id}...`}
+            value={(table.getColumn(filterColumn.id)?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+                table.getColumn(filterColumn.id)?.setFilterValue(event.target.value)
+            }
+            className="h-8 w-[150px] lg:w-[250px]"
+            />
+        )}
         {table.getColumn("role") && (
           <DataTableFacetedFilter
             column={table.getColumn("role")}
@@ -63,7 +68,7 @@ export function DataTableToolbar<TData>({
             options={roles}
           />
         )}
-        {table.getColumn("tenantName") && (
+        {table.getColumn("tenantName") && tenantNames.length > 0 && (
             <DataTableFacetedFilter
                 column={table.getColumn("tenantName")}
                 title="Tenant"

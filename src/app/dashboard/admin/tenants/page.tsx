@@ -1,6 +1,6 @@
+
 'use client';
 
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -8,131 +8,101 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { PlusCircle, ArrowRight, Search } from 'lucide-react';
-import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, PlusCircle } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
-import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
-
-type Tenant = {
-  id: string;
-  name: string;
-  createdAt: Timestamp;
-};
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Link from 'next/link';
+import { DataTable } from '@/components/ui/data-table';
+import { columns } from './columns';
+import type { Tenant } from './schema';
+import { TenantProfileDialog } from '@/components/tenant-profile-dialog';
 
 export default function TenantsPage() {
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+    const [tenants, setTenants] = useState<Tenant[]>([]);
+    const [allTags, setAllTags] = useState<string[]>([]); // We may not use tags for tenants, but good to have
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
-  useEffect(() => {
-    const q = query(collection(db, 'tenants'), orderBy('name'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const tenantsData: Tenant[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        tenantsData.push({
-          id: doc.id,
-          name: data.name,
-          createdAt: data.createdAt,
-        });
-      });
-      setTenants(tenantsData);
-      setLoading(false);
-    });
+    const fetchTenants = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // This endpoint will need to be created or updated to fetch enriched tenant data
+            const response = await fetch('/api/tenants'); 
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch tenants');
+            }
+            setTenants(data.tenants);
+            // setAllTags(data.allTags || []);
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    return () => unsubscribe();
-  }, []);
+    useEffect(() => {
+        fetchTenants();
+    }, []);
+    
+    const handleDialogClose = () => {
+        setSelectedTenant(null);
+    }
 
-  const filteredTenants = useMemo(() => {
-    return tenants.filter((tenant) =>
-      tenant.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [tenants, searchQuery]);
+    const memoizedColumns = useMemo(() => columns({ onSelectTenant: setSelectedTenant }), []);
+
+    const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex-1 space-y-4">
+        <TenantProfileDialog 
+            tenant={selectedTenant}
+            isOpen={!!selectedTenant}
+            onOpenChange={handleDialogClose}
+            onTenantUpdated={fetchTenants}
+        />
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">Tenant Management</h1>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search by name..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <Button asChild className="bg-accent hover:bg-accent/90">
+        <Button asChild className="bg-accent hover:bg-accent/90">
             <Link href="/dashboard/admin/tenants/new">
               <PlusCircle className="mr-2 h-4 w-4" />
               New Tenant
             </Link>
           </Button>
-        </div>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Client Tenants</CardTitle>
+          <CardTitle>All Client Tenants</CardTitle>
           <CardDescription>
-            These are your clients who can access the client portal.
+            This is a list of your client tenants who can access the client portal. Click a row to view details.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tenant Name</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
-                    Loading tenants...
-                  </TableCell>
-                </TableRow>
-              ) : filteredTenants.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
-                    No tenants found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredTenants.map((tenant) => (
-                  <TableRow key={tenant.id}>
-                    <TableCell className="font-medium">{tenant.name}</TableCell>
-                    <TableCell>
-                      {tenant.createdAt ? format(tenant.createdAt.toDate(), 'PPP') : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="icon">
-                        <Link href={`/dashboard/admin/tenants/${tenant.id}`}>
-                          <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+            {error && (
+                 <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>{isCredentialError ? 'Configuration Required' : 'Error Fetching Data'}</AlertTitle>
+                    <AlertDescription>
+                        {error}
+                        {isCredentialError && (
+                            <p className="mt-2">Please ensure your Firebase Admin credentials are set in your .env file.</p>
+                        )}
+                    </AlertDescription>
+                </Alert>
+            )}
+           {loading ? (
+             <p>Loading tenants...</p>
+           ) : (
+            <DataTable 
+                columns={memoizedColumns} 
+                data={tenants}
+                onRowClick={(row) => setSelectedTenant(row.original)}
+            />
+           )}
         </CardContent>
       </Card>
     </div>
