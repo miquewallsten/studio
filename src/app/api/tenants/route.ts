@@ -2,6 +2,7 @@
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import admin from 'firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
