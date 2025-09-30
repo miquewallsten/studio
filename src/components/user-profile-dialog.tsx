@@ -87,7 +87,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>User Profile</DialogTitle>
                     <DialogDescription>
