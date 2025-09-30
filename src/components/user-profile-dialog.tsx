@@ -30,6 +30,8 @@ import { ChangeRoleDialog } from './change-role-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
+import { auth } from '@/lib/firebase';
+import { getIdToken } from 'firebase/auth';
 
 type User = {
     uid: string;
@@ -89,11 +91,20 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
 
     const handleSaveChanges = async () => {
         try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                throw new Error("Not authenticated. Please log in again.");
+            }
+            const token = await getIdToken(currentUser);
+            
             const payload = { ...formData };
 
             const res = await fetch(`/api/users/${user.uid}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(payload),
             });
             
@@ -247,17 +258,17 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                                         role="button"
                                                                         tabIndex={0}
                                                                         className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            e.stopPropagation();
-                                                                            handleTagRemove(tag);
-                                                                        }}
                                                                         onKeyDown={(e) => {
                                                                             if (e.key === 'Enter' || e.key === ' ') {
                                                                                 e.preventDefault();
                                                                                 e.stopPropagation();
                                                                                 handleTagRemove(tag);
                                                                             }
+                                                                        }}
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            handleTagRemove(tag);
                                                                         }}
                                                                     >
                                                                         <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
@@ -278,7 +289,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                         />
                                                         <CommandList>
                                                             <CommandEmpty>
-                                                                {showCreateOption ? `Press Enter to create "${inputValue}"` : "No results found."}
+                                                                {`No results found. Press Enter to create "${inputValue}"`}
                                                             </CommandEmpty>
                                                             <CommandGroup>
                                                                 {availableTags.map((tag) => (

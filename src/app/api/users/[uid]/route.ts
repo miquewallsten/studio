@@ -1,7 +1,7 @@
 
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,12 +12,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         const { displayName, phone, tags } = body;
 
         // --- Security Check: Ensure caller is an admin ---
-        const cookieStore = cookies();
-        const idToken = cookieStore.get('firebaseIdToken')?.value;
-
-        if (!idToken) {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
         }
+        const idToken = authHeader.split('Bearer ')[1];
 
         const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
@@ -58,6 +57,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         let errorMessage = 'An unexpected error occurred.';
         if (error.code === 'auth/user-not-found') {
             errorMessage = 'User not found.';
+        } else if (error.code === 'auth/id-token-expired') {
+            errorMessage = 'Authentication token has expired. Please log in again.';
         }
         return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
