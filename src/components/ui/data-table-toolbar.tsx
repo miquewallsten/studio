@@ -33,6 +33,7 @@ export function DataTableToolbar<TData>({
   ];
 
   const tenantNames = React.useMemo(() => {
+    // Safely check if tenantName column exists before processing
     const tenantNameColumn = table.getAllColumns().find(c => c.id === 'tenantName');
     if (!tenantNameColumn) {
         return [];
@@ -52,6 +53,9 @@ export function DataTableToolbar<TData>({
     return id.includes('name') || id.includes('email') || id.includes('subject');
   });
 
+  const roleColumn = table.getColumn("role");
+  const tenantNameColumn = table.getColumn("tenantName");
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
@@ -65,16 +69,16 @@ export function DataTableToolbar<TData>({
             className="h-8 w-[150px] lg:w-[250px]"
             />
         )}
-        {table.getColumn("role") && (
+        {roleColumn && (
           <DataTableFacetedFilter
-            column={table.getColumn("role")}
+            column={roleColumn}
             title="Role"
             options={roles}
           />
         )}
-        {table.getColumn("tenantName") && tenantNames.length > 0 && (
+        {tenantNameColumn && tenantNames.length > 0 && (
             <DataTableFacetedFilter
-                column={table.getColumn("tenantName")}
+                column={tenantNameColumn}
                 title="Tenant"
                 options={tenantNames}
             />
