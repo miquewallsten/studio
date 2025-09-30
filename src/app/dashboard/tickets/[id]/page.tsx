@@ -12,17 +12,16 @@ import {
   import { FileUp, MessageSquare, UserPlus } from 'lucide-react';
   
   export default function TicketDetailPage({ params }: { params: { id: string } }) {
-    // In a real app, fetch ticket data from Firestore using params.id
+    // In a real app, you would fetch ticket data from a database using params.id
     const ticket = {
       id: params.id,
-      subject: 'John Doe',
-      reportType: 'Background Check',
-      status: 'New',
-      createdAt: new Date().toLocaleDateString(),
-      description:
-        'Standard background check for a potential new tenant. Please verify employment and rental history.',
-      email: 'john.doe.subject@example.com',
-      client: 'Real Estate Corp',
+      subject: '',
+      reportType: '',
+      status: '',
+      createdAt: '',
+      description: '',
+      email: '',
+      client: '',
     };
   
     return (
@@ -36,27 +35,27 @@ import {
                     Ticket #{ticket.id}
                   </CardTitle>
                   <CardDescription>
-                    Created on {ticket.createdAt} by {ticket.client}
+                    {ticket.createdAt && ticket.client ? `Created on ${ticket.createdAt} by ${ticket.client}` : 'Loading ticket details...'}
                   </CardDescription>
                 </div>
-                <Badge className="text-sm" variant={ticket.status === 'New' ? 'destructive' : 'secondary'}>
+                {ticket.status && <Badge className="text-sm" variant={ticket.status === 'New' ? 'destructive' : 'secondary'}>
                   {ticket.status}
-                </Badge>
+                </Badge>}
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold">Subject</h3>
-                  <p className="text-muted-foreground">{ticket.subject}</p>
+                  <p className="text-muted-foreground">{ticket.subject || '...'}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Report Type</h3>
-                  <p className="text-muted-foreground">{ticket.reportType}</p>
+                  <p className="text-muted-foreground">{ticket.reportType || '...'}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Description & Notes</h3>
-                  <p className="text-muted-foreground">{ticket.description}</p>
+                  <p className="text-muted-foreground">{ticket.description || '...'}</p>
                 </div>
               </div>
             </CardContent>
