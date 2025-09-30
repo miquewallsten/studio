@@ -43,6 +43,7 @@ type User = {
     role: string;
     tags?: string[];
     createdAt: string;
+    ticketsCreated?: number;
 }
 
 interface UserProfileDialogProps {
@@ -200,7 +201,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                             <CardContent className="text-sm space-y-4">
                                <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground flex items-center gap-2"><Ticket className="size-4"/> Tickets Created</span>
-                                    <span className="font-bold">0</span>
+                                    <span className="font-bold">{user.ticketsCreated || 0}</span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -237,16 +238,25 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                             {formData.tags.length > 0 ? formData.tags.map(tag => (
                                                                 <Badge key={tag} variant="secondary" className="mr-1">
                                                                     {tag}
-                                                                    <button
+                                                                    <div
+                                                                        role="button"
+                                                                        tabIndex={0}
                                                                         className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                                                         onClick={(e) => {
                                                                             e.preventDefault();
                                                                             e.stopPropagation();
                                                                             handleTagRemove(tag);
                                                                         }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                                                e.preventDefault();
+                                                                                e.stopPropagation();
+                                                                                handleTagRemove(tag);
+                                                                            }
+                                                                        }}
                                                                     >
                                                                         <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                                                    </button>
+                                                                    </div>
                                                                 </Badge>
                                                             )) : <span className="text-muted-foreground">Select or create tags...</span>}
                                                         </div>
