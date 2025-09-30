@@ -19,21 +19,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { DataTable } from '@/components/ui/data-table';
-import { columns } from './columns';
 import type { Field } from './schema';
 import { FieldEditor } from '@/components/field-editor';
 import {
   Panel,
   PanelGroup,
   PanelResizeHandle,
-} from "react-resizable-panels"
+} from "react-resizable-panels";
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 
 export default function FieldsPage() {
@@ -41,6 +43,7 @@ export default function FieldsPage() {
   const [loading, setLoading] = useState(true);
   const [fieldToDelete, setFieldToDelete] = useState<Field | null>(null);
   const [selectedField, setSelectedField] = useState<Field | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -64,6 +67,11 @@ export default function FieldsPage() {
 
     return () => unsubscribe();
   }, []);
+  
+  const filteredFields = useMemo(() => {
+    if (!searchQuery) return fields;
+    return fields.filter(field => field.label.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [fields, searchQuery]);
 
   const handleDelete = async () => {
     if (fieldToDelete) {
@@ -96,12 +104,7 @@ export default function FieldsPage() {
   const handleFieldUpdate = () => {
     // Optionally re-fetch or update the list if needed,
     // though onSnapshot should handle it.
-    // For now, we can just clear the selection or keep it.
   };
-
-  const memoizedColumns = useMemo(() => columns({
-    onDeleteField: (field) => setFieldToDelete(field),
-  }), []);
 
   return (
     <div className="flex flex-col gap-4 h-[calc(100vh_-_8rem)]">
@@ -136,23 +139,51 @@ export default function FieldsPage() {
 
        <PanelGroup direction="horizontal" className="flex-1">
         <Panel defaultSize={40} minSize={30}>
-            <Card className="h-full overflow-y-auto">
+            <Card className="h-full flex flex-col">
                 <CardHeader>
-                <CardTitle>Reusable Fields</CardTitle>
-                <CardDescription>
-                    Manage the reusable fields that can be added to any form template. Click a row to edit.
-                </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <p>Loading fields...</p>
-                    ) : (
-                        <DataTable 
-                            columns={memoizedColumns}
-                            data={fields}
-                            onRowClick={(row) => handleSelectField(row.original)}
+                    <CardTitle>Reusable Fields</CardTitle>
+                    <CardDescription>
+                        Manage reusable fields. Click a field to edit.
+                    </CardDescription>
+                    <div className="relative pt-2">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search by label..."
+                            className="pl-8"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                    )}
+                    </div>
+                </CardHeader>
+                <CardContent className="flex-1 p-0 overflow-hidden">
+                  <ScrollArea className="h-full">
+                    <div className="p-6 pt-0">
+                      {loading ? (
+                          <p className="text-muted-foreground text-sm p-4">Loading fields...</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {filteredFields.map(field => (
+                            <button
+                              key={field.id}
+                              onClick={() => handleSelectField(field)}
+                              className={cn(
+                                "w-full text-left p-3 rounded-lg border flex justify-between items-center transition-colors",
+                                selectedField?.id === field.id 
+                                  ? "bg-muted border-primary" 
+                                  : "hover:bg-muted/50"
+                              )}
+                            >
+                              <span className="font-medium">{field.label}</span>
+                              <Badge variant="outline">{field.type}</Badge>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {!loading && filteredFields.length === 0 && (
+                        <p className="text-center text-sm text-muted-foreground py-10">No fields found.</p>
+                      )}
+                    </div>
+                  </ScrollArea>
                 </CardContent>
             </Card>
         </Panel>
@@ -161,9 +192,10 @@ export default function FieldsPage() {
            <div className="h-full overflow-y-auto pl-4">
             {selectedField ? (
                     <FieldEditor 
-                        key={selectedField.id} // Add key to force re-mount on selection change
+                        key={selectedField.id}
                         field={selectedField}
                         onFieldUpdated={handleFieldUpdate}
+                        onDeleteField={() => setFieldToDelete(selectedField)}
                     />
             ) : (
                     <Card className="h-full flex items-center justify-center">

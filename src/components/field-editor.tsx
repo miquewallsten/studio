@@ -20,13 +20,15 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { Field as FieldType } from '@/app/dashboard/fields/schema';
 import { ScrollArea } from './ui/scroll-area';
+import { Trash2 } from 'lucide-react';
 
 interface FieldEditorProps {
     field: FieldType;
     onFieldUpdated: () => void;
+    onDeleteField: () => void;
 }
 
-export function FieldEditor({ field: initialField, onFieldUpdated }: FieldEditorProps) {
+export function FieldEditor({ field: initialField, onFieldUpdated, onDeleteField }: FieldEditorProps) {
   const [field, setField] = useState<FieldType>(initialField);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -36,7 +38,6 @@ export function FieldEditor({ field: initialField, onFieldUpdated }: FieldEditor
     setIsSaving(true);
     try {
         const fieldRef = doc(db, 'fields', field.id);
-        // We only save the fields that can be edited on this page
         await updateDoc(fieldRef, {
             subFields: field.subFields,
             aiInstructions: field.aiInstructions,
@@ -68,12 +69,20 @@ export function FieldEditor({ field: initialField, onFieldUpdated }: FieldEditor
     <div className="space-y-4">
         <Card>
             <CardHeader>
-                <CardTitle className="text-2xl font-semibold font-headline">
-                    Edit Field: {field.label}
-                </CardTitle>
-                <CardDescription>
-                    Modify the configuration for this reusable library field.
-                </CardDescription>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <CardTitle className="text-2xl font-semibold font-headline">
+                            Edit Field: {field.label}
+                        </CardTitle>
+                        <CardDescription>
+                            Modify the configuration for this reusable library field.
+                        </CardDescription>
+                    </div>
+                    <Button variant="destructive" size="icon" onClick={onDeleteField}>
+                        <Trash2 className="size-4" />
+                        <span className="sr-only">Delete Field</span>
+                    </Button>
+                </div>
             </CardHeader>
         </Card>
         
