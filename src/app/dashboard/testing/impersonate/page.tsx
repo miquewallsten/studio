@@ -56,9 +56,9 @@ const WIDGET_DEFINITIONS: {
     title: 'End-User Portal',
     defaultLayout: { i: 'end-user-portal', x: 4, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
-  'workflow': {
-    title: 'Workflow',
-    defaultLayout: { i: 'workflow', x: 0, y: 4, w: 6, h: 4, minW: 3, minH: 4},
+  'manager-portal': {
+    title: 'Operations Manager Portal',
+    defaultLayout: { i: 'manager-portal', x: 0, y: 4, w: 6, h: 4, minW: 3, minH: 4},
   }
 };
 
@@ -89,11 +89,11 @@ export default function ImpersonateUserPage() {
             if (savedWidgets && isMounted) {
                 setActiveWidgets(JSON.parse(savedWidgets));
             } else {
-                setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'workflow']);
+                setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'manager-portal']);
             }
         } catch (error) {
             console.error('Could not load layout from localStorage', error);
-            setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'workflow']);
+            setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'manager-portal']);
         }
         
         const fetchUsers = async () => {
@@ -262,8 +262,8 @@ export default function ImpersonateUserPage() {
                 return <ClientPortalWidget />
             case 'end-user-portal':
                 return <EndUserPortalWidget />
-            case 'workflow':
-                return <WorkflowWidget />
+            case 'manager-portal':
+                return <WorkflowWidget title="4. Operations Manager Portal" description="This is the manager's view. Drag tickets to update their status." />
             default:
                 return (
                     <Card>

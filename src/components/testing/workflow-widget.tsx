@@ -82,7 +82,12 @@ const getColumnIdFromStatus = (status: string) => {
   );
 };
 
-export function WorkflowWidget() {
+interface WorkflowWidgetProps {
+    title: string;
+    description: string;
+}
+
+export function WorkflowWidget({ title, description }: WorkflowWidgetProps) {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [loading, setLoading] = useState(true);
 
@@ -143,9 +148,9 @@ export function WorkflowWidget() {
   return (
     <Card className="h-full flex flex-col non-draggable">
       <CardHeader>
-        <CardTitle>3. Ticket Workflow</CardTitle>
+        <CardTitle>{title}</CardTitle>
         <CardDescription>
-          Drag tickets between columns to update their status.
+          {description}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-2">
