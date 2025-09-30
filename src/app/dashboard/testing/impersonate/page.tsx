@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LogIn, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle, LayoutDashboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { auth } from '@/lib/firebase';
@@ -80,6 +80,8 @@ export default function ImpersonateUserPage() {
 
     const [isClient, setIsClient] = useState(false);
     const [layouts, setLayouts] = useState<{[key: string]: Layout[]}>({});
+    const [isEditMode, setIsEditMode] = useState(false);
+
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -201,11 +203,13 @@ export default function ImpersonateUserPage() {
     }
     
     const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-        try {
-            window.localStorage.setItem('testing-dashboard-layouts', JSON.stringify(allLayouts));
-            setLayouts(allLayouts);
-        } catch (error) {
-            console.error('Could not save layouts to localStorage', error);
+        if (isEditMode) {
+            try {
+                window.localStorage.setItem('testing-dashboard-layouts', JSON.stringify(allLayouts));
+                setLayouts(allLayouts);
+            } catch (error) {
+                console.error('Could not save layouts to localStorage', error);
+            }
         }
     };
     
@@ -291,17 +295,27 @@ export default function ImpersonateUserPage() {
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">Live Workflow Dashboard</h1>
+         <Button
+            variant={isEditMode ? 'default' : 'outline'}
+            onClick={() => setIsEditMode(!isEditMode)}
+            className={isEditMode ? 'bg-accent hover:bg-accent/90' : ''}
+        >
+            <LayoutDashboard className="mr-2" />
+            {isEditMode ? 'Done Editing' : 'Edit Dashboard'}
+        </Button>
       </div>
       
        {isClient && 
         <ResponsiveGridLayout
-            className="layout"
+            className={`layout ${!isEditMode ? 'non-interactive' : ''}`}
             layouts={layouts}
             layout={finalLayout}
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
             rowHeight={100}
+            isDraggable={isEditMode}
+            isResizable={isEditMode}
             draggableCancel=".non-draggable"
         >
             {activeWidgets.map((widgetId) => (
@@ -314,6 +328,9 @@ export default function ImpersonateUserPage() {
        <style jsx global>{`
         .react-grid-item.react-grid-placeholder {
           background: hsl(var(--accent)) !important;
+        }
+        .non-interactive .react-resizable-handle {
+          display: none;
         }
       `}</style>
     </div>
