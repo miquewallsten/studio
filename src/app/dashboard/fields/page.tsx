@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,11 @@ import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import type { Field } from './schema';
 import { FieldEditor } from '@/components/field-editor';
+import {
+  Panel,
+  PanelGroup,
+  PanelResizeHandle,
+} from "react-resizable-panels"
 
 
 export default function FieldsPage() {
@@ -98,7 +104,7 @@ export default function FieldsPage() {
   }), []);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-[calc(100vh_-_8rem)]">
        <AlertDialog open={fieldToDelete !== null} onOpenChange={(open) => !open && setFieldToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -128,44 +134,48 @@ export default function FieldsPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <Card>
-            <CardHeader>
-            <CardTitle>Reusable Fields</CardTitle>
-            <CardDescription>
-                Manage the reusable fields that can be added to any form template. Click a row to edit.
-            </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {loading ? (
-                    <p>Loading fields...</p>
-                ) : (
-                    <DataTable 
-                        columns={memoizedColumns}
-                        data={fields}
-                        onRowClick={(row) => handleSelectField(row.original)}
+       <PanelGroup direction="horizontal" className="flex-1">
+        <Panel defaultSize={40} minSize={30}>
+            <Card className="h-full overflow-y-auto">
+                <CardHeader>
+                <CardTitle>Reusable Fields</CardTitle>
+                <CardDescription>
+                    Manage the reusable fields that can be added to any form template. Click a row to edit.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <p>Loading fields...</p>
+                    ) : (
+                        <DataTable 
+                            columns={memoizedColumns}
+                            data={fields}
+                            onRowClick={(row) => handleSelectField(row.original)}
+                        />
+                    )}
+                </CardContent>
+            </Card>
+        </Panel>
+        <PanelResizeHandle className="w-2 bg-transparent hover:bg-muted transition-colors data-[resize-handle-state=drag]:bg-muted-foreground" />
+        <Panel defaultSize={60} minSize={40}>
+           <div className="h-full overflow-y-auto pl-4">
+            {selectedField ? (
+                    <FieldEditor 
+                        key={selectedField.id} // Add key to force re-mount on selection change
+                        field={selectedField}
+                        onFieldUpdated={handleFieldUpdate}
                     />
-                )}
-            </CardContent>
-        </Card>
-        
-        <div className="sticky top-4">
-           {selectedField ? (
-                <FieldEditor 
-                    key={selectedField.id} // Add key to force re-mount on selection change
-                    field={selectedField}
-                    onFieldUpdated={handleFieldUpdate}
-                />
-           ) : (
-                <Card className="h-96 flex items-center justify-center">
-                    <div className="text-center text-muted-foreground">
-                        <p>Select a field to view and edit its details.</p>
-                    </div>
-                </Card>
-           )}
-        </div>
+            ) : (
+                    <Card className="h-full flex items-center justify-center">
+                        <div className="text-center text-muted-foreground">
+                            <p>Select a field to view and edit its details.</p>
+                        </div>
+                    </Card>
+            )}
+           </div>
+        </Panel>
+       </PanelGroup>
 
-      </div>
     </div>
   );
 }
