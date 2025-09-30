@@ -22,6 +22,8 @@ import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
+import { User } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '../ui/dropdown-menu';
 
 type Ticket = {
   id: string;
@@ -31,12 +33,18 @@ type Ticket = {
   createdAt: Timestamp;
 };
 
-interface EndUserPortalWidgetProps {
-    title: string;
-    description: string;
+type PortalUser = {
+    uid: string;
+    email?: string;
 }
 
-export function EndUserPortalWidget({ title, description }: EndUserPortalWidgetProps) {
+interface EndUserPortalWidgetProps {
+    users: PortalUser[];
+    onImpersonate: (uid: string, email?: string) => void;
+    isImpersonating: boolean;
+}
+
+export function EndUserPortalWidget({ users, onImpersonate, isImpersonating }: EndUserPortalWidgetProps) {
   const [user, loadingAuth] = useAuthState(auth);
   const [pendingForms, setPendingForms] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,24 +97,40 @@ export function EndUserPortalWidget({ title, description }: EndUserPortalWidgetP
   return (
     <Card className="h-full flex flex-col non-draggable">
         <CardHeader>
-            <CardTitle>{title}</CardTitle>
-            <CardDescription>
-                {description}
-                {user && <div className="mt-2 text-xs font-semibold p-2 bg-muted rounded-md border">Viewing as: {user.email} <span className="text-muted-foreground font-normal">(Use Widget 1 to impersonate a different user.)</span></div>}
-            </CardDescription>
+            <div className="flex items-start justify-between">
+                <div className="flex-1">
+                    <CardTitle>End-User Portal</CardTitle>
+                    <CardDescription>
+                        Impersonate an end-user to see and fill out their pending forms.
+                    </CardDescription>
+                </div>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            <User className="mr-2"/>
+                            {user && isEndUser ? user.email : "Impersonate End-User"}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56">
+                        <DropdownMenuLabel>Select an End-User</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {users.map(u => (
+                            <DropdownMenuItem key={u.uid} onClick={() => onImpersonate(u.uid, u.email)} disabled={isImpersonating}>
+                                {u.email}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto">
              {loadingAuth ? (
                 <div className="h-24 flex items-center justify-center">
                     <p className="text-sm text-muted-foreground">Loading user data...</p>
                 </div>
-            ) : !user ? (
-                 <div className="h-24 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">No user impersonated. Use Widget 1.</p>
-                </div>
             ) : !isEndUser ? (
-                <div className="h-24 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Impersonated user is not an End-User.</p>
+                 <div className="h-24 flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground">Select an end-user to impersonate.</p>
                 </div>
             ) : (
                 <Table>
@@ -126,7 +150,7 @@ export function EndUserPortalWidget({ title, description }: EndUserPortalWidgetP
                     ) : pendingForms.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={2} className="h-24 text-center">
-                            No pending forms.
+                            No pending forms for this user.
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -148,5 +172,3 @@ export function EndUserPortalWidget({ title, description }: EndUserPortalWidgetP
     </Card>
   );
 }
-
-    

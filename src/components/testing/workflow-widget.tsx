@@ -10,7 +10,6 @@ import {
   doc,
   updateDoc,
   Timestamp,
-  where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
@@ -19,7 +18,7 @@ import {
   Draggable,
   DropResult,
 } from '@hello-pangea/dnd';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -29,9 +28,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
-import { Button } from '../ui/button';
-import { AssignTicketDialog } from './assign-ticket-dialog';
-import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 type Ticket = {
@@ -45,7 +41,7 @@ type Ticket = {
 
 type Analyst = {
     uid: string;
-    email: string;
+    email?: string;
 }
 
 type Columns = {
@@ -55,32 +51,32 @@ type Columns = {
   };
 };
 
-const getStatusFromColumnId = (columnId: string): Ticket['status'] => {
+const getStatusFromColumnId = (columnId: string, analysts: Analyst[]): Ticket['status'] => {
     if (columnId === 'new') return 'New';
     if (columnId === 'pending-review') return 'Pending Review';
     if (columnId === 'completed') return 'Completed';
-    return 'In Progress';
+    if (analysts.some(a => a.uid === columnId)) return 'In Progress';
+    return 'New'; // Fallback
 }
 
 const getColumnIdFromTicket = (ticket: Ticket): string => {
     if (ticket.status === 'New') return 'new';
     if (ticket.status === 'Pending Review') return 'pending-review';
     if (ticket.status === 'Completed') return 'completed';
-    if (ticket.assignedAnalystId) return ticket.assignedAnalystId;
-    return 'new'; // Fallback for in-progress but unassigned
+    if (ticket.status === 'In Progress' && ticket.assignedAnalystId) return ticket.assignedAnalystId;
+    return 'new'; // Fallback for tickets that might be in progress but unassigned
 }
 
 
-export function WorkflowWidget({ title, description, analysts }: { title: string, description: string, analysts: Analyst[] }) {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+export function WorkflowWidget({ analysts }: { analysts: Analyst[] }) {
   const [columns, setColumns] = useState<Columns>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initialColumns: Columns = {
-      'new': { name: 'New', items: [] },
+      'new': { name: 'New Tickets', items: [] },
       ...analysts.reduce((acc, analyst) => {
-        acc[analyst.uid] = { name: analyst.email, items: [] };
+        acc[analyst.uid] = { name: analyst.email || 'Unnamed Analyst', items: [] };
         return acc;
       }, {} as Columns),
       'pending-review': { name: 'Pending Review', items: [] },
@@ -93,18 +89,15 @@ export function WorkflowWidget({ title, description, analysts }: { title: string
       querySnapshot.forEach((doc) => {
         ticketsData.push({ id: doc.id, ...doc.data() } as Ticket);
       });
-      setTickets(ticketsData);
 
       const newColumns: Columns = JSON.parse(JSON.stringify(initialColumns));
       ticketsData.forEach((ticket) => {
         const columnId = getColumnIdFromTicket(ticket);
         if (newColumns[columnId]) {
           newColumns[columnId].items.push(ticket);
-        } else if (ticket.status === 'In Progress') { // Handle case where analyst might be missing
-            if (!newColumns['unassigned-progress']) {
-                newColumns['unassigned-progress'] = { name: 'In Progress (Unassigned)', items: []};
-            }
-            newColumns['unassigned-progress'].items.push(ticket);
+        } else {
+            // If a ticket is assigned to an analyst that doesn't exist anymore, put it in 'New'
+            newColumns['new'].items.push(ticket);
         }
       });
       setColumns(newColumns);
@@ -118,29 +111,13 @@ export function WorkflowWidget({ title, description, analysts }: { title: string
     if (!result.destination) return;
     const { source, destination, draggableId } = result;
     
+    // Optimistic UI Update
     const sourceColumn = columns[source.droppableId];
     const destColumn = columns[destination.droppableId];
     const sourceItems = [...sourceColumn.items];
     const [removed] = sourceItems.splice(source.index, 1);
-    
-    let newStatus = getStatusFromColumnId(destination.droppableId);
-    let assignedAnalystId: string | null = (analysts.find(a => a.uid === destination.droppableId)?.uid) || null
-    
-    if (source.droppableId !== destination.droppableId) {
-      if (analysts.some(a => a.uid === destination.droppableId)) {
-          newStatus = 'In Progress';
-          assignedAnalystId = destination.droppableId;
-      } else {
-          assignedAnalystId = removed.assignedAnalystId || null;
-      }
-      if (destination.droppableId === 'new') {
-          assignedAnalystId = null;
-      }
-    }
-
 
     if (source.droppableId === destination.droppableId) {
-      // Reordering within the same column
       const copiedItems = [...sourceColumn.items];
       copiedItems.splice(source.index, 1);
       copiedItems.splice(destination.index, 0, removed);
@@ -149,33 +126,41 @@ export function WorkflowWidget({ title, description, analysts }: { title: string
         [source.droppableId]: { ...sourceColumn, items: copiedItems },
       });
     } else {
-      // Moving to a different column
       const destItems = [...destColumn.items];
       destItems.splice(destination.index, 0, removed);
-
       setColumns({
         ...columns,
         [source.droppableId]: { ...sourceColumn, items: sourceItems },
         [destination.droppableId]: { ...destColumn, items: destItems },
       });
-
-      const ticketRef = doc(db, 'tickets', draggableId);
-      updateDoc(ticketRef, { status: newStatus, assignedAnalystId: assignedAnalystId });
     }
+    
+    // Firestore Update
+    const newStatus = getStatusFromColumnId(destination.droppableId, analysts);
+    const assignedAnalystId = analysts.find(a => a.uid === destination.droppableId)?.uid || null;
+
+    const ticketRef = doc(db, 'tickets', draggableId);
+    updateDoc(ticketRef, { 
+        status: newStatus, 
+        assignedAnalystId: destination.droppableId === 'new' ? null : assignedAnalystId || removed.assignedAnalystId,
+    });
   };
+
+  const columnOrder = ['new', ...analysts.map(a => a.uid), 'pending-review', 'completed'];
+
 
   return (
     <Card className="h-full flex flex-col non-draggable">
         <CardHeader>
-            <CardTitle>{title}</CardTitle>
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <CardTitle>Manager's Workflow</CardTitle>
+            <CardDescription>Drag tickets from 'New' to an analyst's column to assign them. Drag between other columns to update status.</CardDescription>
         </CardHeader>
       <CardContent className="flex-1 overflow-x-auto">
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-4 h-full">
             {loading ? (
               Array.from({length: 4}).map((_, index) => (
-                <Card key={index} className="bg-muted/50 w-64 flex-shrink-0">
+                <Card key={index} className="bg-muted/50 w-72 flex-shrink-0">
                   <CardHeader>
                     <Skeleton className="h-6 w-32" />
                   </CardHeader>
@@ -186,13 +171,16 @@ export function WorkflowWidget({ title, description, analysts }: { title: string
                 </Card>
               ))
             ) : (
-              Object.entries(columns).map(([columnId, column]) => (
+              columnOrder.map((columnId) => {
+                const column = columns[columnId];
+                if (!column) return null;
+                return (
                 <Droppable key={columnId} droppableId={columnId}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`w-64 flex-shrink-0 h-full flex flex-col rounded-lg transition-colors ${
+                      className={`w-72 flex-shrink-0 h-full flex flex-col rounded-lg transition-colors ${
                         snapshot.isDraggingOver ? 'bg-muted' : 'bg-muted/50'
                       }`}
                     >
@@ -252,7 +240,7 @@ export function WorkflowWidget({ title, description, analysts }: { title: string
                     </div>
                   )}
                 </Droppable>
-              ))
+              )})
             )}
           </div>
         </DragDropContext>
@@ -260,4 +248,3 @@ export function WorkflowWidget({ title, description, analysts }: { title: string
     </Card>
   );
 }
-    

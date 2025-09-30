@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, PlusCircle } from 'lucide-react';
+import { ArrowRight, PlusCircle, User } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, onSnapshot, query, where, Timestamp, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '../ui/dropdown-menu';
 
 
 type Request = {
@@ -41,13 +42,19 @@ type Request = {
   createdAt: Timestamp;
 };
 
-interface ClientPortalWidgetProps {
-    title: string;
-    description: string;
-    onUserCreated: () => void;
+type User = {
+    uid: string;
+    email?: string;
 }
 
-export function ClientPortalWidget({ title, description, onUserCreated }: ClientPortalWidgetProps) {
+interface ClientPortalWidgetProps {
+    users: User[];
+    onImpersonate: (uid: string, email?: string) => void;
+    onUserCreated: () => void;
+    isImpersonating: boolean;
+}
+
+export function ClientPortalWidget({ users, onImpersonate, onUserCreated, isImpersonating }: ClientPortalWidgetProps) {
   const [user, loadingAuth] = useAuthState(auth);
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +91,6 @@ export function ClientPortalWidget({ title, description, onUserCreated }: Client
 
   const isClient = !!(user?.stsTokenManager as any)?.claims?.tenantId;
   
-
   return (
     <Card className="h-full flex flex-col non-draggable">
         <NewRequestDialog 
@@ -94,32 +100,49 @@ export function ClientPortalWidget({ title, description, onUserCreated }: Client
             clientUser={user}
         />
         <CardHeader>
-            <div className="flex items-center justify-between">
-                <CardTitle>{title}</CardTitle>
-                {isClient && (
-                    <Button variant="outline" onClick={() => setRequestDialogOpen(true)}>
-                        <PlusCircle className="mr-2" />
-                        New Request
-                    </Button>
-                )}
+            <div className="flex items-start justify-between">
+                <div className="flex-1">
+                    <CardTitle>Client Portal</CardTitle>
+                    <CardDescription>
+                        Impersonate a client to create new screening requests for end-users.
+                    </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline">
+                                <User className="mr-2"/>
+                                {user && isClient ? user.email : "Impersonate Client"}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56">
+                            <DropdownMenuLabel>Select a Client</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {users.map(u => (
+                                <DropdownMenuItem key={u.uid} onClick={() => onImpersonate(u.uid, u.email)} disabled={isImpersonating}>
+                                    {u.email}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {isClient && (
+                        <Button variant="outline" onClick={() => setRequestDialogOpen(true)}>
+                            <PlusCircle className="mr-2" />
+                            New Request
+                        </Button>
+                    )}
+                </div>
             </div>
-            <CardDescription>
-                {description}
-                {user && <div className="mt-2 text-xs font-semibold p-2 bg-muted rounded-md border">Viewing as: {user.email} <span className="text-muted-foreground font-normal">(Use Widget 1 to impersonate a different user.)</span></div>}
-            </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto">
             {loadingAuth ? (
                 <div className="h-24 flex items-center justify-center">
                     <p className="text-sm text-muted-foreground">Loading user data...</p>
                 </div>
-            ) : !user ? (
-                <div className="h-24 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">No user impersonated. Use Widget 1.</p>
-                </div>
             ) : !isClient ? (
                 <div className="h-24 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Impersonated user is not a Client.</p>
+                    <p className="text-sm text-muted-foreground">Select a client user to impersonate.</p>
                 </div>
             ) : (
                 <Table>
@@ -142,7 +165,7 @@ export function ClientPortalWidget({ title, description, onUserCreated }: Client
                     ) : requests.length === 0 ? (
                     <TableRow>
                         <TableCell colSpan={3} className="h-24 text-center">
-                        You have no active requests.
+                        No requests found for this client.
                         </TableCell>
                     </TableRow>
                     ) : (
@@ -179,7 +202,6 @@ export function ClientPortalWidget({ title, description, onUserCreated }: Client
   );
 }
 
-// Dialog Component for creating new request
 function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onUserCreated: () => void, clientUser: any }) {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
@@ -221,6 +243,9 @@ function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: {
           description,
         });
   
+        // Query for user if they already existed
+        const endUserId = inviteData.uid;
+
         await addDoc(collection(db, 'tickets'), {
           subjectName,
           email,
@@ -231,7 +256,7 @@ function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: {
           createdAt: serverTimestamp(),
           clientId: clientUser.uid,
           clientEmail: clientUser.email,
-          endUserId: inviteData.uid || null, // Will be null if user already exists, need to query later
+          endUserId: endUserId || null,
         });
   
         toast({
@@ -319,5 +344,3 @@ function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: {
       </Dialog>
     )
   }
-
-    

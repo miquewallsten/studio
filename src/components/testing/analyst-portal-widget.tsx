@@ -16,7 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { db, auth } from '@/lib/firebase';
@@ -25,8 +24,9 @@ import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc } from 
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '../ui/dropdown-menu';
+import { User } from 'lucide-react';
+
 
 type Ticket = {
   id: string;
@@ -35,55 +35,56 @@ type Ticket = {
   status: string;
   createdAt: Timestamp;
   assignedAnalystId?: string;
-  analyst?: {
-    uid: string;
-    email: string;
-  }
 };
 
-interface AnalystPortalWidgetProps {
-    title: string;
-    description: string;
+type PortalUser = {
+    uid: string;
+    email?: string;
 }
 
-export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetProps) {
+interface AnalystPortalWidgetProps {
+    users: PortalUser[];
+    onImpersonate: (uid: string, email?: string) => void;
+    isImpersonating: boolean;
+}
+
+export function AnalystPortalWidget({ users, onImpersonate, isImpersonating }: AnalystPortalWidgetProps) {
   const [user, loadingAuth] = useAuthState(auth);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    setLoading(true);
-    if (!user) {
+    if (user) {
+        setLoading(true);
+        const role = (user?.stsTokenManager as any)?.claims?.role;
+        if (role !== 'Analyst') {
+            setLoading(false);
+            setTickets([]);
+            return;
+        }
+
+
+        const q = query(
+        collection(db, 'tickets'),
+        where('status', '==', 'In Progress'),
+        where('assignedAnalystId', '==', user.uid)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const ticketsData: Ticket[] = [];
+        snapshot.forEach((doc) => {
+            ticketsData.push({ id: doc.id, ...doc.data() } as Ticket);
+        });
+        setTickets(ticketsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+        setLoading(false);
+        });
+
+        return () => unsubscribe();
+    } else {
         setLoading(false);
         setTickets([]);
-        return;
-    };
-    
-    const role = (user?.stsTokenManager as any)?.claims?.role;
-    if (role !== 'Analyst') {
-        setLoading(false);
-        setTickets([]);
-        return;
     }
-
-
-    const q = query(
-      collection(db, 'tickets'),
-      where('status', '==', 'In Progress'),
-      where('assignedAnalystId', '==', user.uid)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ticketsData: Ticket[] = [];
-      snapshot.forEach((doc) => {
-        ticketsData.push({ id: doc.id, ...doc.data() } as Ticket);
-      });
-      setTickets(ticketsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
   }, [user]);
 
   const handleStatusChange = async (ticketId: string, newStatus: string) => {
@@ -110,24 +111,40 @@ export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetP
   return (
     <Card className="h-full flex flex-col non-draggable">
         <CardHeader>
-            <CardTitle>{title}</CardTitle>
-            <CardDescription>
-                {description}
-                {user && <div className="mt-2 text-xs font-semibold p-2 bg-muted rounded-md border">Viewing as: {user.email} <span className="text-muted-foreground font-normal">(Use Widget 1 to impersonate a different user.)</span></div>}
-            </CardDescription>
+            <div className="flex items-start justify-between">
+                <div className="flex-1">
+                    <CardTitle>Analyst Portal</CardTitle>
+                    <CardDescription>
+                        Impersonate an analyst to see their assigned tickets and submit work for review.
+                    </CardDescription>
+                </div>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            <User className="mr-2"/>
+                            {user && isAnalyst ? user.email : "Impersonate Analyst"}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56">
+                        <DropdownMenuLabel>Select an Analyst</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {users.map(u => (
+                            <DropdownMenuItem key={u.uid} onClick={() => onImpersonate(u.uid, u.email)} disabled={isImpersonating}>
+                                {u.email}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto">
             {loadingAuth ? (
                  <div className="h-24 flex items-center justify-center">
                     <p className="text-sm text-muted-foreground">Loading user data...</p>
                 </div>
-            ) : !user ? (
-                 <div className="h-24 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">No user impersonated. Use Widget 1.</p>
-                </div>
             ) : !isAnalyst ? (
                  <div className="h-24 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Impersonated user is not an Analyst.</p>
+                    <p className="text-sm text-muted-foreground">Select an analyst to impersonate.</p>
                 </div>
             ) : (
                 <Table>
@@ -148,7 +165,7 @@ export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetP
                     ) : assignedTickets.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={3} className="h-24 text-center">
-                                No tickets assigned to you.
+                                No tickets assigned to this analyst.
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -185,4 +202,3 @@ export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetP
     </Card>
   );
 }
-
