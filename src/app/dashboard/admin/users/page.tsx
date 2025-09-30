@@ -29,6 +29,8 @@ import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
 import { UserProfileDialog } from '@/components/user-profile-dialog';
+import { DataTable } from '@/components/ui/data-table';
+import { columns } from './columns';
 
 type User = {
     uid: string;
@@ -141,53 +143,11 @@ FIREBASE_PRIVATE_KEY="..."`}
                     </AlertDescription>
                 </Alert>
             )}
-           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Assigned Tenant</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-                {loading ? (
-                    <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">Loading users...</TableCell>
-                    </TableRow>
-                ) : !error && users.length === 0 ? (
-                    <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">No users found.</TableCell>
-                    </TableRow>
-                ) : (
-                    users.map(user => (
-                        <TableRow key={user.uid} onClick={() => handleRowClick(user)} className="cursor-pointer">
-                            <TableCell className="font-medium">{user.email || 'N/A'}</TableCell>
-                            <TableCell>
-                                <Badge variant={user.role === 'Unassigned' ? 'destructive' : 'secondary'}>{user.role}</Badge>
-                            </TableCell>
-                            <TableCell>{user.tenantName || 'N/A'}</TableCell>
-                            <TableCell className="text-right">
-                               <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
-                                        <span className="sr-only">Open menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={(e) => e.stopPropagation()}>Assign to Tenant</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={(e) => e.stopPropagation()}>Change Role</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                    ))
-                )}
-            </TableBody>
-          </Table>
+           {loading ? (
+             <p>Loading users...</p>
+           ) : (
+            <DataTable columns={columns} data={users} />
+           )}
         </CardContent>
       </Card>
     </div>
