@@ -24,6 +24,14 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
+import SubFieldsEditor from '@/components/sub-fields-editor';
+
+type SubField = {
+  id: string;
+  label: string;
+  type: string;
+  required: boolean;
+};
 
 export default function NewFieldPage() {
   const { toast } = useToast();
@@ -32,6 +40,7 @@ export default function NewFieldPage() {
   const [label, setLabel] = useState('');
   const [type, setType] = useState('');
   const [required, setRequired] = useState(false);
+  const [subFields, setSubFields] = useState<SubField[]>([]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -48,19 +57,32 @@ export default function NewFieldPage() {
     }
 
     try {
-      const docRef = await addDoc(collection(db, 'fields'), {
+      const fieldData: any = {
         label,
         type,
         required,
         createdAt: serverTimestamp(),
-      });
+      };
+
+      if (type === 'composite') {
+        fieldData.subFields = subFields;
+      }
+
+      const docRef = await addDoc(collection(db, 'fields'), fieldData);
 
       toast({
         title: 'Field Created',
         description: `The "${label}" field has been added to your library.`,
       });
 
-      router.push(`/dashboard/fields/${docRef.id}`);
+      // If it's a composite field, go to the edit page to continue building.
+      // Otherwise, go back to the list.
+      if (type === 'composite') {
+        router.push(`/dashboard/fields/${docRef.id}`);
+      } else {
+        router.push('/dashboard/fields');
+      }
+
     } catch (error) {
       console.error('Error creating field:', error);
       toast({
@@ -74,7 +96,7 @@ export default function NewFieldPage() {
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl gap-2">
+    <div className="mx-auto grid w-full max-w-4xl gap-4">
       <h1 className="text-3xl font-semibold font-headline">Create New Library Field</h1>
 
       <form onSubmit={handleSubmit}>
@@ -135,6 +157,14 @@ export default function NewFieldPage() {
               </div>
             </CardContent>
           </Card>
+
+          {type === 'composite' && (
+            <SubFieldsEditor 
+              subFields={subFields}
+              onSubFieldsChange={setSubFields}
+            />
+          )}
+
           <div className="flex items-center justify-end gap-2">
             <Button variant="outline" asChild>
               <Link href="/dashboard/fields">Cancel</Link>

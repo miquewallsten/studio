@@ -1,7 +1,7 @@
 
 'use client';
 
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Card,
@@ -14,12 +14,19 @@ import SubFieldsEditor from '@/components/sub-fields-editor';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
+type SubField = {
+  id: string;
+  label: string;
+  type: string;
+  required: boolean;
+};
+
 type Field = {
   id: string;
   label: string;
   type: string;
   required: boolean;
-  subFields?: any[]; // Basic type for now
+  subFields: SubField[];
 };
 
 
@@ -47,6 +54,12 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
 
     getFieldData();
   }, [id]);
+
+  const handleSubFieldsChange = (newSubFields: SubField[]) => {
+    if (field) {
+        setField({...field, subFields: newSubFields});
+    }
+  }
 
 
   if (loading) {
@@ -90,7 +103,6 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
         <h1 className="text-3xl font-semibold font-headline">
           Edit Field: {field.label}
         </h1>
-        {/* Save button will go here */}
       </div>
 
       <Card>
@@ -113,7 +125,11 @@ export default function FieldDetailPage({ params }: { params: { id: string } }) 
       </Card>
 
       {field.type === 'composite' && (
-        <SubFieldsEditor fieldId={field.id} initialSubFields={field.subFields || []} />
+        <SubFieldsEditor 
+            fieldId={field.id} 
+            subFields={field.subFields}
+            onSubFieldsChange={handleSubFieldsChange}
+        />
       )}
 
       {field.type === 'text-with-file' && (
