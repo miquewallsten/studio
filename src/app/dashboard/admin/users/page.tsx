@@ -61,6 +61,8 @@ export default function AdminUsersPage() {
         fetchUsers();
     }, []);
 
+    const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
+
   return (
     <div className="flex-1 space-y-4">
       <h1 className="text-3xl font-bold font-headline">User Management</h1>
@@ -75,8 +77,27 @@ export default function AdminUsersPage() {
             {error && (
                  <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error Fetching Users</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertTitle>{isCredentialError ? 'Configuration Required' : 'Error Fetching Users'}</AlertTitle>
+                    <AlertDescription>
+                        {error}
+                        {isCredentialError && (
+                            <div className="mt-4 bg-gray-900 text-white p-4 rounded-md">
+                                <p className="font-semibold">Action Required:</p>
+                                <p className="mt-2 text-sm">To fetch the user list, you must provide server-side credentials.</p>
+                                <ul className="list-disc list-inside text-xs mt-2 space-y-1">
+                                    <li>Go to your Firebase Project Settings -&gt; Service accounts.</li>
+                                    <li>Click "Generate new private key" to download a JSON file.</li>
+                                    <li>Open the `.env` file in the project root.</li>
+                                    <li>Copy the `project_id`, `client_email`, and `private_key` from the JSON file into your `.env` file.</li>
+                                </ul>
+                                <pre className="mt-3 text-xs bg-gray-800 p-2 rounded">
+{`FIREBASE_PROJECT_ID="..."
+FIREBASE_CLIENT_EMAIL="..."
+FIREBASE_PRIVATE_KEY="..."`}
+                                </pre>
+                            </div>
+                        )}
+                    </AlertDescription>
                 </Alert>
             )}
            <Table>
