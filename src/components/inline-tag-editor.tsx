@@ -184,4 +184,3 @@ export function InlineTagEditor({ user, allTags, onUserUpdated }: InlineTagEdito
         </Popover>
     );
 }
-
