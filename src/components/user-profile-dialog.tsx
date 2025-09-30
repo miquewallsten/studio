@@ -7,14 +7,12 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
+    DialogFooter,
 } from '@/components/ui/dialog';
 import {
     Card,
     CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-  } from '@/components/ui/card';
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,6 +21,7 @@ import { Briefcase, KeyRound, Ticket, UserCheck, Mail, Phone, User as UserIcon, 
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
+import { Separator } from './ui/separator';
 
 type User = {
     uid: string;
@@ -100,76 +99,78 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                         </div>
                     </div>
                 </DialogHeader>
-                <div className="space-y-4 pt-4">
+                <div className="space-y-4">
                     <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Details</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 text-sm">
-                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><UserIcon className="size-4"/> Full Name</span>
-                                <span>{user.displayName || 'Not set'}</span>
+                        <CardContent className="pt-6 text-sm space-y-4">
+                            {/* Details Section */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><UserIcon className="size-4"/> Full Name</span>
+                                    <span>{user.displayName || 'Not set'}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Mail className="size-4"/> Email</span>
+                                    <span>{user.email}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Phone className="size-4"/> Phone</span>
+                                    <span className="text-muted-foreground">Not set</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><KeyRound className="size-4"/> Role</span>
+                                    <Badge variant={user.role === 'Unassigned' ? 'destructive' : 'secondary'}>{user.role}</Badge>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Briefcase className="size-4"/> Company/Tenant</span>
+                                    <span>{user.tenantName || 'Internal Staff'}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Info className="size-4" /> User ID</span>
+                                    <span className="font-mono text-xs bg-muted p-1 rounded">{user.uid}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Calendar className="size-4" /> Created At</span>
+                                    <span>{format(new Date(user.createdAt), 'PPP')}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Info className="size-4" /> Status</span>
+                                    <Badge variant={user.disabled ? 'destructive' : 'default'}>{user.disabled ? 'Disabled' : 'Active'}</Badge>
+                                </div>
                             </div>
-                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><Mail className="size-4"/> Email</span>
-                                <span>{user.email}</span>
-                            </div>
-                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><Phone className="size-4"/> Phone</span>
-                                <span className="text-muted-foreground">Not set</span>
-                            </div>
-                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><KeyRound className="size-4"/> Role</span>
-                                <Badge variant={user.role === 'Unassigned' ? 'destructive' : 'secondary'}>{user.role}</Badge>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><Briefcase className="size-4"/> Company/Tenant</span>
-                                <span>{user.tenantName || 'Internal Staff'}</span>
-                            </div>
-                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><Info className="size-4" /> User ID</span>
-                                <span className="font-mono text-xs bg-muted p-1 rounded">{user.uid}</span>
-                            </div>
-                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><Calendar className="size-4" /> Created At</span>
-                                <span>{format(new Date(user.createdAt), 'PPP')}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><Info className="size-4" /> Status</span>
-                                <Badge variant={user.disabled ? 'destructive' : 'default'}>{user.disabled ? 'Disabled' : 'Active'}</Badge>
-                            </div>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">User Activity</CardTitle>
-                        </CardHeader>
-                         <CardContent className="space-y-4 text-sm">
-                             <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-2"><Ticket className="size-4"/> Tickets Created</span>
-                                <span className="font-bold">0</span>
-                            </div>
-                        </CardContent>
-                    </Card>
+                            
+                            <Separator />
 
-                     <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Admin Actions</CardTitle>
-                            <CardDescription>These actions are only available to Super Admins.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-2">
-                             <Button variant="outline">Change Role</Button>
-                             <Button variant="outline">Assign Tenant</Button>
-                             <Button variant="destructive" className="w-full col-span-2">
-                                {user.disabled ? 'Enable User' : 'Disable User'}
-                            </Button>
-                            <Button onClick={handleImpersonate} className="w-full col-span-2 bg-accent hover:bg-accent/90">
-                                <UserCheck className="mr-2 size-4" /> Impersonate
-                            </Button>
+                             {/* Activity Section */}
+                            <div className="space-y-2">
+                                <h3 className="font-semibold">User Activity</h3>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Ticket className="size-4"/> Tickets Created</span>
+                                    <span className="font-bold">0</span>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Admin Actions Section */}
+                            <div className="space-y-4">
+                                <h3 className="font-semibold">Admin Actions</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button variant="outline">Change Role</Button>
+                                    <Button variant="outline">Assign Tenant</Button>
+                                    <Button variant="destructive" className="w-full col-span-2">
+                                        {user.disabled ? 'Enable User' : 'Disable User'}
+                                    </Button>
+                                    <Button onClick={handleImpersonate} className="w-full col-span-2 bg-accent hover:bg-accent/90">
+                                        <UserCheck className="mr-2 size-4" /> Impersonate
+                                    </Button>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
-
                 </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
