@@ -20,7 +20,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PlusCircle, Search } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
@@ -36,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { NewFieldDialog } from '@/components/new-field-dialog';
 
 
 export default function FieldsPage() {
@@ -44,9 +44,11 @@ export default function FieldsPage() {
   const [fieldToDelete, setFieldToDelete] = useState<Field | null>(null);
   const [selectedField, setSelectedField] = useState<Field | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isNewFieldDialogOpen, setNewFieldDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
+  const fetchFields = () => {
+    setLoading(true);
     const q = query(collection(db, 'fields'), orderBy('label'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const fieldsData: Field[] = [];
@@ -63,8 +65,21 @@ export default function FieldsPage() {
       });
       setFields(fieldsData);
       setLoading(false);
+    }, (error) => {
+        console.error("Error fetching fields:", error);
+        toast({
+            title: "Error",
+            description: "Could not fetch fields.",
+            variant: "destructive"
+        })
+        setLoading(false);
     });
 
+    return unsubscribe;
+  }
+
+  useEffect(() => {
+    const unsubscribe = fetchFields();
     return () => unsubscribe();
   }, []);
   
@@ -102,8 +117,8 @@ export default function FieldsPage() {
   };
   
   const handleFieldUpdate = () => {
-    // Optionally re-fetch or update the list if needed,
-    // though onSnapshot should handle it.
+    // onSnapshot should handle the update, but we can force a re-render if needed
+    // For now, we'll just close the editor or let the live update do its job.
   };
 
   return (
@@ -126,14 +141,18 @@ export default function FieldsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <NewFieldDialog
+        isOpen={isNewFieldDialogOpen}
+        onOpenChange={setNewFieldDialogOpen}
+        onFieldCreated={() => { /* onSnapshot will auto-update the list */ }}
+      />
+
 
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">Field Library</h1>
-        <Button asChild className="bg-accent hover:bg-accent/90">
-          <Link href="/dashboard/fields/new">
+        <Button onClick={() => setNewFieldDialogOpen(true)} className="bg-accent hover:bg-accent/90">
             <PlusCircle className="mr-2 h-4 w-4" />
             New Field
-          </Link>
         </Button>
       </div>
 
