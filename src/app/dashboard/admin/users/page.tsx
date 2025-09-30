@@ -35,6 +35,7 @@ type User = {
     email?: string;
     displayName?: string;
     photoURL?: string;
+    phone?: string;
     disabled: boolean;
     tenantId?: string;
     tenantName?: string | null;
@@ -72,8 +73,8 @@ export default function AdminUsersPage() {
         fetchUsers();
     }, []);
     
-    const handleUserInvited = () => {
-        fetchUsers(); // Re-fetch the user list after a new user is invited
+    const handleUserInvitedOrUpdated = () => {
+        fetchUsers(); // Re-fetch the user list after a new user is invited or updated
     }
 
     const handleRowClick = (user: User) => {
@@ -91,12 +92,13 @@ export default function AdminUsersPage() {
         <InviteUserDialog 
             isOpen={isInviteDialogOpen} 
             onOpenChange={setInviteDialogOpen}
-            onUserInvited={handleUserInvited}
+            onUserInvited={handleUserInvitedOrUpdated}
         />
         <UserProfileDialog 
             user={selectedUser}
             isOpen={!!selectedUser}
             onOpenChange={handleDialogClose}
+            onUserUpdated={handleUserInvitedOrUpdated}
         />
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">User Management</h1>

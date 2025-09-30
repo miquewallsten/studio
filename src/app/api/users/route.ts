@@ -14,15 +14,27 @@ async function getTenants() {
     return tenants;
 }
 
+async function getUserProfiles() {
+    const adminDb = getAdminDb();
+    const profilesSnapshot = await adminDb.collection('users').get();
+    const profiles: { [key: string]: { phone?: string } } = {};
+    profilesSnapshot.forEach(doc => {
+        profiles[doc.id] = doc.data();
+    });
+    return profiles;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const adminAuth = getAdminAuth();
-    const tenants = await getTenants();
+    const [tenants, userProfiles] = await Promise.all([getTenants(), getUserProfiles()]);
+    
     const listUsersResult = await adminAuth.listUsers();
     
     const users = listUsersResult.users.map(userRecord => {
         const tenantId = userRecord.customClaims?.tenantId;
         const role = userRecord.customClaims?.role || 'Unassigned';
+        const profile = userProfiles[userRecord.uid];
 
         return {
             uid: userRecord.uid,
@@ -30,6 +42,7 @@ export async function GET(request: NextRequest) {
             displayName: userRecord.displayName,
             photoURL: userRecord.photoURL,
             disabled: userRecord.disabled,
+            phone: profile?.phone || null,
             tenantId: tenantId,
             tenantName: tenantId ? tenants[tenantId] : null,
             role: role,

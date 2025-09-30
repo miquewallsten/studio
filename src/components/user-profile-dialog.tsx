@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -19,16 +18,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import { Briefcase, KeyRound, Ticket, UserCheck, Mail, Phone, User as UserIcon, Calendar, Info } from 'lucide-react';
+import { Briefcase, KeyRound, Ticket, Edit, Mail, Phone, User as UserIcon, Calendar, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
-import { signInWithCustomToken } from 'firebase/auth';
 import { Separator } from './ui/separator';
+import { useState, useEffect } from 'react';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 type User = {
     uid: string;
     email?: string;
     displayName?: string;
+    phone?: string;
     photoURL?: string;
     disabled: boolean;
     tenantId?: string;
@@ -41,50 +42,71 @@ interface UserProfileDialogProps {
   user: User | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onUserUpdated: () => void;
 }
 
-export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDialogProps) {
+export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }: UserProfileDialogProps) {
     const { toast } = useToast();
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [formData, setFormData] = useState({
+        displayName: '',
+        phone: '',
+    });
+
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                displayName: user.displayName || '',
+                phone: user.phone || '',
+            });
+            setIsEditMode(false); // Reset edit mode when user changes
+        }
+    }, [user]);
 
     if (!user) return null;
 
-    const handleImpersonate = async () => {
-        try {
-            const res = await fetch('/api/auth/impersonate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUid: user.uid }),
-            });
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
+    const handleSaveChanges = async () => {
+        try {
+            const res = await fetch(`/api/users/${user.uid}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+            
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.error || 'Failed to start impersonation');
+                throw new Error(data.error || 'Failed to update user');
             }
-            
-            await auth.signOut();
-            await signInWithCustomToken(auth, data.customToken);
 
             toast({
-                title: 'Impersonation Started',
-                description: `You are now logged in as ${user.email || 'user'}.`,
+                title: 'User Updated',
+                description: 'The user profile has been successfully updated.',
             });
-            
-            onOpenChange(false);
-            if (user.role.startsWith('Tenant') || user.role === 'End User') {
-                 window.location.href = '/client/dashboard';
-            } else {
-                 window.location.href = '/dashboard';
-            }
+            onUserUpdated(); // Refresh the user list
+            setIsEditMode(false); // Exit edit mode
             
         } catch (err: any) {
-            toast({
-                title: 'Impersonation Failed',
+             toast({
+                title: 'Update Failed',
                 description: err.message,
                 variant: 'destructive',
             });
         }
     };
 
+    const handleCancelEdit = () => {
+        // Reset form data to original user data
+        setFormData({
+            displayName: user.displayName || '',
+            phone: user.phone || '',
+        });
+        setIsEditMode(false);
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -99,10 +121,14 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                             <DialogTitle className="text-xl font-bold font-headline">{user.displayName || user.email}</DialogTitle>
                             <DialogDescription className="text-sm text-muted-foreground">{user.email}</DialogDescription>
                         </div>
+                         <Button variant="outline" size="icon" className="ml-auto" onClick={() => setIsEditMode(!isEditMode)}>
+                            <Edit className="size-4" />
+                            <span className="sr-only">Edit Profile</span>
+                        </Button>
                     </div>
                 </DialogHeader>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                     {/* Left Column */}
                     <div className="space-y-6">
                         <Card>
@@ -115,9 +141,17 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                                 <Button variant="destructive" className="w-full">
                                     {user.disabled ? 'Enable User' : 'Disable User'}
                                 </Button>
-                                <Button onClick={handleImpersonate} className="w-full bg-accent hover:bg-accent/90">
-                                    <UserCheck className="mr-2 size-4" /> Impersonate
-                                </Button>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>User Activity</CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-sm space-y-4">
+                               <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Ticket className="size-4"/> Tickets Created</span>
+                                    <span className="font-bold">0</span>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
@@ -129,18 +163,33 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                                 <CardTitle>Details</CardTitle>
                             </CardHeader>
                             <CardContent className="text-sm space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-muted-foreground flex items-center gap-2"><UserIcon className="size-4"/> Full Name</span>
-                                    <span>{user.displayName || 'Not set'}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-muted-foreground flex items-center gap-2"><Mail className="size-4"/> Email</span>
-                                    <span>{user.email}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-muted-foreground flex items-center gap-2"><Phone className="size-4"/> Phone</span>
-                                    <span className="text-muted-foreground">Not set</span>
-                                </div>
+                                {isEditMode ? (
+                                    <>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="displayName">Full Name</Label>
+                                            <Input id="displayName" name="displayName" value={formData.displayName} onChange={handleInputChange} />
+                                        </div>
+                                         <div className="grid gap-2">
+                                            <Label htmlFor="phone">Phone</Label>
+                                            <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground flex items-center gap-2"><UserIcon className="size-4"/> Full Name</span>
+                                            <span>{user.displayName || 'Not set'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground flex items-center gap-2"><Mail className="size-4"/> Email</span>
+                                            <span>{user.email}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground flex items-center gap-2"><Phone className="size-4"/> Phone</span>
+                                            <span>{user.phone || 'Not set'}</span>
+                                        </div>
+                                    </>
+                                )}
                                 <Separator />
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground flex items-center gap-2"><KeyRound className="size-4"/> Role</span>
@@ -165,22 +214,18 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                                 </div>
                             </CardContent>
                         </Card>
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>User Activity</CardTitle>
-                            </CardHeader>
-                            <CardContent className="text-sm space-y-4">
-                               <div className="flex items-center justify-between">
-                                    <span className="text-muted-foreground flex items-center gap-2"><Ticket className="size-4"/> Tickets Created</span>
-                                    <span className="font-bold">0</span>
-                                </div>
-                            </CardContent>
-                        </Card>
                     </div>
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                    {isEditMode ? (
+                        <>
+                            <Button variant="outline" onClick={handleCancelEdit}>Cancel</Button>
+                            <Button onClick={handleSaveChanges}>Save Changes</Button>
+                        </>
+                    ) : (
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
