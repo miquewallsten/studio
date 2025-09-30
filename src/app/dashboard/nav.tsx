@@ -8,9 +8,9 @@ import {
   ClipboardList,
   Users,
   Settings,
-  KanbanSquare,
   Library,
   Building,
+  Ticket,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -29,9 +29,9 @@ const navItems = [
     label: 'Dashboard',
   },
   {
-    href: '/dashboard/workflow',
-    icon: KanbanSquare,
-    label: 'Workflow',
+    href: '/dashboard/tickets',
+    icon: Ticket,
+    label: 'Tickets',
   },
   {
     href: '/dashboard/tickets/new',
@@ -77,7 +77,7 @@ export function DashboardNav() {
         <SidebarMenuItem key={item.href}>
           <Link href={item.href}>
             <SidebarMenuButton
-              isActive={pathname === item.href}
+              isActive={pathname.startsWith(item.href)}
               tooltip={item.label}
             >
               <item.icon className="size-4" />
