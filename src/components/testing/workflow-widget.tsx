@@ -150,8 +150,8 @@ export function WorkflowWidget({ analysts }: { analysts: Analyst[] }) {
 
 
   return (
-    <Card className="h-full flex flex-col non-draggable">
-        <CardHeader>
+    <Card className="h-full flex flex-col">
+        <CardHeader className="non-draggable">
             <CardTitle>Manager's Workflow</CardTitle>
             <CardDescription>Drag tickets from 'New' to an analyst's column to assign them. Drag between other columns to update status.</CardDescription>
         </CardHeader>

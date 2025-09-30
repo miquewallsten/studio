@@ -28,8 +28,8 @@ export function MobileEndUserPortalWidget() {
   const firstTicketId = 'some-ticket-id'; 
 
   return (
-    <Card className="h-full flex flex-col non-draggable">
-        <CardHeader>
+    <Card className="h-full flex flex-col">
+        <CardHeader className="non-draggable">
             <div className="flex items-center gap-2">
                 <Smartphone className="size-5" />
                 <div>
@@ -40,7 +40,7 @@ export function MobileEndUserPortalWidget() {
                 </div>
             </div>
         </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center p-2">
+        <CardContent className="flex-1 flex items-center justify-center p-2 non-draggable">
             <div className="w-[300px] h-[600px] bg-neutral-800 rounded-[30px] p-3 shadow-2xl border-4 border-neutral-900">
                  {loadingAuth ? (
                     <div className="h-full w-full bg-black rounded-[18px] flex items-center justify-center">

@@ -40,8 +40,8 @@ export function EndUserPortalWidget({ users, onImpersonate, isImpersonating }: E
   const firstTicketId = 'some-ticket-id'; // This would need to be dynamically fetched
 
   return (
-    <Card className="h-full flex flex-col non-draggable">
-        <CardHeader>
+    <Card className="h-full flex flex-col">
+        <CardHeader className="non-draggable">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                     <CardTitle>End-User Portal</CardTitle>

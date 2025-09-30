@@ -492,7 +492,7 @@ export default function DashboardPage() {
                         &times;
                     </Button>
                 )}
-                <div className={`h-full ${!isEditMode ? 'non-draggable' : ''}`}>
+                <div className="h-full">
                     {getWidgetContent(widgetId)}
                 </div>
             </div>
@@ -505,6 +505,9 @@ export default function DashboardPage() {
         }
         .non-interactive .react-resizable-handle {
           display: none;
+        }
+        .layout.non-interactive .react-grid-item {
+            cursor: default !important;
         }
       `}</style>
     </div>

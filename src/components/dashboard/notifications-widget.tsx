@@ -80,8 +80,8 @@ export function NotificationsWidget() {
         onOpenChange={handleDialogClose}
         tenant={selectedTenant}
       />
-      <Card className="h-full flex flex-col non-draggable">
-        <CardHeader>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="non-draggable">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <CardTitle className="flex items-center gap-2">
@@ -94,7 +94,7 @@ export function NotificationsWidget() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden p-0">
+        <CardContent className="flex-1 overflow-hidden p-0 non-draggable">
           <ScrollArea className="h-full">
           <div className="p-6 pt-0">
           {loading ? (

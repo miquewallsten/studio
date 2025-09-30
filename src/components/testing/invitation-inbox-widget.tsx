@@ -66,8 +66,8 @@ export function InvitationInboxWidget({ onImpersonate, isImpersonating }: Invita
   
 
   return (
-    <Card className="h-full flex flex-col non-draggable">
-        <CardHeader>
+    <Card className="h-full flex flex-col">
+        <CardHeader className="non-draggable">
             <div className="flex items-start justify-between">
                 <div className="flex-1">
                     <CardTitle>Invitation Inbox</CardTitle>
@@ -77,7 +77,7 @@ export function InvitationInboxWidget({ onImpersonate, isImpersonating }: Invita
                 </div>
             </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto space-y-4">
+        <CardContent className="flex-1 overflow-y-auto space-y-4 non-draggable">
              {loading ? (
                 <div className="h-24 flex items-center justify-center">
                     <p className="text-sm text-muted-foreground">Loading invitations...</p>

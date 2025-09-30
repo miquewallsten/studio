@@ -41,8 +41,8 @@ export function AnalystPortalWidget({ users, onImpersonate, isImpersonating }: A
   const showPortal = !loadingAuth && isAnalyst;
 
   return (
-    <Card className="h-full flex flex-col non-draggable">
-        <CardHeader>
+    <Card className="h-full flex flex-col">
+        <CardHeader className="non-draggable">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                     <CardTitle>Analyst Portal</CardTitle>

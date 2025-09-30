@@ -48,14 +48,14 @@ export function ClientPortalWidget({ users, onImpersonate, onUserCreated, isImpe
   const isClient = !!(user?.stsTokenManager as any)?.claims?.tenantId;
   
   return (
-    <Card className="h-full flex flex-col non-draggable">
+    <Card className="h-full flex flex-col">
         <NewRequestDialog 
             isOpen={isRequestDialogOpen}
             onOpenChange={setRequestDialogOpen}
             onUserCreated={onUserCreated}
             clientUser={user}
         />
-        <CardHeader>
+        <CardHeader className="non-draggable">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                     <CardTitle>Client Portal</CardTitle>
