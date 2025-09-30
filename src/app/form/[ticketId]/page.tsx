@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, updateDoc, Timestamp, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 type Ticket = {
   id: string;
@@ -43,6 +44,28 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [selfie, setSelfie] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      if (hasCameraPermission === null) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({video: true});
+          setHasCameraPermission(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error('Error accessing camera:', error);
+          setHasCameraPermission(false);
+        }
+      }
+    };
+    getCameraPermission();
+  }, [hasCameraPermission]);
 
   useEffect(() => {
     if (loadingAuth) return;
@@ -121,6 +144,21 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     getTicketData();
   }, [user, loadingAuth, params.ticketId, router, toast, actualTicketId]);
 
+  const handleCaptureSelfie = () => {
+    if (videoRef.current) {
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const context = canvas.getContext('2d');
+        if (context) {
+            context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            setSelfie(dataUrl);
+        }
+    }
+  };
+
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!ticket) return;
@@ -131,6 +169,10 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     formData.forEach((value, key) => {
         formValues[key] = value;
     });
+
+    if (selfie) {
+        formValues['selfie'] = selfie;
+    }
 
     try {
         const ticketRef = doc(db, 'tickets', ticket.id);
@@ -211,6 +253,8 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
       </RootComponent>
     );
   }
+  
+  const hasSelfieQuestion = ticket.suggestedQuestions?.some(q => q.toLowerCase().includes('selfie'));
 
   return (
     <RootComponent>
@@ -230,19 +274,40 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-            {ticket.suggestedQuestions && ticket.suggestedQuestions.length > 0 ? (
-                ticket.suggestedQuestions.map((question, index) => (
-                    <div key={index} className="grid gap-2">
+            {ticket.suggestedQuestions?.filter(q => !q.toLowerCase().includes('selfie')).map((question, index) => (
+                <div key={index} className="grid gap-2">
                     <Label htmlFor={`question-${index}`}>{question}</Label>
                     <Textarea id={`question-${index}`} name={question} required disabled={isSubmitting} />
+                </div>
+            ))}
+            
+            {hasSelfieQuestion && (
+                <div className="space-y-4 rounded-lg border p-4">
+                    <Label>Selfie Verification</Label>
+                    <div className="w-full aspect-video bg-black rounded-md flex items-center justify-center relative">
+                        <video ref={videoRef} className={`w-full aspect-video rounded-md ${selfie ? 'hidden' : ''}`} autoPlay muted playsInline />
+                        {selfie && <img src={selfie} alt="Your selfie" className="w-full aspect-video rounded-md object-cover" />}
+                        {hasCameraPermission === false && (
+                            <Alert variant="destructive" className="absolute">
+                                <AlertTitle>Camera Access Required</AlertTitle>
+                                <AlertDescription>
+                                    Please allow camera access to use this feature.
+                                </AlertDescription>
+                            </Alert>
+                        )}
                     </div>
-                ))
-            ) : (
-                <div className="grid gap-2">
-                    <Label htmlFor="standard-info">Please provide any relevant details</Label>
-                    <Textarea id="standard-info" name="standard-info" required disabled={isSubmitting} />
+                    {selfie ? (
+                        <Button variant="outline" onClick={() => setSelfie(null)} className="w-full">
+                            Retake Selfie
+                        </Button>
+                    ) : (
+                         <Button type="button" onClick={handleCaptureSelfie} disabled={!hasCameraPermission || isSubmitting} className="w-full">
+                            Capture Selfie
+                        </Button>
+                    )}
                 </div>
             )}
+
             </CardContent>
             <CardFooter>
             <Button type="submit" className="bg-accent hover:bg-accent/90" disabled={isSubmitting}>
@@ -254,5 +319,3 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     </RootComponent>
   );
 }
-
-    

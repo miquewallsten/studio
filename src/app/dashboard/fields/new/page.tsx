@@ -139,6 +139,7 @@ export default function NewFieldPage() {
                     <SelectItem value="email">Email</SelectItem>
                     <SelectItem value="date">Date</SelectItem>
                     <SelectItem value="file">File Upload</SelectItem>
+                    <SelectItem value="selfie">Selfie Capture</SelectItem>
                     <SelectItem value="composite">Composite Field</SelectItem>
                   </SelectContent>
                 </Select>
