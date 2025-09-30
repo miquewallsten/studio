@@ -21,6 +21,7 @@ import type { User } from './schema';
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
+    const [allTags, setAllTags] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -37,6 +38,7 @@ export default function AdminUsersPage() {
                 throw new Error(data.error || 'Failed to fetch users');
             }
             setUsers(data.users);
+            setAllTags(data.allTags || []);
         } catch (err: any) {
             console.error(err);
             setError(err.message);
@@ -68,6 +70,7 @@ export default function AdminUsersPage() {
         />
         <UserProfileDialog 
             user={selectedUser}
+            allTags={allTags}
             isOpen={!!selectedUser}
             onOpenChange={handleDialogClose}
             onUserUpdated={handleUserInvitedOrUpdated}

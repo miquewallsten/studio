@@ -14,14 +14,19 @@ async function getTenants() {
     return tenants;
 }
 
-async function getUserProfiles() {
+async function getUserProfilesAndTags() {
     const adminDb = getAdminDb();
     const profilesSnapshot = await adminDb.collection('users').get();
     const profiles: { [key: string]: { phone?: string, tags?: string[] } } = {};
+    const allTags = new Set<string>();
     profilesSnapshot.forEach(doc => {
-        profiles[doc.id] = doc.data();
+        const data = doc.data();
+        profiles[doc.id] = data;
+        if (data.tags) {
+            data.tags.forEach((tag: string) => allTags.add(tag));
+        }
     });
-    return profiles;
+    return { profiles, allTags: Array.from(allTags) };
 }
 
 async function getTicketCounts() {
@@ -44,14 +49,14 @@ async function getTicketCounts() {
 export async function GET(request: NextRequest) {
   try {
     const adminAuth = getAdminAuth();
-    const [tenants, userProfiles, tickets] = await Promise.all([getTenants(), getUserProfiles(), getTicketCounts()]);
+    const [tenants, { profiles, allTags }, tickets] = await Promise.all([getTenants(), getUserProfilesAndTags(), getTicketCounts()]);
     
     const listUsersResult = await adminAuth.listUsers();
     
     const users = listUsersResult.users.map(userRecord => {
         const tenantId = userRecord.customClaims?.tenantId;
         let role = userRecord.customClaims?.role || 'Unassigned';
-        const profile = userProfiles[userRecord.uid];
+        const profile = profiles[userRecord.uid];
 
         // Ensure the primary user is always a Super Admin
         if (userRecord.email === 'mikewallsten@me.com') {
@@ -75,7 +80,7 @@ export async function GET(request: NextRequest) {
         }
     });
 
-    return NextResponse.json({ users });
+    return NextResponse.json({ users, allTags });
   } catch (error: any) {
     console.error('Error listing users:', error);
     let errorMessage = 'An unexpected error occurred.';

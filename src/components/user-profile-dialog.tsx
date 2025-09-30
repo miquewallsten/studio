@@ -19,13 +19,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import { Briefcase, KeyRound, Ticket, Edit, Mail, Phone, User as UserIcon, Calendar, Info, Tag } from 'lucide-react';
+import { Briefcase, KeyRound, Ticket, Edit, Mail, Phone, User as UserIcon, Calendar, Info, Tag, X, Check, ChevronsUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { ChangeRoleDialog } from './change-role-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+import { cn } from '@/lib/utils';
 
 type User = {
     uid: string;
@@ -43,12 +46,13 @@ type User = {
 
 interface UserProfileDialogProps {
   user: User | null;
+  allTags: string[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onUserUpdated: () => void;
 }
 
-export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }: UserProfileDialogProps) {
+export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserUpdated }: UserProfileDialogProps) {
     const { toast } = useToast();
     const [isEditMode, setIsEditMode] = useState(false);
     const [isChangeRoleOpen, setChangeRoleOpen] = useState(false);
@@ -57,6 +61,10 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
         phone: '',
         tags: [] as string[],
     });
+
+    // For the multi-select combobox
+    const [open, setOpen] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (user) {
@@ -76,19 +84,9 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // Only split by comma, then trim whitespace from each resulting token
-        const tags = e.target.value.split(',').map(tag => tag.trim());
-        setFormData(prev => ({...prev, tags}));
-    }
-
     const handleSaveChanges = async () => {
         try {
-            // Filter out empty strings that might result from trailing commas
-            const payload = {
-                ...formData,
-                tags: formData.tags.filter(Boolean)
-            };
+            const payload = { ...formData };
 
             const res = await fetch(`/api/users/${user.uid}`, {
                 method: 'PATCH',
@@ -128,6 +126,26 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
         }
         setIsEditMode(false);
     };
+
+    const handleTagSelect = (tag: string) => {
+        if (!formData.tags.includes(tag)) {
+            setFormData(prev => ({...prev, tags: [...prev.tags, tag]}));
+        }
+        inputRef?.current?.focus();
+    }
+    
+    const handleTagCreate = (tagName: string) => {
+        const newTag = tagName.trim();
+        if (newTag && !formData.tags.includes(newTag)) {
+             setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
+        }
+    }
+
+    const handleTagRemove = (tag: string) => {
+        setFormData(prev => ({...prev, tags: prev.tags.filter(t => t !== tag)}));
+    }
+
+    const availableTags = allTags.filter(tag => !formData.tags.includes(tag));
 
     return (
         <>
@@ -205,8 +223,62 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                                             <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} />
                                         </div>
                                          <div className="grid gap-2">
-                                            <Label htmlFor="tags">Tags</Label>
-                                            <Input id="tags" name="tags" value={formData.tags.join(', ')} onChange={handleTagsChange} placeholder="Add tags, comma separated"/>
+                                            <Label>Tags</Label>
+                                            <Popover open={open} onOpenChange={setOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={open}
+                                                        className="w-full justify-between h-auto min-h-10"
+                                                    >
+                                                        <div className="flex gap-1 flex-wrap">
+                                                            {formData.tags.length > 0 ? formData.tags.map(tag => (
+                                                                <Badge key={tag} variant="secondary" className="mr-1">
+                                                                    {tag}
+                                                                    <button
+                                                                        className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                                        onClick={() => handleTagRemove(tag)}
+                                                                    >
+                                                                        <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                                                    </button>
+                                                                </Badge>
+                                                            )) : <span className="text-muted-foreground">Select or create tags...</span>}
+                                                        </div>
+                                                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                     <Command>
+                                                        <CommandInput 
+                                                            ref={inputRef} 
+                                                            placeholder="Search or create tag..."
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && e.currentTarget.value) {
+                                                                    e.preventDefault();
+                                                                    handleTagCreate(e.currentTarget.value);
+                                                                    e.currentTarget.value = '';
+                                                                }
+                                                            }}
+                                                        />
+                                                        <CommandList>
+                                                            <CommandEmpty>No results. Press Enter to create.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {availableTags.map((tag) => (
+                                                                <CommandItem
+                                                                    key={tag}
+                                                                    value={tag}
+                                                                    onSelect={() => handleTagSelect(tag)}
+                                                                >
+                                                                    <Check className={cn("mr-2 h-4 w-4", formData.tags.includes(tag) ? "opacity-100" : "opacity-0")} />
+                                                                    {tag}
+                                                                </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
                                         </div>
                                     </>
                                 ) : (
