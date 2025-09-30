@@ -24,17 +24,40 @@ async function getUserProfiles() {
     return profiles;
 }
 
+async function getTicketCounts() {
+    const adminDb = getAdminDb();
+    const ticketsSnapshot = await adminDb.collection('tickets').get();
+    const counts: { [key: string]: number } = {};
+    ticketsSnapshot.forEach(doc => {
+        const clientId = doc.data().clientId;
+        if (clientId) {
+            if (!counts[clientId]) {
+                counts[clientId] = 0;
+            }
+            counts[clientId]++;
+        }
+    });
+    return counts;
+}
+
+
 export async function GET(request: NextRequest) {
   try {
     const adminAuth = getAdminAuth();
-    const [tenants, userProfiles] = await Promise.all([getTenants(), getUserProfiles()]);
+    const [tenants, userProfiles, tickets] = await Promise.all([getTenants(), getUserProfiles(), getTicketCounts()]);
     
     const listUsersResult = await adminAuth.listUsers();
     
     const users = listUsersResult.users.map(userRecord => {
         const tenantId = userRecord.customClaims?.tenantId;
-        const role = userRecord.customClaims?.role || 'Unassigned';
+        let role = userRecord.customClaims?.role || 'Unassigned';
         const profile = userProfiles[userRecord.uid];
+
+        // Ensure the primary user is always a Super Admin
+        if (userRecord.email === 'mikewallsten@me.com') {
+            role = 'Super Admin';
+        }
+
 
         return {
             uid: userRecord.uid,
@@ -48,6 +71,7 @@ export async function GET(request: NextRequest) {
             tenantName: tenantId ? tenants[tenantId] : 'Internal Staff',
             role: role,
             createdAt: userRecord.metadata.creationTime,
+            ticketsCreated: tickets[userRecord.uid] || 0,
         }
     });
 
@@ -63,4 +87,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-
