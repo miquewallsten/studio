@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Ticket, Building, Inbox, GanttChartSquare, CheckCircle, Clock } from 'lucide-react';
+import { ArrowRight, Ticket, Building, Inbox, GanttChartSquare, CheckCircle, Clock, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   collection,
@@ -50,9 +50,12 @@ type TicketStatus = 'New' | 'In Progress' | 'Pending Review' | 'Completed';
 export default function DashboardPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [userCount, setUserCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const ticketQuery = query(
       collection(db, 'tickets'),
       orderBy('createdAt', 'desc')
@@ -64,25 +67,44 @@ export default function DashboardPage() {
     );
 
     const unsubscribeTickets = onSnapshot(ticketQuery, (snapshot) => {
+      if (!isMounted) return;
       const ticketsData = snapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as Ticket)
       );
       setTickets(ticketsData);
-      setLoading(false);
+      if (loading) setLoading(false);
     });
 
     const unsubscribeTenants = onSnapshot(tenantQuery, (snapshot) => {
+        if (!isMounted) return;
       const tenantsData = snapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as Tenant)
       );
       setTenants(tenantsData);
     });
+    
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch('/api/users');
+            if (response.ok) {
+                const data = await response.json();
+                if (isMounted) {
+                    setUserCount(data.users.length);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch users:", error);
+        }
+    }
+    
+    fetchUsers();
 
     return () => {
+      isMounted = false;
       unsubscribeTickets();
       unsubscribeTenants();
     };
-  }, []);
+  }, [loading]);
 
   const getTicketCountByStatus = (status: TicketStatus) => {
     return tickets.filter((ticket) => ticket.status === status).length;
@@ -133,17 +155,17 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-         <Card>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {getTicketCountByStatus('Pending Review')}
+              {userCount}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting manager approval
+             <p className="text-xs text-muted-foreground">
+              Across all roles
             </p>
           </CardContent>
         </Card>
@@ -272,3 +294,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
