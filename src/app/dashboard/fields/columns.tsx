@@ -16,10 +16,9 @@ import type { Field } from "./schema"
 
 type ColumnsProps = {
   onDeleteField: (field: Field) => void;
-  onEditField: (field: Field) => void;
 }
 
-export const columns = ({ onDeleteField, onEditField }: ColumnsProps): ColumnDef<Field>[] => [
+export const columns = ({ onDeleteField }: ColumnsProps): ColumnDef<Field>[] => [
   {
     accessorKey: "label",
     header: ({ column }) => (
@@ -58,11 +57,6 @@ export const columns = ({ onDeleteField, onEditField }: ColumnsProps): ColumnDef
               align="end"
               onClick={(e) => e.stopPropagation()}
             >
-              <DropdownMenuItem onClick={() => onEditField(field)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDeleteField(field)}
                 className="text-destructive"

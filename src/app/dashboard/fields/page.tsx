@@ -27,14 +27,14 @@ import { useToast } from '@/hooks/use-toast';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import type { Field } from './schema';
-import { FieldEditorDialog } from '@/components/field-editor-dialog';
+import { FieldEditor } from '@/components/field-editor';
 
 
 export default function FieldsPage() {
   const [fields, setFields] = useState<Field[]>([]);
   const [loading, setLoading] = useState(true);
   const [fieldToDelete, setFieldToDelete] = useState<Field | null>(null);
-  const [fieldToEdit, setFieldToEdit] = useState<Field | null>(null);
+  const [selectedField, setSelectedField] = useState<Field | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,7 +47,6 @@ export default function FieldsPage() {
           id: doc.id,
           label: data.label,
           type: data.type,
-          required: data.required,
           subFields: data.subFields || [],
           aiInstructions: data.aiInstructions || '',
           internalFields: data.internalFields || [],
@@ -68,6 +67,9 @@ export default function FieldsPage() {
           title: 'Field Deleted',
           description: `The field "${fieldToDelete.label}" has been deleted.`,
         });
+        if (selectedField?.id === fieldToDelete.id) {
+          setSelectedField(null);
+        }
       } catch (error) {
         toast({
           title: 'Error',
@@ -81,13 +83,18 @@ export default function FieldsPage() {
     }
   };
   
-  const handleEditDialogClose = () => {
-    setFieldToEdit(null);
-  }
+  const handleSelectField = (field: Field) => {
+    setSelectedField(field);
+  };
+  
+  const handleFieldUpdate = () => {
+    // Optionally re-fetch or update the list if needed,
+    // though onSnapshot should handle it.
+    // For now, we can just clear the selection or keep it.
+  };
 
   const memoizedColumns = useMemo(() => columns({
     onDeleteField: (field) => setFieldToDelete(field),
-    onEditField: (field) => setFieldToEdit(field),
   }), []);
 
   return (
@@ -110,11 +117,6 @@ export default function FieldsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <FieldEditorDialog 
-        field={fieldToEdit}
-        isOpen={!!fieldToEdit}
-        onOpenChange={handleEditDialogClose}
-      />
 
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">Field Library</h1>
@@ -125,25 +127,45 @@ export default function FieldsPage() {
           </Link>
         </Button>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Reusable Fields</CardTitle>
-          <CardDescription>
-            Manage the reusable fields that can be added to any form template. Click a row to edit.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-            {loading ? (
-                <p>Loading fields...</p>
-            ) : (
-                <DataTable 
-                    columns={memoizedColumns}
-                    data={fields}
-                    onRowClick={(row) => setFieldToEdit(row.original)}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <Card>
+            <CardHeader>
+            <CardTitle>Reusable Fields</CardTitle>
+            <CardDescription>
+                Manage the reusable fields that can be added to any form template. Click a row to edit.
+            </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                    <p>Loading fields...</p>
+                ) : (
+                    <DataTable 
+                        columns={memoizedColumns}
+                        data={fields}
+                        onRowClick={(row) => handleSelectField(row.original)}
+                    />
+                )}
+            </CardContent>
+        </Card>
+        
+        <div className="sticky top-4">
+           {selectedField ? (
+                <FieldEditor 
+                    key={selectedField.id} // Add key to force re-mount on selection change
+                    field={selectedField}
+                    onFieldUpdated={handleFieldUpdate}
                 />
-            )}
-        </CardContent>
-      </Card>
+           ) : (
+                <Card className="h-96 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                        <p>Select a field to view and edit its details.</p>
+                    </div>
+                </Card>
+           )}
+        </div>
+
+      </div>
     </div>
   );
 }
