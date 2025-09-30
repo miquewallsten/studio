@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LogIn, AlertCircle, LayoutDashboard, Workflow } from 'lucide-react';
+import { LogIn, AlertCircle, LayoutDashboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { auth } from '@/lib/firebase';
@@ -28,6 +28,7 @@ import { useRouter } from 'next/navigation';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { WidgetLibrary } from '@/components/dashboard/widget-library';
 import { ClientPortalWidget } from '@/components/testing/client-portal-widget';
+import { WorkflowWidget } from '@/components/testing/workflow-widget';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -44,12 +45,16 @@ const WIDGET_DEFINITIONS: {
 } = {
   'impersonation-list': {
     title: 'Impersonation',
-    defaultLayout: { i: 'impersonation-list', x: 0, y: 0, w: 3, h: 4, minW: 3, minH: 2 },
+    defaultLayout: { i: 'impersonation-list', x: 0, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
   'client-portal': {
     title: 'Client Portal',
-    defaultLayout: { i: 'client-portal', x: 3, y: 0, w: 3, h: 4, minW: 2, minH: 3 },
+    defaultLayout: { i: 'client-portal', x: 2, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
+  'workflow': {
+    title: 'Workflow',
+    defaultLayout: { i: 'workflow', x: 4, y: 0, w: 4, h: 4, minW: 3, minH: 4},
+  }
 };
 
 
@@ -79,11 +84,11 @@ export default function ImpersonateUserPage() {
             if (savedWidgets && isMounted) {
                 setActiveWidgets(JSON.parse(savedWidgets));
             } else {
-                setActiveWidgets(['impersonation-list', 'client-portal']);
+                setActiveWidgets(['impersonation-list', 'client-portal', 'workflow']);
             }
         } catch (error) {
             console.error('Could not load layout from localStorage', error);
-            setActiveWidgets(['impersonation-list', 'client-portal']);
+            setActiveWidgets(['impersonation-list', 'client-portal', 'workflow']);
         }
         
         const fetchUsers = async () => {
@@ -251,6 +256,8 @@ export default function ImpersonateUserPage() {
                 )
             case 'client-portal':
                 return <ClientPortalWidget />
+            case 'workflow':
+                return <WorkflowWidget />
             default:
                 return (
                     <Card>
@@ -301,7 +308,7 @@ export default function ImpersonateUserPage() {
             layout={finalLayout}
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
+            cols={{ lg: 8, md: 6, sm: 2, xs: 1, xxs: 1 }}
             rowHeight={100}
             isDraggable={isEditMode}
             isResizable={isEditMode}
