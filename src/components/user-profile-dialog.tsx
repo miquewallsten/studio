@@ -145,14 +145,16 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
 
     const handleTagSelect = (tag: string) => {
         setInputValue("");
-        if (!formData.tags.includes(tag)) {
+        const lowercasedTags = formData.tags.map(t => t.toLowerCase());
+        if (!lowercasedTags.includes(tag.toLowerCase())) {
             setFormData(prev => ({...prev, tags: [...prev.tags, tag]}));
         }
     }
     
     const handleTagCreate = (tagName: string) => {
         const newTag = tagName.trim();
-        if (newTag && !formData.tags.includes(newTag)) {
+        const lowercasedTags = formData.tags.map(t => t.toLowerCase());
+        if (newTag && !lowercasedTags.includes(newTag.toLowerCase())) {
              setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
         }
         setInputValue("");
@@ -163,9 +165,9 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         setFormData(prev => ({...prev, tags: prev.tags.filter(t => t !== tag)}));
     }
 
-    const availableTags = allTags.filter(tag => !formData.tags.includes(tag));
+    const availableTags = allTags.filter(tag => !formData.tags.some(selectedTag => selectedTag.toLowerCase() === tag.toLowerCase()));
     
-    const showCreateOption = inputValue && !availableTags.includes(inputValue) && !formData.tags.includes(inputValue);
+    const showCreateOption = inputValue && !availableTags.some(tag => tag.toLowerCase() === inputValue.toLowerCase()) && !formData.tags.some(tag => tag.toLowerCase() === inputValue.toLowerCase());
 
 
     return (
@@ -296,6 +298,14 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                                     {`No results found. Press Enter to create.`}
                                                                 </CommandEmpty>
                                                                 <CommandGroup>
+                                                                    {showCreateOption && (
+                                                                        <CommandItem
+                                                                            onSelect={() => handleTagCreate(inputValue)}
+                                                                        >
+                                                                            <Check className="mr-2 h-4 w-4 opacity-0" />
+                                                                            Create "{inputValue}"
+                                                                        </CommandItem>
+                                                                    )}
                                                                     {availableTags.map((tag) => (
                                                                     <CommandItem
                                                                         key={tag}
@@ -306,15 +316,6 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                                         {tag}
                                                                     </CommandItem>
                                                                     ))}
-                                                                    {showCreateOption && (
-                                                                        <CommandItem
-                                                                            value={inputValue}
-                                                                            onSelect={() => handleTagCreate(inputValue)}
-                                                                        >
-                                                                            <Check className="mr-2 h-4 w-4 opacity-0" />
-                                                                            Create "{inputValue}"
-                                                                        </CommandItem>
-                                                                    )}
                                                                 </CommandGroup>
                                                             </CommandList>
                                                         </Command>
