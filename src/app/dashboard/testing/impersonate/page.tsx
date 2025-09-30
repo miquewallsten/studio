@@ -22,6 +22,7 @@ import { WorkflowWidget } from '@/components/testing/workflow-widget';
 import { AnalystPortalWidget } from '@/components/testing/analyst-portal-widget';
 import { InvitationInboxWidget } from '@/components/testing/invitation-inbox-widget';
 import { MobileEndUserPortalWidget } from '@/components/testing/mobile-end-user-portal-widget';
+import { WidgetLibrary } from '@/components/dashboard/widget-library';
 
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -209,6 +210,24 @@ export default function ImpersonateUserPage() {
             }
         }
     };
+    
+    const handleWidgetChange = (newWidgets: string[]) => {
+        setActiveWidgets(newWidgets);
+        try {
+            window.localStorage.setItem('testing-dashboard-widgets-v2', JSON.stringify(newWidgets));
+        } catch (error) {
+            console.error('Could not save widgets to localStorage', error);
+        }
+    }
+    
+    const addWidget = (widgetId: string) => {
+        handleWidgetChange([...activeWidgets, widgetId]);
+    }
+
+    const removeWidget = (widgetId: string) => {
+        handleWidgetChange(activeWidgets.filter(id => id !== widgetId));
+    };
+
 
     const handleRefreshUsers = () => {
       fetchUsers().then(setUsers);
@@ -267,14 +286,21 @@ export default function ImpersonateUserPage() {
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">Live Workflow Dashboard</h1>
-        <Button
-            variant={isEditMode ? 'default' : 'outline'}
-            onClick={() => setIsEditMode(!isEditMode)}
-            className={isEditMode ? 'bg-accent hover:bg-accent/90' : ''}
-        >
-            <LayoutDashboard className="mr-2" />
-            {isEditMode ? 'Done Editing' : 'Edit Dashboard'}
-        </Button>
+        <div className="flex items-center gap-2">
+            <WidgetLibrary 
+                allWidgets={WIDGET_DEFINITIONS}
+                activeWidgets={activeWidgets}
+                onAddWidget={addWidget}
+            />
+            <Button
+                variant={isEditMode ? 'default' : 'outline'}
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={isEditMode ? 'bg-accent hover:bg-accent/90' : ''}
+            >
+                <LayoutDashboard className="mr-2" />
+                {isEditMode ? 'Done Editing' : 'Edit Dashboard'}
+            </Button>
+        </div>
       </div>
       
       {error && (
@@ -303,8 +329,21 @@ export default function ImpersonateUserPage() {
             draggableCancel=".non-draggable"
         >
              {activeWidgets.map((widgetId) => (
-                <div key={widgetId} className="overflow-hidden">
-                    {getWidgetContent(widgetId)}
+                <div key={widgetId} className="overflow-hidden relative group/widget">
+                    {isEditMode && (
+                        <Button 
+                            variant="destructive" 
+                            size="icon" 
+                            className="absolute top-2 right-2 z-10 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
+                            onClick={() => removeWidget(widgetId)}
+                        >
+                            <span className="sr-only">Remove widget</span>
+                            &times;
+                        </Button>
+                    )}
+                    <div className={`h-full ${!isEditMode ? 'non-draggable' : ''}`}>
+                        {getWidgetContent(widgetId)}
+                    </div>
                 </div>
             ))}
       </ResponsiveGridLayout>
@@ -322,3 +361,4 @@ export default function ImpersonateUserPage() {
     </div>
   );
 }
+
