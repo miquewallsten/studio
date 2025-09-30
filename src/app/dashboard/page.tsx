@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -17,7 +16,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Inbox, GanttChartSquare, CheckCircle, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  Inbox,
+  GanttChartSquare,
+  CheckCircle,
+  Users,
+  LayoutDashboard,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   collection,
@@ -32,6 +38,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
+import { WidgetLibrary } from '@/components/dashboard/widget-library';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -51,15 +58,33 @@ type Tenant = {
 
 type TicketStatus = 'New' | 'In Progress' | 'Pending Review' | 'Completed';
 
-const defaultLayouts = {
-    lg: [
-      { i: 'new-tickets', x: 0, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
-      { i: 'in-progress', x: 1, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
-      { i: 'total-users', x: 2, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
-      { i: 'completed', x: 3, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
-      { i: 'recent-tickets', x: 0, y: 1, w: 4, h: 2, minW: 2, minH: 2 },
-      { i: 'new-tenants', x: 4, y: 0, w: 2, h: 3, minW: 2, minH: 2 },
-    ],
+const WIDGET_DEFINITIONS: {
+  [key: string]: { title: string; defaultLayout: Layout };
+} = {
+  'new-tickets': {
+    title: 'New Tickets',
+    defaultLayout: { i: 'new-tickets', x: 0, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
+  },
+  'in-progress': {
+    title: 'In Progress',
+    defaultLayout: { i: 'in-progress', x: 1, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
+  },
+  'total-users': {
+    title: 'Total Users',
+    defaultLayout: { i: 'total-users', x: 2, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
+  },
+  completed: {
+    title: 'Completed',
+    defaultLayout: { i: 'completed', x: 3, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
+  },
+  'recent-tickets': {
+    title: 'Recent Tickets',
+    defaultLayout: { i: 'recent-tickets', x: 0, y: 1, w: 4, h: 2, minW: 2, minH: 2 },
+  },
+  'new-tenants': {
+    title: 'New Tenants',
+    defaultLayout: { i: 'new-tenants', x: 4, y: 0, w: 2, h: 3, minW: 2, minH: 2 },
+  },
 };
 
 
@@ -68,27 +93,34 @@ export default function DashboardPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [userCount, setUserCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [layouts, setLayouts] = useState<{[key: string]: Layout[]}>(() => {
-    if (typeof window !== 'undefined') {
-        const savedLayouts = window.localStorage.getItem('dashboard-layouts');
-        return savedLayouts ? JSON.parse(savedLayouts) : defaultLayouts;
-    }
-    return defaultLayouts;
-  });
+  
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [layouts, setLayouts] = useState<{[key: string]: Layout[]}>({});
+  const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
 
   useEffect(() => {
+    setIsClient(true);
     let isMounted = true;
-    
-    // Attempt to load layouts from localStorage on mount
-    try {
-        const savedLayouts = window.localStorage.getItem('dashboard-layouts');
-        if (savedLayouts && isMounted) {
-            setLayouts(JSON.parse(savedLayouts));
-        }
-    } catch (error) {
-        console.error("Could not load layouts from localStorage", error);
-    }
 
+    try {
+      const savedLayouts = window.localStorage.getItem('dashboard-layouts-v2');
+      const savedWidgets = window.localStorage.getItem('dashboard-widgets-v2');
+      
+      if (savedLayouts && isMounted) setLayouts(JSON.parse(savedLayouts));
+      
+      if (savedWidgets && isMounted) {
+        setActiveWidgets(JSON.parse(savedWidgets));
+      } else {
+        // Default widgets
+        setActiveWidgets(['new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants']);
+      }
+
+    } catch (error) {
+      console.error('Could not load layout from localStorage', error);
+      setActiveWidgets(['new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants']);
+    }
 
     const ticketQuery = query(
       collection(db, 'tickets'),
@@ -110,27 +142,27 @@ export default function DashboardPage() {
     });
 
     const unsubscribeTenants = onSnapshot(tenantQuery, (snapshot) => {
-        if (!isMounted) return;
+      if (!isMounted) return;
       const tenantsData = snapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as Tenant)
       );
       setTenants(tenantsData);
     });
-    
+
     const fetchUsers = async () => {
-        try {
-            const response = await fetch('/api/users');
-            if (response.ok) {
-                const data = await response.json();
-                if (isMounted) {
-                    setUserCount(data.users.length);
-                }
-            }
-        } catch (error) {
-            console.error("Failed to fetch users:", error);
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          if (isMounted) {
+            setUserCount(data.users.length);
+          }
         }
-    }
-    
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    };
+
     fetchUsers();
 
     return () => {
@@ -140,15 +172,16 @@ export default function DashboardPage() {
     };
   }, [loading]);
 
-  const onLayoutChange = (layout: Layout[], allLayouts: {[key: string]: Layout[]}) => {
-    try {
-        window.localStorage.setItem('dashboard-layouts', JSON.stringify(allLayouts));
-        setLayouts(allLayouts);
-    } catch (error) {
-        console.error("Could not save layouts to localStorage", error);
+  const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+    if (isEditMode) {
+        try {
+            window.localStorage.setItem('dashboard-layouts-v2', JSON.stringify(allLayouts));
+            setLayouts(allLayouts);
+        } catch (error) {
+            console.error('Could not save layouts to localStorage', error);
+        }
     }
   };
-
 
   const getTicketCountByStatus = (status: TicketStatus) => {
     return tickets.filter((ticket) => ticket.status === status).length;
@@ -164,24 +197,29 @@ export default function DashboardPage() {
         return 'secondary';
     }
   };
+  
+  const handleWidgetChange = (newWidgets: string[]) => {
+    setActiveWidgets(newWidgets);
+    try {
+        window.localStorage.setItem('dashboard-widgets-v2', JSON.stringify(newWidgets));
+    } catch (error) {
+        console.error('Could not save widgets to localStorage', error);
+    }
+  }
 
-  const recentTickets = tickets.slice(0, 5);
+  const addWidget = (widgetId: string) => {
+    handleWidgetChange([...activeWidgets, widgetId]);
+  }
+
+  const removeWidget = (widgetId: string) => {
+    handleWidgetChange(activeWidgets.filter(id => id !== widgetId));
+  };
 
 
-  return (
-    <div className="flex-1 space-y-4">
-      <h1 className="text-3xl font-bold font-headline">Dashboard</h1>
-      <ResponsiveGridLayout
-        className="layout"
-        layouts={layouts}
-        onLayoutChange={onLayoutChange}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
-        rowHeight={150}
-        isDraggable
-        isResizable
-      >
-        <div key="new-tickets" className="overflow-hidden">
+  const getWidgetContent = (widgetId: string) => {
+    switch (widgetId) {
+      case 'new-tickets':
+        return (
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">New Tickets</CardTitle>
@@ -196,8 +234,9 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
-        </div>
-        <div key="in-progress" className="overflow-hidden">
+        );
+      case 'in-progress':
+        return (
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">In Progress</CardTitle>
@@ -212,8 +251,9 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
-        </div>
-        <div key="total-users" className="overflow-hidden">
+        );
+      case 'total-users':
+        return (
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -226,8 +266,9 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
-        </div>
-        <div key="completed" className="overflow-hidden">
+        );
+      case 'completed':
+        return (
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Completed</CardTitle>
@@ -240,8 +281,10 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">This month</p>
             </CardContent>
           </Card>
-        </div>
-        <div key="recent-tickets" className="overflow-hidden">
+        );
+      case 'recent-tickets':
+        const recentTickets = tickets.slice(0, 5);
+        return (
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -307,9 +350,10 @@ export default function DashboardPage() {
               </Table>
             </CardContent>
           </Card>
-        </div>
-        <div key="new-tenants" className="overflow-hidden">
-          <Card className="h-full">
+        );
+      case 'new-tenants':
+        return (
+            <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 New Tenants
@@ -372,9 +416,80 @@ export default function DashboardPage() {
               </Table>
             </CardContent>
           </Card>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const currentLayout = (layouts.lg || []).filter(l => activeWidgets.includes(l.i));
+  const defaultLayoutForActive = activeWidgets
+    .filter(id => !currentLayout.some(l => l.i === id))
+    .map(id => WIDGET_DEFINITIONS[id].defaultLayout);
+  
+  const finalLayout = [...currentLayout, ...defaultLayoutForActive];
+
+  return (
+    <div className="flex-1 space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold font-headline">Dashboard</h1>
+        <div className="flex items-center gap-2">
+            <WidgetLibrary 
+                allWidgets={WIDGET_DEFINITIONS}
+                activeWidgets={activeWidgets}
+                onAddWidget={addWidget}
+            />
+            <Button
+                variant={isEditMode ? 'default' : 'outline'}
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={isEditMode ? 'bg-accent hover:bg-accent/90' : ''}
+            >
+                <LayoutDashboard className="mr-2" />
+                {isEditMode ? 'Done Editing' : 'Edit Dashboard'}
+            </Button>
         </div>
+      </div>
+      {isClient && 
+        <ResponsiveGridLayout
+            className={`layout ${!isEditMode ? 'non-interactive' : ''}`}
+            layouts={layouts}
+            layout={finalLayout}
+            onLayoutChange={onLayoutChange}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
+            rowHeight={150}
+            isDraggable={isEditMode}
+            isResizable={isEditMode}
+            draggableCancel=".non-draggable"
+        >
+            {activeWidgets.map((widgetId) => (
+            <div key={widgetId} className="overflow-hidden relative group/widget">
+                {isEditMode && (
+                    <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        className="absolute top-2 right-2 z-10 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
+                        onClick={() => removeWidget(widgetId)}
+                    >
+                        <span className="sr-only">Remove widget</span>
+                        &times;
+                    </Button>
+                )}
+                <div className={`h-full ${!isEditMode ? 'non-draggable' : ''}`}>
+                    {getWidgetContent(widgetId)}
+                </div>
+            </div>
+            ))}
       </ResponsiveGridLayout>
+      }
+      <style jsx global>{`
+        .react-grid-item.react-grid-placeholder {
+          background: hsl(var(--accent)) !important;
+        }
+        .non-interactive .react-resizable-handle {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }
-
