@@ -89,23 +89,18 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>User Profile</DialogTitle>
-                    <DialogDescription>
-                        View user details, metrics, and perform administrative actions.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-6 space-y-6">
                     <div className="flex items-center gap-4">
                         <Avatar className="h-16 w-16">
                             <AvatarImage src={user.photoURL} alt={user.displayName} />
                             <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <h2 className="text-lg font-semibold">{user.displayName || user.email?.split('@')[0]}</h2>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                            <DialogTitle className="text-lg font-semibold">{user.displayName || user.email?.split('@')[0]}</DialogTitle>
+                            <DialogDescription className="text-sm text-muted-foreground">{user.email}</DialogDescription>
                         </div>
                     </div>
-
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
                     <Card>
                         <CardHeader>
                             <CardTitle>Details</CardTitle>
@@ -115,7 +110,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                                 <span className="text-muted-foreground flex items-center gap-2"><UserIcon className="size-4"/> Full Name</span>
                                 <span>{user.displayName || 'Not set'}</span>
                             </div>
-                            <div className="flex items-center justify-between">
+                             <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground flex items-center gap-2"><Mail className="size-4"/> Email</span>
                                 <span>{user.email}</span>
                             </div>
@@ -131,11 +126,11 @@ export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDia
                                 <span className="text-muted-foreground flex items-center gap-2"><Briefcase className="size-4"/> Company/Tenant</span>
                                 <span>{user.tenantName || 'Internal Staff'}</span>
                             </div>
-                             <div className="flex justify-between">
+                             <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground">User ID</span>
                                 <span className="font-mono text-xs bg-muted p-1 rounded">{user.uid}</span>
                             </div>
-                             <div className="flex justify-between">
+                             <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground">Created At</span>
                                 <span>{format(new Date(user.createdAt), 'PPP')}</span>
                             </div>
