@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import type { User } from "./schema"
-import { Edit, Trash2, Eye } from "lucide-react"
+import { Trash2 } from "lucide-react"
 
 interface DataTableRowActionsProps<TData extends User> {
   row: Row<TData>
@@ -40,15 +40,6 @@ export function DataTableRowActions<TData extends User>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem onClick={() => onSelectUser(user)}>
-            <Eye className="mr-2 h-4 w-4" />
-            View Profile
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSelectUser(user)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
             Delete
