@@ -26,6 +26,7 @@ import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 type Ticket = {
   id: string;
@@ -53,9 +54,24 @@ export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetP
 
   useEffect(() => {
     setLoading(true);
+    if (!user) {
+        setLoading(false);
+        setTickets([]);
+        return;
+    };
+    
+    const role = (user?.stsTokenManager as any)?.claims?.role;
+    if (role !== 'Analyst') {
+        setLoading(false);
+        setTickets([]);
+        return;
+    }
+
+
     const q = query(
       collection(db, 'tickets'),
-      where('status', '==', 'In Progress')
+      where('status', '==', 'In Progress'),
+      where('assignedAnalystId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -68,7 +84,7 @@ export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetP
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const handleStatusChange = async (ticketId: string, newStatus: string) => {
       try {
@@ -89,7 +105,7 @@ export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetP
 
   const role = (user?.stsTokenManager as any)?.claims?.role;
   const isAnalyst = role === 'Analyst';
-  const assignedTickets = tickets.filter(t => t.assignedAnalystId === user?.uid);
+  const assignedTickets = tickets;
 
   return (
     <Card className="h-full flex flex-col non-draggable">
@@ -126,7 +142,7 @@ export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetP
                     {loading ? (
                         <TableRow>
                             <TableCell colSpan={3} className="h-24 text-center">
-                                <Skeleton className="h-6 w-1/2 mx-auto" />
+                                Loading tickets...
                             </TableCell>
                         </TableRow>
                     ) : assignedTickets.length === 0 ? (
@@ -169,3 +185,4 @@ export function AnalystPortalWidget({ title, description }: AnalystPortalWidgetP
     </Card>
   );
 }
+
