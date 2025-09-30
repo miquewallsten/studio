@@ -48,6 +48,7 @@ function ImpersonationBanner() {
             // Re-authenticating with the original token is complex from the client.
             // A full page reload is the most reliable way to force re-authentication
             // with the server-set cookies.
+            document.cookie = 'firebaseIdToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             document.cookie = 'impersonatorUid=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             window.location.href = '/dashboard'; // Redirect and force reload
 
