@@ -18,7 +18,7 @@ import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
-export default function LoginPage() {
+export default function ClientLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      router.push('/client/dashboard');
     } catch (error: any) {
       toast({
         title: 'Login Failed',
@@ -46,10 +46,10 @@ export default function LoginPage() {
             <Icons.logo className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="font-headline text-2xl">
-            Welcome to TenantCheck
+            Client Portal Login
           </CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Enter your email below to login to your portal
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -87,10 +87,10 @@ export default function LoginPage() {
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
                 Login
               </Button>
-              <div className="mt-4 text-center text-sm">
-                Client?{' '}
-                <Link href="/client/login" className="underline">
-                  Login to the Client Portal
+               <div className="mt-4 text-center text-sm">
+                Analyst or Admin?{' '}
+                <Link href="/" className="underline">
+                  Login here
                 </Link>
               </div>
             </div>
