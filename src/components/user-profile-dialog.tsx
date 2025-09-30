@@ -32,6 +32,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { auth } from '@/lib/firebase';
 import { getIdToken } from 'firebase/auth';
+import { useAuthRole } from '@/hooks/use-auth-role';
 
 type User = {
     uid: string;
@@ -58,6 +59,7 @@ interface UserProfileDialogProps {
 
 export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserUpdated }: UserProfileDialogProps) {
     const { toast } = useToast();
+    const { role: currentUserRole } = useAuthRole();
     const [isEditMode, setIsEditMode] = useState(false);
     const [isChangeRoleOpen, setChangeRoleOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -149,11 +151,12 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     }
     
     const handleTagCreate = (tagName: string) => {
-        setInputValue("");
         const newTag = tagName.trim();
         if (newTag && !formData.tags.includes(newTag)) {
              setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
         }
+        setInputValue("");
+        inputRef.current?.blur();
     }
 
     const handleTagRemove = (tag: string) => {
@@ -240,82 +243,88 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                             <Label htmlFor="phone">Phone</Label>
                                             <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} />
                                         </div>
-                                         <div className="grid gap-2">
+                                        <div className="grid gap-2">
                                             <Label>Tags</Label>
-                                            <Popover open={open} onOpenChange={setOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        aria-expanded={open}
-                                                        className="w-full justify-between h-auto min-h-10"
-                                                    >
-                                                        <div className="flex gap-1 flex-wrap">
-                                                            {formData.tags.length > 0 ? formData.tags.map(tag => (
-                                                                <Badge key={tag} variant="secondary" className="mr-1">
-                                                                    {tag}
-                                                                    <div
-                                                                        role="button"
-                                                                        tabIndex={0}
-                                                                        className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter' || e.key === ' ') {
+                                            {currentUserRole === 'Super Admin' ? (
+                                                <Popover open={open} onOpenChange={setOpen}>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            role="combobox"
+                                                            aria-expanded={open}
+                                                            className="w-full justify-between h-auto min-h-10"
+                                                        >
+                                                            <div className="flex gap-1 flex-wrap">
+                                                                {formData.tags.length > 0 ? formData.tags.map(tag => (
+                                                                    <Badge key={tag} variant="secondary" className="mr-1">
+                                                                        {tag}
+                                                                        <div
+                                                                            role="button"
+                                                                            tabIndex={0}
+                                                                            className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation();
+                                                                                    handleTagRemove(tag);
+                                                                                }
+                                                                            }}
+                                                                            onClick={(e) => {
                                                                                 e.preventDefault();
                                                                                 e.stopPropagation();
                                                                                 handleTagRemove(tag);
-                                                                            }
-                                                                        }}
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            e.stopPropagation();
-                                                                            handleTagRemove(tag);
-                                                                        }}
-                                                                    >
-                                                                        <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                                                    </div>
-                                                                </Badge>
-                                                            )) : <span className="text-muted-foreground">Select or create tags...</span>}
-                                                        </div>
-                                                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                     <Command>
-                                                        <CommandInput 
-                                                            ref={inputRef}
-                                                            value={inputValue}
-                                                            onValueChange={setInputValue}
-                                                            placeholder="Search or create tag..."
-                                                        />
-                                                        <CommandList>
-                                                            <CommandEmpty>
-                                                                {`No results found. Press Enter to create "${inputValue}"`}
-                                                            </CommandEmpty>
-                                                            <CommandGroup>
-                                                                {availableTags.map((tag) => (
-                                                                <CommandItem
-                                                                    key={tag}
-                                                                    value={tag}
-                                                                    onSelect={() => handleTagSelect(tag)}
-                                                                >
-                                                                    <Check className={cn("mr-2 h-4 w-4", formData.tags.includes(tag) ? "opacity-100" : "opacity-0")} />
-                                                                    {tag}
-                                                                </CommandItem>
-                                                                ))}
-                                                                 {showCreateOption && (
+                                                                            }}
+                                                                        >
+                                                                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                                                        </div>
+                                                                    </Badge>
+                                                                )) : <span className="text-muted-foreground">Select or create tags...</span>}
+                                                            </div>
+                                                            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                        <Command onKeyDown={(e) => { if (e.key === 'Enter' && showCreateOption) { handleTagCreate(inputValue); } }}>
+                                                            <CommandInput 
+                                                                ref={inputRef}
+                                                                value={inputValue}
+                                                                onValueChange={setInputValue}
+                                                                placeholder="Search or create tag..."
+                                                            />
+                                                            <CommandList>
+                                                                <CommandEmpty>
+                                                                    {`No results found. Press Enter to create.`}
+                                                                </CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {availableTags.map((tag) => (
                                                                     <CommandItem
-                                                                        value={inputValue}
-                                                                        onSelect={() => handleTagCreate(inputValue)}
+                                                                        key={tag}
+                                                                        value={tag}
+                                                                        onSelect={() => handleTagSelect(tag)}
                                                                     >
-                                                                        <Check className="mr-2 h-4 w-4 opacity-0" />
-                                                                        Create "{inputValue}"
+                                                                        <Check className={cn("mr-2 h-4 w-4", formData.tags.includes(tag) ? "opacity-100" : "opacity-0")} />
+                                                                        {tag}
                                                                     </CommandItem>
-                                                                )}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
+                                                                    ))}
+                                                                    {showCreateOption && (
+                                                                        <CommandItem
+                                                                            value={inputValue}
+                                                                            onSelect={() => handleTagCreate(inputValue)}
+                                                                        >
+                                                                            <Check className="mr-2 h-4 w-4 opacity-0" />
+                                                                            Create "{inputValue}"
+                                                                        </CommandItem>
+                                                                    )}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            ) : (
+                                                <div className="flex flex-wrap gap-1 items-center min-h-10 rounded-md border border-input bg-background px-3 py-2">
+                                                    {user.tags && user.tags.length > 0 ? user.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>) : <span className="text-sm text-muted-foreground">No tags</span>}
+                                                </div>
+                                            )}
                                         </div>
                                     </>
                                 ) : (
