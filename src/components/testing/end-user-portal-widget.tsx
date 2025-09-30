@@ -86,5 +86,3 @@ export function EndUserPortalWidget({ users, onImpersonate, isImpersonating }: E
     </Card>
   );
 }
-
-    

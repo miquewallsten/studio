@@ -257,5 +257,3 @@ function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: {
       </Dialog>
     )
   }
-
-    

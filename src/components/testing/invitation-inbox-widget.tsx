@@ -117,4 +117,3 @@ export function InvitationInboxWidget({ onImpersonate, isImpersonating }: Invita
     </Card>
   );
 }
-
