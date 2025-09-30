@@ -28,13 +28,18 @@ import { MoreHorizontal, AlertCircle, PlusCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
-import { useRouter } from 'next/navigation';
+import { UserProfileSheet } from '@/components/user-profile-sheet';
 
 type User = {
     uid: string;
     email?: string;
+    displayName?: string;
+    photoURL?: string;
+    disabled: boolean;
+    tenantId?: string;
+    tenantName?: string | null;
     role: string;
-    tenantName: string | null;
+    createdAt: string;
 }
 
 export default function AdminUsersPage() {
@@ -42,7 +47,7 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
-    const router = useRouter();
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
 
     const fetchUsers = async () => {
@@ -71,8 +76,12 @@ export default function AdminUsersPage() {
         fetchUsers(); // Re-fetch the user list after a new user is invited
     }
 
-    const handleRowClick = (uid: string) => {
-        router.push(`/dashboard/admin/users/${uid}`);
+    const handleRowClick = (user: User) => {
+        setSelectedUser(user);
+    }
+    
+    const handleSheetClose = () => {
+        setSelectedUser(null);
     }
 
     const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
@@ -83,6 +92,11 @@ export default function AdminUsersPage() {
             isOpen={isInviteDialogOpen} 
             onOpenChange={setInviteDialogOpen}
             onUserInvited={handleUserInvited}
+        />
+        <UserProfileSheet 
+            user={selectedUser}
+            isOpen={!!selectedUser}
+            onOpenChange={handleSheetClose}
         />
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">User Management</h1>
@@ -147,7 +161,7 @@ FIREBASE_PRIVATE_KEY="..."`}
                     </TableRow>
                 ) : (
                     users.map(user => (
-                        <TableRow key={user.uid} onClick={() => handleRowClick(user.uid)} className="cursor-pointer">
+                        <TableRow key={user.uid} onClick={() => handleRowClick(user)} className="cursor-pointer">
                             <TableCell className="font-medium">{user.email || 'N/A'}</TableCell>
                             <TableCell>
                                 <Badge variant={user.role === 'Unassigned' ? 'destructive' : 'secondary'}>{user.role}</Badge>
