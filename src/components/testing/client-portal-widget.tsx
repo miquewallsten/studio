@@ -186,7 +186,12 @@ export function ClientPortalWidget() {
           <div>
             <CardTitle>2. Client Creates Request</CardTitle>
             <CardDescription className="text-xs">
-              {user ? `Viewing as: ${user.email}` : 'Impersonate a client to begin.'}
+              {user ? (
+                <>
+                  <p>Viewing as: {user.email}</p>
+                  <p className="italic">Use Widget 1 to impersonate a different user.</p>
+                </>
+              ) : 'Impersonate a client to begin.'}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">

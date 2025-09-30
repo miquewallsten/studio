@@ -181,7 +181,12 @@ export function EndUserPortalWidget() {
             <div>
                 <CardTitle>3. End-User Fills Form</CardTitle>
                 <CardDescription className="text-xs">
-                {user ? `Viewing as: ${user.email}`: "Impersonate an End-User to see their forms."}
+                  {user ? (
+                    <>
+                      <p>Viewing as: {user.email}</p>
+                      <p className="italic">Use Widget 1 to impersonate a different user.</p>
+                    </>
+                  ) : 'Impersonate an End-User to see their forms.'}
                 </CardDescription>
             </div>
             <Button asChild variant="outline" size="sm" disabled={!user || tickets.length === 0}>

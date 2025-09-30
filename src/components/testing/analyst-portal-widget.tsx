@@ -192,7 +192,12 @@ export function AnalystPortalWidget() {
       <CardHeader>
         <CardTitle>5. Analyst's Portal</CardTitle>
         <CardDescription className="text-xs">
-          {user ? `Viewing as: ${user.email}`: "View tickets in progress and submit them for review."}
+          {user ? (
+            <>
+              <p>Viewing as: {user.email}</p>
+              <p className="italic">Use Widget 1 to impersonate a different user.</p>
+            </>
+            ) : "View tickets in progress and submit them for review."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-2">
