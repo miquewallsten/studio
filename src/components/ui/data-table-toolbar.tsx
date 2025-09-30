@@ -33,8 +33,7 @@ export function DataTableToolbar<TData>({
   ];
 
   const tenantNames = React.useMemo(() => {
-    // Safely check if tenantName column exists before processing
-    const tenantNameColumn = table.getAllColumns().find(c => c.id === 'tenantName');
+    const tenantNameColumn = table.getColumn("tenantName");
     if (!tenantNameColumn) {
         return [];
     }
