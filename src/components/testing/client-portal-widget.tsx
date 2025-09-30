@@ -8,22 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, PlusCircle, User } from 'lucide-react';
+import { PlusCircle, User, ExternalLink } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, onSnapshot, query, where, Timestamp, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { suggestComplianceQuestions } from '@/ai/flows/compliance-question-suggestions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -32,15 +22,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '../ui/dropdown-menu';
-
-
-type Request = {
-  id: string;
-  subjectName: string;
-  reportType: string;
-  status: string;
-  createdAt: Timestamp;
-};
 
 type User = {
     uid: string;
@@ -56,38 +37,13 @@ interface ClientPortalWidgetProps {
 
 export function ClientPortalWidget({ users, onImpersonate, onUserCreated, isImpersonating }: ClientPortalWidgetProps) {
   const [user, loadingAuth] = useAuthState(auth);
-  const [requests, setRequests] = useState<Request[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isRequestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [iframeKey, setIframeKey] = useState(Date.now());
 
   useEffect(() => {
-    if (user) {
-      const q = query(
-        collection(db, 'tickets'),
-        where('clientId', '==', user.uid)
-      );
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const requestsData: Request[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          requestsData.push({
-            id: doc.id,
-            subjectName: data.subjectName,
-            reportType: data.reportType,
-            status: data.status,
-            createdAt: data.createdAt,
-          });
-        });
-        setRequests(requestsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    } else if (!loadingAuth) {
-        setLoading(false);
-        setRequests([]);
-    }
-  }, [user, loadingAuth]);
+    // When the user changes, force the iframe to re-render to reflect the new auth state
+    setIframeKey(Date.now());
+  }, [user]);
 
   const isClient = !!(user?.stsTokenManager as any)?.claims?.tenantId;
   
@@ -100,14 +56,14 @@ export function ClientPortalWidget({ users, onImpersonate, onUserCreated, isImpe
             clientUser={user}
         />
         <CardHeader>
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                     <CardTitle>Client Portal</CardTitle>
                     <CardDescription>
-                        Impersonate a client to create new screening requests for end-users.
+                        Impersonate a client to test their dashboard and create requests.
                     </CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline">
@@ -127,75 +83,32 @@ export function ClientPortalWidget({ users, onImpersonate, onUserCreated, isImpe
                     </DropdownMenu>
 
                     {isClient && (
-                        <Button variant="outline" onClick={() => setRequestDialogOpen(true)}>
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setRequestDialogOpen(true)}>
                             <PlusCircle className="mr-2" />
                             New Request
                         </Button>
+                        <Button variant="ghost" size="icon" asChild>
+                            <a href="/client/dashboard" target="_blank">
+                                <ExternalLink />
+                            </a>
+                        </Button>
+                      </>
                     )}
                 </div>
             </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto">
+        <CardContent className="flex-1 overflow-hidden p-0 m-2 border rounded-lg">
             {loadingAuth ? (
-                <div className="h-24 flex items-center justify-center">
+                <div className="h-full flex items-center justify-center">
                     <p className="text-sm text-muted-foreground">Loading user data...</p>
                 </div>
             ) : !isClient ? (
-                <div className="h-24 flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Select a client user to impersonate.</p>
+                <div className="h-full flex items-center justify-center p-4">
+                    <p className="text-sm text-muted-foreground text-center">Select a client user to impersonate to see their live portal.</p>
                 </div>
             ) : (
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>
-                        <span className="sr-only">Actions</span>
-                    </TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading ? (
-                    <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center">
-                        Loading requests...
-                        </TableCell>
-                    </TableRow>
-                    ) : requests.length === 0 ? (
-                    <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center">
-                        No requests found for this client.
-                        </TableCell>
-                    </TableRow>
-                    ) : (
-                    requests.map((request) => (
-                        <TableRow key={request.id}>
-                        <TableCell className="font-medium">
-                            {request.subjectName}
-                            <p className="text-xs text-muted-foreground">{request.reportType}</p>
-                        </TableCell>
-                        <TableCell>
-                            <Badge
-                            variant={
-                                request.status === 'New' ? 'destructive' : 'secondary'
-                            }
-                            >
-                            {request.status}
-                            </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                           <Button asChild variant="ghost" size="icon" disabled>
-                                <Link href="#">
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                        </TableCell>
-                        </TableRow>
-                    ))
-                    )}
-                </TableBody>
-                </Table>
+               <iframe key={iframeKey} src="/client/dashboard" className="w-full h-full border-0" />
             )}
         </CardContent>
     </Card>
@@ -344,3 +257,5 @@ function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: {
       </Dialog>
     )
   }
+
+    

@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,51 +35,91 @@ type Ticket = {
   suggestedQuestions?: string[];
 };
 
-export default function FormPage({ params, onFormSubmitted }: { params: { ticketId: string }, onFormSubmitted?: () => void }) {
+export default function FormPage({ params }: { params: { ticketId: string }}) {
   const [user, loadingAuth] = useAuthState(auth);
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [actualTicketId, setActualTicketId] = useState(params.ticketId);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (loadingAuth && !onFormSubmitted) return;
-    if (!user && !onFormSubmitted) { // Allow unauthenticated access only in widget context
-      router.push('/client/login'); 
-      return;
-    }
-
+    if (loadingAuth) return;
+    
     const getTicketData = async () => {
-      const ticketRef = doc(db, 'tickets', params.ticketId);
+      setLoading(true);
+
+      let ticketIdToFetch = actualTicketId;
+      let ticketRef;
+
+      // Special case for widget view where we don't have the real ticket ID
+      if (ticketIdToFetch === 'some-ticket-id') {
+        if (!user) {
+           setLoading(false);
+           setTicket(null);
+           return;
+        }
+        // Find the first available form for the current user
+        const q = query(
+            collection(db, 'tickets'), 
+            where('endUserId', '==', user.uid), 
+            where('status', '==', 'New'),
+            limit(1)
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            const doc = querySnapshot.docs[0];
+            ticketIdToFetch = doc.id;
+            setActualTicketId(doc.id); // Update state with real ID
+            ticketRef = doc.ref;
+        } else {
+             setLoading(false);
+             setTicket(null); // No forms for this user
+             return;
+        }
+      } else {
+          ticketRef = doc(db, 'tickets', ticketIdToFetch);
+      }
+
+
       const ticketSnap = await getDoc(ticketRef);
 
       if (ticketSnap.exists()) {
         const ticketData = { id: ticketSnap.id, ...ticketSnap.data() } as Ticket;
 
-        // Security Check for standalone page
-        if (!onFormSubmitted && user && ticketData.endUserId !== user.uid) {
+        // Security Check: is the current user the intended recipient?
+        if (user && ticketData.endUserId !== user.uid) {
           toast({
             title: 'Access Denied',
             description: 'You do not have permission to view this form.',
             variant: 'destructive',
           });
           setTicket(null);
-        } else {
+        } else if (!user) {
+            // Unauthenticated users should be redirected from the standalone page
+            router.push('/client/login');
+            return;
+        }
+        else {
           setTicket(ticketData);
         }
       } else {
-        toast({
-          title: 'Not Found',
-          description: 'This form could not be found.',
-          variant: 'destructive',
-        });
+        // Only show toast if it's not the placeholder ID
+        if (actualTicketId !== 'some-ticket-id') {
+            toast({
+              title: 'Not Found',
+              description: 'This form could not be found.',
+              variant: 'destructive',
+            });
+        }
+        setTicket(null);
       }
       setLoading(false);
     };
 
     getTicketData();
-  }, [user, loadingAuth, params.ticketId, router, toast, onFormSubmitted]);
+  }, [user, loadingAuth, params.ticketId, router, toast, actualTicketId]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,13 +144,11 @@ export default function FormPage({ params, onFormSubmitted }: { params: { ticket
             title: 'Form Submitted',
             description: 'Thank you for providing your information.',
         });
-
-        if(onFormSubmitted) {
-            onFormSubmitted();
-        } else {
-            router.push(`/form/submitted`);
-        }
-
+        
+        // This causes the component to unmount and the parent can show a "submitted" message
+        // In the iframe context, it effectively goes back to the initial state
+        setTicket(null);
+        setActualTicketId('some-ticket-id'); // Reset for next impersonation
 
     } catch (error: any) {
         console.error('Error submitting form:', error);
@@ -122,21 +160,13 @@ export default function FormPage({ params, onFormSubmitted }: { params: { ticket
     } finally {
         setIsSubmitting(false);
     }
-
   };
 
-  const isWidgetMode = !!onFormSubmitted;
-
-  const PageWrapper = isWidgetMode ? React.Fragment : Card;
-  const cardProps = isWidgetMode ? {} : {className: 'w-full max-w-2xl'}
-
   const RootComponent = ({children}: {children: React.ReactNode}) => (
-    isWidgetMode 
-    ? <div className="p-1">{children}</div>
-    : <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">{children}</div>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-1 sm:p-4">{children}</div>
   )
 
-  if (loading || (loadingAuth && !isWidgetMode)) {
+  if (loading || loadingAuth) {
     return (
       <RootComponent>
         <Card className="w-full max-w-2xl">
@@ -150,7 +180,7 @@ export default function FormPage({ params, onFormSubmitted }: { params: { ticket
                 <Skeleton className="h-10 w-full" />
             </div>
             <div className="space-y-2">
-                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-4 w-1/q" />
                 <Skeleton className="h-10 w-full" />
             </div>
             <div className="space-y-2">
@@ -167,29 +197,24 @@ export default function FormPage({ params, onFormSubmitted }: { params: { ticket
   }
 
   if (!ticket) {
-    // Avoid showing full page error in widget mode
-    if (isWidgetMode) return <p className="p-4 text-sm text-destructive">Form not available.</p>
-
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 text-center">
-        <Card className="w-full max-w-lg">
+      <RootComponent>
+        <Card className="w-full max-w-lg text-center">
             <CardHeader>
-                <CardTitle>Error</CardTitle>
+                <CardTitle>Information Request</CardTitle>
             </CardHeader>
             <CardContent>
-                <p>This form is unavailable or you don't have permission to access it.</p>
-                <Button asChild className="mt-4">
-                    <Link href="/client/login">Return to Login</Link>
-                </Button>
+                <p>There are no pending forms for this user account.</p>
+                <p className="text-sm text-muted-foreground mt-2">If you were just assigned a form, it may take a moment to appear.</p>
             </CardContent>
         </Card>
-      </div>
+      </RootComponent>
     );
   }
 
   return (
     <RootComponent>
-      <PageWrapper {...cardProps}>
+      <Card className="w-full max-w-2xl">
         <form onSubmit={handleSubmit}>
             <CardHeader>
               <div className="flex items-center gap-4">
@@ -225,7 +250,9 @@ export default function FormPage({ params, onFormSubmitted }: { params: { ticket
             </Button>
             </CardFooter>
         </form>
-      </PageWrapper>
+      </Card>
     </RootComponent>
   );
 }
+
+    
