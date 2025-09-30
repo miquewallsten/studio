@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -14,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,7 +35,7 @@ type Ticket = {
   suggestedQuestions?: string[];
 };
 
-export default function FormPage({ params }: { params: { ticketId: string } }) {
+export default function FormPage({ params, onFormSubmitted }: { params: { ticketId: string }, onFormSubmitted?: () => void }) {
   const [user, loadingAuth] = useAuthState(auth);
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,8 +45,8 @@ export default function FormPage({ params }: { params: { ticketId: string } }) {
 
   useEffect(() => {
     if (loadingAuth) return;
-    if (!user) {
-      router.push('/client/login'); // Or a dedicated end-user login
+    if (!user && !onFormSubmitted) { // Allow unauthenticated access only in widget context
+      router.push('/client/login'); 
       return;
     }
 
@@ -56,8 +57,8 @@ export default function FormPage({ params }: { params: { ticketId: string } }) {
       if (ticketSnap.exists()) {
         const ticketData = { id: ticketSnap.id, ...ticketSnap.data() } as Ticket;
 
-        // Security Check: Ensure the logged-in user is the intended end-user for this ticket
-        if (ticketData.endUserId !== user.uid) {
+        // Security Check for standalone page
+        if (!onFormSubmitted && user && ticketData.endUserId !== user.uid) {
           toast({
             title: 'Access Denied',
             description: 'You do not have permission to view this form.',
@@ -78,7 +79,7 @@ export default function FormPage({ params }: { params: { ticketId: string } }) {
     };
 
     getTicketData();
-  }, [user, loadingAuth, params.ticketId, router, toast]);
+  }, [user, loadingAuth, params.ticketId, router, toast, onFormSubmitted]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,7 +105,12 @@ export default function FormPage({ params }: { params: { ticketId: string } }) {
             description: 'Thank you for providing your information.',
         });
 
-        router.push(`/form/submitted`);
+        if(onFormSubmitted) {
+            onFormSubmitted();
+        } else {
+            router.push(`/form/submitted`);
+        }
+
 
     } catch (error: any) {
         console.error('Error submitting form:', error);
@@ -119,9 +125,20 @@ export default function FormPage({ params }: { params: { ticketId: string } }) {
 
   };
 
-  if (loading || loadingAuth) {
+  const isWidgetMode = !!onFormSubmitted;
+
+  const PageWrapper = isWidgetMode ? React.Fragment : Card;
+  const cardProps = isWidgetMode ? {} : {className: 'w-full max-w-2xl'}
+
+  const RootComponent = ({children}: {children: React.ReactNode}) => (
+    isWidgetMode 
+    ? <div className="p-1">{children}</div>
+    : <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">{children}</div>
+  )
+
+  if (loading || (loadingAuth && !isWidgetMode)) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <RootComponent>
         <Card className="w-full max-w-2xl">
           <CardHeader>
             <Skeleton className="h-8 w-3/4" />
@@ -145,11 +162,14 @@ export default function FormPage({ params }: { params: { ticketId: string } }) {
             <Skeleton className="h-10 w-24" />
           </CardFooter>
         </Card>
-      </div>
+      </RootComponent>
     );
   }
 
   if (!ticket) {
+    // Avoid showing full page error in widget mode
+    if (isWidgetMode) return <p className="p-4 text-sm text-destructive">Form not available.</p>
+
     return (
       <div className="flex min-h-screen items-center justify-center p-4 text-center">
         <Card className="w-full max-w-lg">
@@ -168,8 +188,8 @@ export default function FormPage({ params }: { params: { ticketId: string } }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-2xl">
+    <RootComponent>
+      <PageWrapper {...cardProps}>
         <form onSubmit={handleSubmit}>
             <CardHeader>
               <div className="flex items-center gap-4">
@@ -205,7 +225,7 @@ export default function FormPage({ params }: { params: { ticketId: string } }) {
             </Button>
             </CardFooter>
         </form>
-      </Card>
-    </div>
+      </PageWrapper>
+    </RootComponent>
   );
 }

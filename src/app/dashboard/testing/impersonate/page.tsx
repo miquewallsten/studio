@@ -29,6 +29,7 @@ import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { WidgetLibrary } from '@/components/dashboard/widget-library';
 import { ClientPortalWidget } from '@/components/testing/client-portal-widget';
 import { WorkflowWidget } from '@/components/testing/workflow-widget';
+import { EndUserPortalWidget } from '@/components/testing/end-user-portal-widget';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -51,9 +52,13 @@ const WIDGET_DEFINITIONS: {
     title: 'Client Portal',
     defaultLayout: { i: 'client-portal', x: 2, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
+  'end-user-portal': {
+    title: 'End-User Portal',
+    defaultLayout: { i: 'end-user-portal', x: 4, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
+  },
   'workflow': {
     title: 'Workflow',
-    defaultLayout: { i: 'workflow', x: 4, y: 0, w: 4, h: 4, minW: 3, minH: 4},
+    defaultLayout: { i: 'workflow', x: 0, y: 4, w: 6, h: 4, minW: 3, minH: 4},
   }
 };
 
@@ -76,19 +81,19 @@ export default function ImpersonateUserPage() {
         let isMounted = true;
 
         try {
-            const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts-v2');
-            const savedWidgets = window.localStorage.getItem('testing-dashboard-widgets-v2');
+            const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts-v3');
+            const savedWidgets = window.localStorage.getItem('testing-dashboard-widgets-v3');
             
             if (savedLayouts && isMounted) setLayouts(JSON.parse(savedLayouts));
             
             if (savedWidgets && isMounted) {
                 setActiveWidgets(JSON.parse(savedWidgets));
             } else {
-                setActiveWidgets(['impersonation-list', 'client-portal', 'workflow']);
+                setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'workflow']);
             }
         } catch (error) {
             console.error('Could not load layout from localStorage', error);
-            setActiveWidgets(['impersonation-list', 'client-portal', 'workflow']);
+            setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'workflow']);
         }
         
         const fetchUsers = async () => {
@@ -101,7 +106,9 @@ export default function ImpersonateUserPage() {
                     throw new Error(data.error || 'Failed to fetch users');
                 }
                 if(isMounted) {
-                    setUsers(data.users);
+                    // We only need 'End User' and 'Super Admin' (client) roles for testing
+                    const filteredUsers = data.users.filter((u: User) => u.role === 'End User' || u.role === 'Super Admin' || u.tenantName !== null);
+                    setUsers(filteredUsers);
                 }
             } catch (err: any) {
                 console.error(err);
@@ -123,7 +130,7 @@ export default function ImpersonateUserPage() {
     const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
         if (isEditMode) {
             try {
-                window.localStorage.setItem('testing-dashboard-layouts-v2', JSON.stringify(allLayouts));
+                window.localStorage.setItem('testing-dashboard-layouts-v3', JSON.stringify(allLayouts));
                 setLayouts(allLayouts);
             } catch (error) {
                 console.error('Could not save layouts to localStorage', error);
@@ -134,7 +141,7 @@ export default function ImpersonateUserPage() {
     const handleWidgetChange = (newWidgets: string[]) => {
         setActiveWidgets(newWidgets);
         try {
-            window.localStorage.setItem('testing-dashboard-widgets-v2', JSON.stringify(newWidgets));
+            window.localStorage.setItem('testing-dashboard-widgets-v3', JSON.stringify(newWidgets));
         } catch (error) {
             console.error('Could not save widgets to localStorage', error);
         }
@@ -171,9 +178,6 @@ export default function ImpersonateUserPage() {
                 description: `You are now logged in as ${targetEmail || 'user'}. Other widgets will now reflect this user.`,
             });
             
-            // We don't need to redirect anymore, the widgets will update
-            // router.push('/dashboard'); 
-
         } catch (err: any) {
             toast({
                 title: 'Impersonation Failed',
@@ -215,7 +219,7 @@ export default function ImpersonateUserPage() {
                             <TableHeader>
                             <TableRow>
                                 <TableHead>Email</TableHead>
-                                <TableHead>Role</TableHead>
+                                <TableHead>Role / Tenant</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                             </TableHeader>
@@ -231,9 +235,9 @@ export default function ImpersonateUserPage() {
                                 ) : (
                                     users.map(user => (
                                         <TableRow key={user.uid} className={auth.currentUser?.uid === user.uid ? 'bg-muted/50' : ''}>
-                                            <TableCell className="font-medium text-xs">{user.email || 'N/A'} {auth.currentUser?.uid === user.uid && '(You)'}</TableCell>
+                                            <TableCell className="font-medium text-xs truncate">{user.email || 'N/A'} {auth.currentUser?.uid === user.uid && '(You)'}</TableCell>
                                             <TableCell>
-                                                <Badge variant={user.role === 'Unassigned' ? 'destructive' : 'secondary'}>{user.role}</Badge>
+                                                <Badge variant={user.role === 'End User' ? 'outline' : 'secondary'}>{user.role === 'End User' ? user.tenantName : user.role}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                             <Button 
@@ -256,6 +260,8 @@ export default function ImpersonateUserPage() {
                 )
             case 'client-portal':
                 return <ClientPortalWidget />
+            case 'end-user-portal':
+                return <EndUserPortalWidget />
             case 'workflow':
                 return <WorkflowWidget />
             default:
@@ -308,7 +314,7 @@ export default function ImpersonateUserPage() {
             layout={finalLayout}
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 8, md: 6, sm: 2, xs: 1, xxs: 1 }}
+            cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
             rowHeight={100}
             isDraggable={isEditMode}
             isResizable={isEditMode}
