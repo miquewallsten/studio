@@ -1,12 +1,9 @@
-'use client';
 
-import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 
 type Form = {
   id: string;
@@ -17,45 +14,21 @@ type Form = {
 // This page will be the form builder UI.
 // For now, it shows the form details and a placeholder for adding fields from the library.
 
-export default function FormDetailPage({ params }: { params: { id: string } }) {
-  const [form, setForm] = useState<Form | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const formRef = doc(db, 'forms', params.id);
-
-    const getFormData = async () => {
-      const docSnap = await getDoc(formRef);
+async function getFormData(id: string): Promise<Form | null> {
+    const docSnap = await getDoc(doc(db, 'forms', id));
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setForm({
+        return {
           id: docSnap.id,
           name: data.name,
           description: data.description,
-        });
+        };
       }
-      setLoading(false);
-    };
+    return null;
+}
 
-    getFormData();
-  }, [params.id]);
-
-  if (loading) {
-    return (
-      <div className="mx-auto grid w-full max-w-4xl gap-4">
-        <Skeleton className="h-8 w-1/2" />
-        <Card>
-            <CardHeader>
-                <Skeleton className="h-6 w-1/3" />
-                <Skeleton className="h-4 w-2/3" />
-            </CardHeader>
-            <CardContent>
-                <Skeleton className="h-40 w-full" />
-            </CardContent>
-        </Card>
-      </div>
-    );
-  }
+export default async function FormDetailPage({ params }: { params: { id: string } }) {
+  const form = await getFormData(params.id);
 
   if (!form) {
     return <div>Form not found.</div>;
