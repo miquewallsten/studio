@@ -1,4 +1,6 @@
 
+'use client';
+
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
@@ -9,6 +11,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import SubFieldsEditor from '@/components/sub-fields-editor';
+import { useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Field = {
   id: string;
@@ -18,23 +22,61 @@ type Field = {
   subFields?: any[]; // Basic type for now
 };
 
-async function getFieldData(id: string): Promise<Field | null> {
-  const docSnap = await getDoc(doc(db, 'fields', id));
-  if (docSnap.exists()) {
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      label: data.label,
-      type: data.type,
-      required: data.required,
-      subFields: data.subFields || [],
-    };
-  }
-  return null;
-}
 
-export default async function FieldDetailPage({ params }: { params: { id: string } }) {
-  const field = await getFieldData(params.id);
+export default function FieldDetailPage({ params }: { params: { id: string } }) {
+  const [field, setField] = useState<Field | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const getFieldData = async () => {
+      const docSnap = await getDoc(doc(db, 'fields', params.id));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setField({
+          id: docSnap.id,
+          label: data.label,
+          type: data.type,
+          required: data.required,
+          subFields: data.subFields || [],
+        });
+      }
+      setLoading(false);
+    };
+
+    getFieldData();
+  }, [params.id]);
+
+
+  if (loading) {
+    return (
+        <div className="mx-auto grid w-full max-w-4xl gap-4">
+            <div className="flex items-center justify-between">
+                <Skeleton className="h-9 w-1/2" />
+            </div>
+             <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-1/3" />
+                    <Skeleton className="h-4 w-2/3" />
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-4">
+                        <Skeleton className="h-6 w-1/4" />
+                        <Skeleton className="h-6 w-1/4" />
+                    </div>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-1/3" />
+                    <Skeleton className="h-4 w-2/3" />
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-40 w-full" />
+                </CardContent>
+            </Card>
+        </div>
+    )
+  }
 
   if (!field) {
     return <div>Field not found.</div>;
