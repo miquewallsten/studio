@@ -10,6 +10,7 @@ import {
   Settings,
   KanbanSquare,
   Library,
+  Building,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -51,6 +52,11 @@ const navItems = [
 
 const adminNavItems = [
   {
+    href: '/dashboard/admin/tenants',
+    icon: Building,
+    label: 'Tenants',
+  },
+  {
     href: '/dashboard/admin/users',
     icon: Users,
     label: 'User Management',
@@ -86,7 +92,7 @@ export function DashboardNav() {
           <SidebarMenuItem key={item.href}>
             <Link href={item.href}>
               <SidebarMenuButton
-                isActive={pathname === item.href}
+                isActive={pathname.startsWith(item.href)}
                 tooltip={item.label}
               >
                 <item.icon className="size-4" />
