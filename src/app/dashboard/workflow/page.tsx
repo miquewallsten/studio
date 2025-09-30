@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { format } from 'date-fns';
 
 type Ticket = {
   id: string;
@@ -215,7 +216,7 @@ export default function WorkflowPage() {
                                       <h4 className="font-semibold">{item.subjectName}</h4>
                                       <p className="text-sm text-muted-foreground">{item.reportType}</p>
                                       <p className="text-xs text-muted-foreground mt-2">
-                                        Created: {item.createdAt?.toDate().toLocaleDateString()}
+                                        Created: {item.createdAt ? format(item.createdAt.toDate(), 'PPP') : ''}
                                       </p>
                                     </Card>
                                   </Link>

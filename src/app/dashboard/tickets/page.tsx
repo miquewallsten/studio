@@ -22,6 +22,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 type Ticket = {
   id: string;
@@ -55,6 +56,14 @@ export default function TicketsPage() {
 
     return () => unsubscribe();
   }, []);
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+        case 'New': return 'destructive';
+        case 'Completed': return 'default';
+        default: return 'secondary';
+    }
+}
 
   return (
     <Card>
@@ -106,12 +115,12 @@ export default function TicketsPage() {
                   <TableCell className="font-medium">{ticket.subjectName}</TableCell>
                   <TableCell>{ticket.reportType}</TableCell>
                   <TableCell>
-                    <Badge variant={ticket.status === 'New' ? 'destructive' : 'secondary'}>
+                    <Badge variant={getStatusVariant(ticket.status)}>
                       {ticket.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {ticket.createdAt?.toDate().toLocaleDateString()}
+                    {ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPP') : ''}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="ghost" size="icon">

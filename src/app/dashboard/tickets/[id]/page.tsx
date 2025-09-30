@@ -1,3 +1,5 @@
+'use client';
+
 import {
     Card,
     CardContent,
@@ -7,23 +9,64 @@ import {
     CardFooter,
   } from '@/components/ui/card';
   import { Badge } from '@/components/ui/badge';
-  import { Separator } from '@/components/ui/separator';
   import { Button } from '@/components/ui/button';
   import { FileUp, MessageSquare, UserPlus } from 'lucide-react';
+  import { useEffect, useState } from 'react';
+  import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
+  import { db } from '@/lib/firebase';
+  import { format } from 'date-fns';
+
+  type Ticket = {
+    id: string;
+    subjectName: string;
+    reportType: string;
+    status: string;
+    createdAt: Timestamp;
+    description: string;
+    clientEmail: string;
+  };
   
   export default function TicketDetailPage({ params }: { params: { id: string } }) {
-    // In a real app, you would fetch ticket data from a database using params.id
-    const ticket = {
-      id: params.id,
-      subject: '',
-      reportType: '',
-      status: '',
-      createdAt: '',
-      description: '',
-      email: '',
-      client: '',
-    };
+    const [ticket, setTicket] = useState<Ticket | null>(null);
+    const [loading, setLoading] = useState(true);
   
+    useEffect(() => {
+      const ticketRef = doc(db, 'tickets', params.id);
+      const unsubscribe = onSnapshot(ticketRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setTicket({
+            id: docSnap.id,
+            subjectName: data.subjectName,
+            reportType: data.reportType,
+            status: data.status,
+            createdAt: data.createdAt,
+            description: data.description,
+            clientEmail: data.clientEmail || 'N/A',
+          });
+        }
+        setLoading(false);
+      });
+  
+      return () => unsubscribe();
+    }, [params.id]);
+
+    const getStatusVariant = (status: string) => {
+        switch (status) {
+            case 'New': return 'destructive';
+            case 'Completed': return 'default';
+            default: return 'secondary';
+        }
+    }
+  
+    if (loading) {
+        return <div className="grid flex-1 items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">Loading...</div>
+    }
+
+    if (!ticket) {
+        return <div className="grid flex-1 items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">Ticket not found.</div>
+    }
+
     return (
       <div className="grid flex-1 items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
         <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -35,27 +78,27 @@ import {
                     Ticket #{ticket.id}
                   </CardTitle>
                   <CardDescription>
-                    {ticket.createdAt && ticket.client ? `Created on ${ticket.createdAt} by ${ticket.client}` : 'Loading ticket details...'}
+                    Created on {ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPP') : ''} by {ticket.clientEmail}
                   </CardDescription>
                 </div>
-                {ticket.status && <Badge className="text-sm" variant={ticket.status === 'New' ? 'destructive' : 'secondary'}>
+                <Badge className="text-sm" variant={getStatusVariant(ticket.status)}>
                   {ticket.status}
-                </Badge>}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold">Subject</h3>
-                  <p className="text-muted-foreground">{ticket.subject || '...'}</p>
+                  <p className="text-muted-foreground">{ticket.subjectName}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Report Type</h3>
-                  <p className="text-muted-foreground">{ticket.reportType || '...'}</p>
+                  <p className="text-muted-foreground">{ticket.reportType}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold">Description & Notes</h3>
-                  <p className="text-muted-foreground">{ticket.description || '...'}</p>
+                  <p className="text-muted-foreground">{ticket.description}</p>
                 </div>
               </div>
             </CardContent>
