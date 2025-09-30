@@ -82,9 +82,70 @@ export default function ImpersonateUserPage() {
     const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
     const [isClient, setIsClient] = useState(false);
 
+    const fetchUsers = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch('/api/users');
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch users');
+            }
+            return data.users;
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message);
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // This function will create a user if they don't exist.
+    const ensureUserExists = async (allUsers: User[], email: string, role: string) => {
+        if (!allUsers.some(u => u.email === email)) {
+            try {
+                await fetch('/api/users/invite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, role }),
+                });
+                return true; // Indicates a user was created
+            } catch (e) {
+                console.error(`Failed to create user ${email}:`, e);
+                return false;
+            }
+        }
+        return false;
+    };
+
+
     useEffect(() => {
         setIsClient(true);
         let isMounted = true;
+
+        const initialize = async () => {
+            let initialUsers = await fetchUsers();
+            
+            if (!isMounted) return;
+
+            // Seed essential users if they don't exist
+            const createdManager = await ensureUserExists(initialUsers, 'manager@example.com', 'Manager');
+            const createdAnalystA = await ensureUserExists(initialUsers, 'analyst.a@example.com', 'Analyst');
+            const createdAnalystB = await ensureUserExists(initialUsers, 'analyst.b@example.com', 'Analyst');
+
+            if (createdManager || createdAnalystA || createdAnalystB) {
+                toast({ title: 'Seeding Users', description: 'Creating default Manager and Analyst users for testing.'});
+                // Refetch users if we created any
+                initialUsers = await fetchUsers();
+            }
+            
+            if (isMounted) {
+                setUsers(initialUsers);
+            }
+        };
+
+        initialize();
 
         try {
             const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts-v3');
@@ -102,33 +163,6 @@ export default function ImpersonateUserPage() {
             setActiveWidgets(['impersonation-list', 'client-portal', 'end-user-portal', 'manager-portal', 'analyst-portal']);
         }
         
-        const fetchUsers = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const response = await fetch('/api/users');
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to fetch users');
-                }
-                if(isMounted) {
-                    const filteredUsers = data.users.filter((u: User) => u.role === 'End User' || u.tenantName !== null);
-                    setUsers(data.users);
-                }
-            } catch (err: any) {
-                console.error(err);
-                if (isMounted) {
-                    setError(err.message);
-                }
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        fetchUsers();
-
         return () => { isMounted = false; };
     }, []);
 
