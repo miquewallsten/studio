@@ -23,20 +23,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FilePenLine, UserCircle } from 'lucide-react';
+import { FilePenLine, UserCircle, ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   collection,
   onSnapshot,
   query,
   where,
-  orderBy,
   Timestamp,
 } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import FormPage from '@/app/form/[ticketId]/page';
+import Link from 'next/link';
 
 type Ticket = {
   id: string;
@@ -54,13 +54,15 @@ export function EndUserPortalWidget() {
 
   useEffect(() => {
     setLoading(true);
+    let unsubscribe: () => void;
+
     if (user) {
       const q = query(
         collection(db, 'tickets'),
         where('endUserId', '==', user.uid),
         where('status', '==', 'New')
       );
-      const unsubscribe = onSnapshot(
+      unsubscribe = onSnapshot(
         q,
         (querySnapshot) => {
           const ticketsData: Ticket[] = [];
@@ -82,15 +84,13 @@ export function EndUserPortalWidget() {
           setLoading(false);
         }
       );
-
-      return () => unsubscribe();
     } else {
       // If no user is impersonated, we show all "New" tickets as a proxy
       const q = query(
         collection(db, 'tickets'),
         where('status', '==', 'New')
       );
-       const unsubscribe = onSnapshot(
+       unsubscribe = onSnapshot(
         q,
         (querySnapshot) => {
           const ticketsData: Ticket[] = [];
@@ -110,8 +110,8 @@ export function EndUserPortalWidget() {
             console.error('Error fetching all new tickets:', error);
             setLoading(false);
         });
-        return () => unsubscribe();
     }
+     return () => unsubscribe();
   }, [user]);
 
   const handleFormSubmitted = () => {
@@ -164,10 +164,19 @@ export function EndUserPortalWidget() {
     </Dialog>
     <Card className="h-full flex flex-col non-draggable">
       <CardHeader>
-        <CardTitle>3. End-User Portal</CardTitle>
-        <CardDescription className="text-xs">
-          {user ? `Viewing as: ${user.email}`: "Pending forms for all End-Users."}
-        </CardDescription>
+        <div className="flex items-start justify-between">
+            <div>
+                <CardTitle>3. End-User Portal</CardTitle>
+                <CardDescription className="text-xs">
+                {user ? `Viewing as: ${user.email}`: "Pending forms for all End-Users."}
+                </CardDescription>
+            </div>
+            <Button asChild variant="outline" size="sm" disabled={!user || tickets.length === 0}>
+              <Link href={`/form/${tickets[0]?.id}`} target="_blank">
+                <ExternalLink className="mr-2" /> View Example Form
+              </Link>
+            </Button>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-2">
         {renderContent()}

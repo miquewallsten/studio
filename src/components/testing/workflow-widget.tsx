@@ -28,6 +28,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { Button } from '../ui/button';
+import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
 
 type Ticket = {
   id: string;
@@ -148,10 +151,19 @@ export function WorkflowWidget({ title, description }: WorkflowWidgetProps) {
   return (
     <Card className="h-full flex flex-col non-draggable">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>
-          {description}
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>
+              {description}
+            </CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/tickets" target="_blank">
+                <ExternalLink className="mr-2" /> View Full Workflow
+              </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-2">
         <DragDropContext onDragEnd={onDragEnd}>
