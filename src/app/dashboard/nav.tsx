@@ -36,6 +36,11 @@ const navItems = [
     icon: ClipboardList,
     label: 'Tickets',
   },
+  {
+    href: '/dashboard/forms',
+    icon: FileText,
+    label: 'Forms',
+  },
 ];
 
 const adminNavItems = [
