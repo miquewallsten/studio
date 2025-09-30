@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DotsHorizontalIcon } from "@radix-ui/react-icons"
@@ -8,26 +9,24 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { labels } from "./data"
-import { userSchema } from "./schema"
+import type { User } from "./schema"
+import { Edit, Trash2, Eye } from "lucide-react"
 
-interface DataTableRowActionsProps<TData> {
+interface DataTableRowActionsProps<TData extends User> {
   row: Row<TData>
+  onSelectUser: (user: TData) => void;
 }
 
-export function DataTableRowActions<TData>({
+export function DataTableRowActions<TData extends User>({
   row,
+  onSelectUser,
 }: DataTableRowActionsProps<TData>) {
+
+  const user = row.original
 
   return (
     <DropdownMenu>
@@ -41,26 +40,18 @@ export function DataTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem>Edit</DropdownMenuItem>
-        <DropdownMenuItem>Make a copy</DropdownMenuItem>
-        <DropdownMenuItem>Favorite</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSelectUser(user)}>
+            <Eye className="mr-2 h-4 w-4" />
+            View Profile
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSelectUser(user)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={"feature"}>
-              {labels.map((label) => (
-                <DropdownMenuRadioItem key={label.value} value={label.value}>
-                  {label.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          Delete
-          <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+        <DropdownMenuItem className="text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

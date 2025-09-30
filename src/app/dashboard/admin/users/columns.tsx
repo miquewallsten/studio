@@ -1,47 +1,39 @@
+
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-
-import { labels, priorities, statuses } from "./data"
-import { User } from "./schema"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import { DataTableRowActions } from "./data-table-row-actions"
+import type { User } from "./schema"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-export const columns: ColumnDef<User>[] = [
+type ColumnsProps = {
+  onSelectUser: (user: User) => void;
+}
+
+export const columns = ({ onSelectUser }: ColumnsProps): ColumnDef<User>[] => [
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        className="translate-y-[2px]"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        className="translate-y-[2px]"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "email",
+    accessorKey: "displayName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
+      <DataTableColumnHeader column={column} title="User" />
     ),
-    cell: ({ row }) => <div className="w-[80px]">{row.getValue("email")}</div>,
-    enableSorting: false,
+    cell: ({ row }) => {
+        const user = row.original;
+        return (
+            <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.photoURL ?? undefined} />
+                    <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                    <span className="font-medium">{user.displayName || 'No Name'}</span>
+                    <span className="text-xs text-muted-foreground">{user.email}</span>
+                </div>
+            </div>
+        )
+    },
+    enableSorting: true,
     enableHiding: false,
   },
   {
@@ -50,12 +42,16 @@ export const columns: ColumnDef<User>[] = [
       <DataTableColumnHeader column={column} title="Role" />
     ),
     cell: ({ row }) => {
+      const role = row.getValue("role") as string;
       return (
         <div className="flex space-x-2">
-          <Badge variant="outline">{row.getValue("role")}</Badge>
+          <Badge variant={role === 'Unassigned' ? 'destructive' : 'secondary'}>{role}</Badge>
         </div>
       )
     },
+    filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id));
+    }
   },
   {
     accessorKey: "tenantName",
@@ -63,9 +59,10 @@ export const columns: ColumnDef<User>[] = [
       <DataTableColumnHeader column={column} title="Tenant" />
     ),
     cell: ({ row }) => {
+      const tenantName = row.getValue("tenantName") as string | null;
       return (
-        <div className="flex w-[100px] items-center">
-          <span>{row.getValue("tenantName") || "N/A"}</span>
+        <div className="flex items-center">
+          <span>{tenantName || "N/A"}</span>
         </div>
       )
     },
@@ -73,8 +70,19 @@ export const columns: ColumnDef<User>[] = [
       return value.includes(row.getValue(id))
     },
   },
+    {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Created" />
+    ),
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("createdAt"))
+      const formattedDate = date.toLocaleDateString()
+      return <div>{formattedDate}</div>
+    },
+  },
   {
     id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} />,
+    cell: ({ row }) => <DataTableRowActions row={row} onSelectUser={onSelectUser} />,
   },
 ]

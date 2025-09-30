@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Cross2Icon } from "@radix-ui/react-icons"
@@ -6,9 +7,8 @@ import { Table } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTableViewOptions } from "@/components/ui/data-table-view-options"
+import { DataTableFacetedFilter } from "./data-table-faceted-filter"
 
-// import { priorities, statuses } from "../data/data"
-// import { DataTableFacetedFilter } from "./data-table-faceted-filter"
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -19,31 +19,36 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
 
+  const roles = [
+      {value: "Super Admin", label: "Super Admin"},
+      {value: "Admin", label: "Admin"},
+      {value: "Manager", label: "Manager"},
+      {value: "Analyst", label: "Analyst"},
+      {value: "View Only", label: "View Only"},
+      {value: "Tenant Admin", label: "Tenant Admin"},
+      {value: "Tenant User", label: "Tenant User"},
+      {value: "End User", label: "End User"},
+      {value: "Unassigned", label: "Unassigned"},
+  ];
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Filter users..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
+          placeholder="Filter by email..."
+          value={(table.getColumn("displayName")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
+            table.getColumn("displayName")?.setFilterValue(event.target.value)
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
-        {/* {table.getColumn("status") && (
+        {table.getColumn("role") && (
           <DataTableFacetedFilter
-            column={table.getColumn("status")}
-            title="Status"
-            options={statuses}
+            column={table.getColumn("role")}
+            title="Role"
+            options={roles}
           />
         )}
-        {table.getColumn("priority") && (
-          <DataTableFacetedFilter
-            column={table.getColumn("priority")}
-            title="Priority"
-            options={priorities}
-          />
-        )} */}
         {isFiltered && (
           <Button
             variant="ghost"

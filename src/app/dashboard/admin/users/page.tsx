@@ -8,42 +8,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, AlertCircle, PlusCircle } from 'lucide-react';
+import { AlertCircle, PlusCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
 import { UserProfileDialog } from '@/components/user-profile-dialog';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
+import type { User } from './schema';
 
-type User = {
-    uid: string;
-    email?: string;
-    displayName?: string;
-    photoURL?: string;
-    phone?: string;
-    disabled: boolean;
-    tenantId?: string;
-    tenantName?: string | null;
-    role: string;
-    createdAt: string;
-}
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
@@ -78,10 +52,6 @@ export default function AdminUsersPage() {
     const handleUserInvitedOrUpdated = () => {
         fetchUsers(); // Re-fetch the user list after a new user is invited or updated
     }
-
-    const handleRowClick = (user: User) => {
-        setSelectedUser(user);
-    }
     
     const handleDialogClose = () => {
         setSelectedUser(null);
@@ -113,7 +83,7 @@ export default function AdminUsersPage() {
         <CardHeader>
           <CardTitle>All Authenticated Users</CardTitle>
           <CardDescription>
-            This is a list of all users in Firebase Authentication. Click a user to see their profile.
+            This is a list of all users in Firebase Authentication. Use the actions menu to view or edit a user.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -146,7 +116,10 @@ FIREBASE_PRIVATE_KEY="..."`}
            {loading ? (
              <p>Loading users...</p>
            ) : (
-            <DataTable columns={columns} data={users} />
+            <DataTable 
+                columns={columns({ onSelectUser: setSelectedUser })} 
+                data={users} 
+            />
            )}
         </CardContent>
       </Card>
