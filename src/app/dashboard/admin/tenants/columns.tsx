@@ -5,6 +5,8 @@ import { ColumnDef } from "@tanstack/react-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import type { Tenant } from "./schema"
 import { Badge } from "@/components/ui/badge"
+import { ExternalLink } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 type ColumnsProps = {
   onSelectTenant: (tenant: Tenant) => void;
@@ -24,6 +26,29 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
     },
     enableSorting: true,
     enableHiding: false,
+  },
+  {
+    accessorKey: "url",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Portal URL" />
+    ),
+    cell: ({ row }) => {
+        const url = row.original.url;
+        if (!url) return <span className="text-muted-foreground">Not set</span>;
+        return (
+            <a 
+              href={url.startsWith('http') ? url : `https://${url}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-blue-500 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+                {url}
+                <ExternalLink className="size-3" />
+            </a>
+        )
+    },
+    enableSorting: false,
   },
   {
     accessorKey: "status",
