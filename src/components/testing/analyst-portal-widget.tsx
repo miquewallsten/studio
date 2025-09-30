@@ -56,32 +56,37 @@ export function AnalystPortalWidget() {
 
   useEffect(() => {
     setLoading(true);
-    const q = query(
-      collection(db, 'tickets'),
-      where('status', '==', 'In Progress')
-    );
-    const unsubscribe = onSnapshot(
-      q,
-      (querySnapshot) => {
-        const ticketsData: Ticket[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          ticketsData.push({
-            id: doc.id,
-            subjectName: data.subjectName,
-            reportType: data.reportType,
-          });
-        });
-        setTickets(ticketsData.sort((a,b) => a.subjectName.localeCompare(b.subjectName)));
+    if (user) {
+        const q = query(
+        collection(db, 'tickets'),
+        where('status', '==', 'In Progress'),
+        where('assignedAnalystId', '==', user.uid)
+        );
+        const unsubscribe = onSnapshot(
+        q,
+        (querySnapshot) => {
+            const ticketsData: Ticket[] = [];
+            querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            ticketsData.push({
+                id: doc.id,
+                subjectName: data.subjectName,
+                reportType: data.reportType,
+            });
+            });
+            setTickets(ticketsData.sort((a,b) => a.subjectName.localeCompare(b.subjectName)));
+            setLoading(false);
+        },
+        (error) => {
+            console.error('Error fetching analyst tickets:', error);
+            setLoading(false);
+        }
+        );
+        return () => unsubscribe();
+    } else {
+        setTickets([]);
         setLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching analyst tickets:', error);
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
+    }
   }, [user]);
 
   const submitForReview = async (ticketId: string) => {
@@ -105,7 +110,7 @@ export function AnalystPortalWidget() {
   }
 
   const renderContent = () => {
-    if (loadingUser || loading) {
+    if (loadingUser) {
       return (
         <div className="p-4 space-y-2">
           <Skeleton className="h-8 w-full" />
@@ -114,6 +119,32 @@ export function AnalystPortalWidget() {
         </div>
       );
     }
+
+    if (!user) {
+      return (
+        <div className="flex items-center justify-center h-full text-center p-4">
+            <div>
+                <UserCircle className="mx-auto h-12 w-12 text-muted-foreground" />
+                <p className="mt-4 text-sm text-muted-foreground">
+                    No analyst impersonated.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                    Use Widget 1 to log in as an analyst.
+                </p>
+            </div>
+        </div>
+      );
+    }
+
+    if (loading) {
+        return (
+          <div className="p-4 space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        );
+      }
     
     return (
       <Table>
@@ -127,7 +158,7 @@ export function AnalystPortalWidget() {
           {tickets.length === 0 ? (
             <TableRow>
               <TableCell colSpan={2} className="h-24 text-center text-sm">
-                No tickets in progress.
+                No tickets assigned to you.
               </TableCell>
             </TableRow>
           ) : (
@@ -161,7 +192,7 @@ export function AnalystPortalWidget() {
       <CardHeader>
         <CardTitle>5. Analyst's Portal</CardTitle>
         <CardDescription className="text-xs">
-          View tickets in progress and submit them for review.
+          {user ? `Viewing as: ${user.email}`: "View tickets in progress and submit them for review."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-2">
