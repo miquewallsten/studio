@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Users,
   Settings,
+  KanbanSquare,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -24,6 +25,11 @@ const navItems = [
     href: '/dashboard',
     icon: LayoutDashboard,
     label: 'Dashboard',
+  },
+  {
+    href: '/dashboard/workflow',
+    icon: KanbanSquare,
+    label: 'Workflow',
   },
   {
     href: '/dashboard/tickets',
