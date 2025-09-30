@@ -21,28 +21,63 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { suggestComplianceQuestions } from '@/ai/flows/compliance-question-suggestions';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useState } from 'react';
 
 export default function NewTicketPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsLoading(true);
     const formData = new FormData(event.currentTarget);
-    const email = formData.get('email');
-    
-    // In a real application, you would:
-    // 1. Call the `suggestComplianceQuestions` AI flow.
-    // 2. Save the ticket and form data to Firestore.
-    // 3. Trigger an email to the subject with a link to the form.
+    const subjectName = formData.get('subject-name') as string;
+    const email = formData.get('email') as string;
+    const reportType = formData.get('report-type') as string;
+    const description = formData.get('description') as string;
 
-    toast({
-      title: 'Ticket Created',
-      description: `A new form has been dispatched to ${email}.`,
-      variant: 'default',
-    });
+    try {
+      // 1. Call the AI flow to get suggested questions
+      const { suggestedQuestions } = await suggestComplianceQuestions({
+        reportType,
+        description,
+      });
+      
+      // 2. Save the ticket and form data to Firestore.
+      await addDoc(collection(db, 'tickets'), {
+        subjectName,
+        email,
+        reportType,
+        description,
+        suggestedQuestions,
+        status: 'New',
+        createdAt: serverTimestamp(),
+      });
 
-    router.push('/dashboard/tickets');
+      // 3. In a real app, you would trigger an email to the subject.
+      // For now, we just show a success toast.
+      toast({
+        title: 'Ticket Created',
+        description: `A new form has been dispatched to ${email}.`,
+        variant: 'default',
+      });
+
+      router.push('/dashboard/tickets');
+
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create ticket. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -61,7 +96,7 @@ export default function NewTicketPage() {
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="subject-name">Subject Name/Company</Label>
-                <Input id="subject-name" name="subject-name" required />
+                <Input id="subject-name" name="subject-name" required disabled={isLoading} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Subject's Email</Label>
@@ -71,11 +106,12 @@ export default function NewTicketPage() {
                   type="email"
                   placeholder="The form will be sent to this email"
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="report-type">Report Type</Label>
-                <Select name="report-type" required>
+                <Select name="report-type" required disabled={isLoading}>
                   <SelectTrigger id="report-type">
                     <SelectValue placeholder="Select a report type" />
                   </SelectTrigger>
@@ -98,6 +134,7 @@ export default function NewTicketPage() {
                   id="description"
                   name="description"
                   placeholder="Include any specific instructions or details."
+                  disabled={isLoading}
                 />
               </div>
             </CardContent>
@@ -106,7 +143,9 @@ export default function NewTicketPage() {
             <Button variant="outline" asChild>
                 <Link href="/dashboard/tickets">Cancel</Link>
             </Button>
-            <Button type="submit" className="bg-accent hover:bg-accent/90">Create and Send Form</Button>
+            <Button type="submit" className="bg-accent hover:bg-accent/90" disabled={isLoading}>
+                {isLoading ? 'Creating...' : 'Create and Send Form'}
+            </Button>
           </div>
         </div>
       </form>

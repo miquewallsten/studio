@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -14,10 +16,46 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
+
+type Ticket = {
+  id: string;
+  subjectName: string;
+  reportType: string;
+  status: string;
+  createdAt: Timestamp;
+};
 
 export default function TicketsPage() {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const ticketsData: Ticket[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        ticketsData.push({
+          id: doc.id,
+          subjectName: data.subjectName,
+          reportType: data.reportType,
+          status: data.status,
+          createdAt: data.createdAt,
+        });
+      });
+      setTickets(ticketsData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   return (
     <Card>
       <CardHeader>
@@ -40,7 +78,6 @@ export default function TicketsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ticket ID</TableHead>
               <TableHead>Subject</TableHead>
               <TableHead>Report Type</TableHead>
               <TableHead>Status</TableHead>
@@ -51,11 +88,41 @@ export default function TicketsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
-                No tickets found.
-              </TableCell>
-            </TableRow>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  Loading tickets...
+                </TableCell>
+              </TableRow>
+            ) : tickets.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  No tickets found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              tickets.map((ticket) => (
+                <TableRow key={ticket.id}>
+                  <TableCell className="font-medium">{ticket.subjectName}</TableCell>
+                  <TableCell>{ticket.reportType}</TableCell>
+                  <TableCell>
+                    <Badge variant={ticket.status === 'New' ? 'destructive' : 'secondary'}>
+                      {ticket.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {ticket.createdAt?.toDate().toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="ghost" size="icon">
+                      <Link href={`/dashboard/tickets/${ticket.id}`}>
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>
