@@ -179,14 +179,14 @@ export function EndUserPortalWidget() {
       <CardHeader>
         <div className="flex items-start justify-between">
             <div>
-                <CardTitle>3. End-User Portal</CardTitle>
+                <CardTitle>3. End-User Fills Form</CardTitle>
                 <CardDescription className="text-xs">
                 {user ? `Viewing as: ${user.email}`: "Impersonate an End-User to see their forms."}
                 </CardDescription>
             </div>
             <Button asChild variant="outline" size="sm" disabled={!user || tickets.length === 0}>
               <Link href={`/form/${tickets[0]?.id}`} target="_blank">
-                <ExternalLink className="mr-2" /> View Example Form
+                <ExternalLink className="mr-2" /> View Full
               </Link>
             </Button>
         </div>

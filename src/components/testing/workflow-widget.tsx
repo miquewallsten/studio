@@ -154,13 +154,13 @@ export function WorkflowWidget({ title, description }: WorkflowWidgetProps) {
         <div className="flex items-start justify-between">
           <div>
             <CardTitle>{title}</CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               {description}
             </CardDescription>
           </div>
           <Button asChild variant="outline" size="sm">
               <Link href="/dashboard/tickets" target="_blank">
-                <ExternalLink className="mr-2" /> View Full Workflow
+                <ExternalLink className="mr-2" /> View Full
               </Link>
           </Button>
         </div>

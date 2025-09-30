@@ -131,7 +131,7 @@ export function ClientPortalWidget() {
                     No client impersonated.
                 </p>
                 <p className="text-xs text-muted-foreground">
-                    Use the 'Impersonate User' widget to log in as a client.
+                    Use Widget 1 to log in as a client.
                 </p>
             </div>
         </div>
@@ -184,7 +184,7 @@ export function ClientPortalWidget() {
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle>2. Client Portal</CardTitle>
+            <CardTitle>2. Client Creates Request</CardTitle>
             <CardDescription className="text-xs">
               {user ? `Viewing as: ${user.email}` : 'Impersonate a client to begin.'}
             </CardDescription>
@@ -192,7 +192,7 @@ export function ClientPortalWidget() {
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm" disabled={!user}>
               <Link href="/client/dashboard" target="_blank">
-                <ExternalLink className="mr-2" /> View Full Portal
+                <ExternalLink className="mr-2" /> View Full
               </Link>
             </Button>
             <Button variant="outline" size="sm" disabled={!user} onClick={() => setRequestDialogOpen(true)}>
@@ -265,10 +265,10 @@ function NewRequestDialog({isOpen, onOpenChange, clientUser}: {isOpen: boolean, 
         });
   
         toast({
-          title: 'Request Created',
-          description: `The new End-User will now appear in the Impersonation list. A new form is pending in the End-User Portal.`,
+          title: 'Request Created & User Invited',
+          description: `The End-User now appears in Widget 1. A form is pending for them in Widget 3.`,
           variant: 'default',
-          duration: 6000,
+          duration: 8000,
         });
   
         onOpenChange(false);
@@ -291,7 +291,7 @@ function NewRequestDialog({isOpen, onOpenChange, clientUser}: {isOpen: boolean, 
           <DialogHeader>
             <DialogTitle>Create New Request</DialogTitle>
             <DialogDescription>
-              Provide details about the person or company to be investigated. This will create a new End-User and dispatch a form.
+              This creates a new End-User and dispatches a form, simulating Step 2 and 3 of the workflow.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
@@ -343,7 +343,7 @@ function NewRequestDialog({isOpen, onOpenChange, clientUser}: {isOpen: boolean, 
             <DialogFooter>
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                 <Button type="submit" className="bg-accent hover:bg-accent/90" disabled={isLoading}>
-                    {isLoading ? 'Creating...' : 'Create and Send Form'}
+                    {isLoading ? 'Creating...' : 'Create & Send Form'}
                 </Button>
             </DialogFooter>
           </form>

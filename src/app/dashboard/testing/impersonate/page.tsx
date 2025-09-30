@@ -45,19 +45,19 @@ const WIDGET_DEFINITIONS: {
   [key: string]: { title: string; defaultLayout: Layout };
 } = {
   'impersonation-list': {
-    title: 'Impersonation',
+    title: '1. Impersonate User',
     defaultLayout: { i: 'impersonation-list', x: 0, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
   'client-portal': {
-    title: 'Client Portal',
+    title: '2. Client Creates Request',
     defaultLayout: { i: 'client-portal', x: 2, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
   'end-user-portal': {
-    title: 'End-User Portal',
+    title: '3. End-User Fills Form',
     defaultLayout: { i: 'end-user-portal', x: 4, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
   'manager-portal': {
-    title: 'Operations Manager Portal',
+    title: '4. Manager Assigns Ticket',
     defaultLayout: { i: 'manager-portal', x: 0, y: 4, w: 6, h: 4, minW: 3, minH: 4},
   }
 };
@@ -106,8 +106,7 @@ export default function ImpersonateUserPage() {
                     throw new Error(data.error || 'Failed to fetch users');
                 }
                 if(isMounted) {
-                    // We only need 'End User' and 'Super Admin' (client) roles for testing
-                    const filteredUsers = data.users.filter((u: User) => u.role === 'End User' || u.role === 'Super Admin' || u.tenantName !== null);
+                    const filteredUsers = data.users.filter((u: User) => u.role === 'End User' || u.tenantName !== null);
                     setUsers(filteredUsers);
                 }
             } catch (err: any) {
@@ -175,7 +174,7 @@ export default function ImpersonateUserPage() {
 
             toast({
                 title: 'Impersonation Started',
-                description: `You are now logged in as ${targetEmail || 'user'}. Other widgets will now reflect this user.`,
+                description: `You are now logged in as ${targetEmail || 'user'}.`,
             });
             
         } catch (err: any) {
@@ -199,7 +198,7 @@ export default function ImpersonateUserPage() {
                         <CardHeader>
                             <CardTitle>1. Impersonate User</CardTitle>
                             <CardDescription>
-                            Select a user to log in as them. Other widgets will update to reflect their view.
+                            Start by logging in as a Client. This creates a ticket (Step 2). Then, log in as the End-User to fill the form (Step 3).
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-auto">
@@ -237,7 +236,7 @@ export default function ImpersonateUserPage() {
                                         <TableRow key={user.uid} className={auth.currentUser?.uid === user.uid ? 'bg-muted/50' : ''}>
                                             <TableCell className="font-medium text-xs truncate">{user.email || 'N/A'} {auth.currentUser?.uid === user.uid && '(You)'}</TableCell>
                                             <TableCell>
-                                                <Badge variant={user.role === 'End User' ? 'outline' : 'secondary'}>{user.role === 'End User' ? user.tenantName : user.role}</Badge>
+                                                <Badge variant={user.role === 'End User' ? 'outline' : 'secondary'}>{user.tenantName || user.role}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                             <Button 
@@ -263,7 +262,7 @@ export default function ImpersonateUserPage() {
             case 'end-user-portal':
                 return <EndUserPortalWidget />
             case 'manager-portal':
-                return <WorkflowWidget title="4. Operations Manager Portal" description="This is the manager's view. Drag tickets to update their status." />
+                return <WorkflowWidget title="4. Manager Assigns Ticket" description="Drag tickets between columns to update status. This represents the manager's workflow view." />
             default:
                 return (
                     <Card>
