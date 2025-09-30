@@ -33,7 +33,7 @@ export function DataTableToolbar<TData>({
   ];
 
   const tenantNames = React.useMemo(() => {
-    const tenantNameColumn = table.getColumn("tenantName");
+    const tenantNameColumn = table.getAllColumns().find(c => c.id === 'tenantName');
     if (!tenantNameColumn) {
         return [];
     }
@@ -43,10 +43,10 @@ export function DataTableToolbar<TData>({
         if (tenantName) names.add(tenantName);
     });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table.getColumn("tenantName"), table.getPreFilteredRowModel().rows]);
+  }, [table]);
 
 
-  // Find a generic column to filter by text, like 'name' or 'displayName'
+  // Find a generic column to filter by text, like 'name' or 'email' or 'subject'
   const filterColumn = table.getAllColumns().find(c => {
     const id = c.id.toLowerCase();
     return id.includes('name') || id.includes('email') || id.includes('subject');
