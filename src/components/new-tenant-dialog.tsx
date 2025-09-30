@@ -157,7 +157,7 @@ export function NewTenantDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-md">
           {step === 1 && (
             <form onSubmit={handleCreateTenant}>
                 <DialogHeader>
@@ -221,7 +221,6 @@ export function NewTenantDialog({
                         />
                      </div>
                      <div className="grid gap-2">
-                        {/* This will eventually be replaced by a rich text editor */}
                         <Textarea 
                             id="body" 
                             value={emailContent.html} 

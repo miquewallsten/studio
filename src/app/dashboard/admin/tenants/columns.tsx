@@ -28,6 +28,19 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
     enableHiding: false,
   },
   {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+        const status = row.original.status;
+        return (
+            <Badge variant={status === 'INVITED' ? 'destructive' : 'default'}>{status || 'ACTIVE'}</Badge>
+        )
+    },
+    enableSorting: true,
+  },
+    {
     accessorKey: "url",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Portal URL" />
@@ -49,19 +62,6 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
         )
     },
     enableSorting: false,
-  },
-  {
-    accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
-    ),
-    cell: ({ row }) => {
-        const status = row.original.status;
-        return (
-            <Badge variant={status === 'INVITED' ? 'destructive' : 'default'}>{status || 'ACTIVE'}</Badge>
-        )
-    },
-    enableSorting: true,
   },
   {
     accessorKey: "userCount",
