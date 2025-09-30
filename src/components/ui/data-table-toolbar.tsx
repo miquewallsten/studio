@@ -33,7 +33,7 @@ export function DataTableToolbar<TData>({
   ];
 
   const tenantNames = React.useMemo(() => {
-    const tenantNameColumn = table.findColumn("tenantName");
+    const tenantNameColumn = table.getAllColumns().find(c => c.id === 'tenantName');
     if (!tenantNameColumn) {
         return [];
     }
@@ -52,8 +52,8 @@ export function DataTableToolbar<TData>({
     return id.includes('name') || id.includes('email') || id.includes('subject');
   });
 
-  const roleColumn = table.findColumn("role");
-  const tenantNameColumn = table.findColumn("tenantName");
+  const roleColumn = table.getAllColumns().find(c => c.id === 'role');
+  const tenantNameColumn = table.getAllColumns().find(c => c.id === 'tenantName');
 
   return (
     <div className="flex items-center justify-between">
