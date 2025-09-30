@@ -30,7 +30,7 @@ import { WidgetLibrary } from '@/components/dashboard/widget-library';
 import { ClientPortalWidget } from '@/components/testing/client-portal-widget';
 import { WorkflowWidget } from '@/components/testing/workflow-widget';
 import { EndUserPortalWidget } from '@/components/testing/end-user-portal-widget';
-import { AnalystPortalWidget } from '@/components/testing/analyst-portal-widget';
+import { AnalystWorkloadWidget } from '@/components/testing/analyst-portal-widget';
 
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -59,11 +59,11 @@ const WIDGET_DEFINITIONS: {
     defaultLayout: { i: 'end-user-portal', x: 4, y: 0, w: 2, h: 4, minW: 2, minH: 3 },
   },
   'manager-portal': {
-    title: "4 & 6. Manager's Portal",
+    title: "4. Manager Assigns Ticket",
     defaultLayout: { i: 'manager-portal', x: 0, y: 4, w: 4, h: 4, minW: 3, minH: 4},
   },
   'analyst-portal': {
-    title: "5. Analyst's Portal",
+    title: "5. Analyst Workload",
     defaultLayout: { i: 'analyst-portal', x: 4, y: 4, w: 2, h: 4, minW: 2, minH: 3 },
   }
 };
@@ -238,7 +238,7 @@ export default function ImpersonateUserPage() {
                         <CardHeader>
                             <CardTitle>1. Impersonate User</CardTitle>
                             <CardDescription>
-                            Start the workflow by impersonating a user. The other widgets will update to reflect their perspective.
+                            This is the master control. Choose a user to impersonate here, and the other widgets will react to that user's role and data.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-auto">
@@ -302,9 +302,9 @@ export default function ImpersonateUserPage() {
             case 'end-user-portal':
                 return <EndUserPortalWidget />
             case 'manager-portal':
-                return <WorkflowWidget title="4 & 6. Manager's Portal" description="Drag tickets from 'New' to an analyst's column to assign them. Drag tickets to other columns to update status." />
+                return <WorkflowWidget title="4. Manager Assigns Ticket" description="Drag tickets from 'New' to an analyst's column to assign them." />
             case 'analyst-portal':
-                return <AnalystPortalWidget />
+                return <AnalystWorkloadWidget />
             default:
                 return (
                     <Card>
