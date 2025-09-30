@@ -118,7 +118,8 @@ FIREBASE_PRIVATE_KEY="..."`}
            ) : (
             <DataTable 
                 columns={columns({ onSelectUser: setSelectedUser })} 
-                data={users} 
+                data={users}
+                onRowClick={(row) => setSelectedUser(row.original)}
             />
            )}
         </CardContent>

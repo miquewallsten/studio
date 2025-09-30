@@ -9,7 +9,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
     try {
         const { uid } = params;
         const body = await request.json();
-        const { displayName, phone } = body;
+        const { displayName, phone, tags } = body;
 
         // --- Security Check: Ensure caller is an admin ---
         const cookieStore = cookies();
@@ -35,11 +35,21 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         }
 
         // Update Firestore user profile document
+        const adminDb = getAdminDb();
+        const userRef = adminDb.collection('users').doc(uid);
+        const profileData: { [key: string]: any } = {};
+
         if (phone !== undefined) {
-            const adminDb = getAdminDb();
-            const userRef = adminDb.collection('users').doc(uid);
-            await userRef.set({ phone: phone }, { merge: true });
+            profileData.phone = phone;
         }
+        if (tags !== undefined) {
+            profileData.tags = tags;
+        }
+
+        if (Object.keys(profileData).length > 0) {
+            await userRef.set(profileData, { merge: true });
+        }
+
 
         return NextResponse.json({ message: 'User updated successfully' });
 

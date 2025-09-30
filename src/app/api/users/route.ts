@@ -17,7 +17,7 @@ async function getTenants() {
 async function getUserProfiles() {
     const adminDb = getAdminDb();
     const profilesSnapshot = await adminDb.collection('users').get();
-    const profiles: { [key: string]: { phone?: string } } = {};
+    const profiles: { [key: string]: { phone?: string, tags?: string[] } } = {};
     profilesSnapshot.forEach(doc => {
         profiles[doc.id] = doc.data();
     });
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
             photoURL: userRecord.photoURL,
             disabled: userRecord.disabled,
             phone: profile?.phone || null,
+            tags: profile?.tags || [],
             tenantId: tenantId,
             tenantName: tenantId ? tenants[tenantId] : null,
             role: role,

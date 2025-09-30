@@ -12,6 +12,7 @@ export const userSchema = z.object({
   tenantId: z.string().optional(),
   tenantName: z.string().nullable().optional(),
   role: z.string(),
+  tags: z.array(z.string()).optional(),
   createdAt: z.string(),
 })
 

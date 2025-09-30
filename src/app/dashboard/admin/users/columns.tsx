@@ -54,6 +54,25 @@ export const columns = ({ onSelectUser }: ColumnsProps): ColumnDef<User>[] => [
     }
   },
   {
+    accessorKey: "tags",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Tags" />
+    ),
+    cell: ({ row }) => {
+        const tags = row.getValue("tags") as string[] | undefined;
+        if (!tags || tags.length === 0) {
+            return null;
+        }
+        return (
+            <div className="flex flex-wrap gap-1">
+                {tags.map((tag, i) => (
+                    <Badge key={i} variant="outline">{tag}</Badge>
+                ))}
+            </div>
+        )
+    }
+  },
+  {
     accessorKey: "tenantName",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Tenant" />

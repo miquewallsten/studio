@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -18,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import { Briefcase, KeyRound, Ticket, Edit, Mail, Phone, User as UserIcon, Calendar, Info } from 'lucide-react';
+import { Briefcase, KeyRound, Ticket, Edit, Mail, Phone, User as UserIcon, Calendar, Info, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { useState, useEffect } from 'react';
@@ -35,6 +36,7 @@ type User = {
     tenantId?: string;
     tenantName?: string | null;
     role: string;
+    tags?: string[];
     createdAt: string;
 }
 
@@ -51,6 +53,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
     const [formData, setFormData] = useState({
         displayName: '',
         phone: '',
+        tags: [] as string[],
     });
 
     useEffect(() => {
@@ -58,6 +61,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
             setFormData({
                 displayName: user.displayName || '',
                 phone: user.phone || '',
+                tags: user.tags || [],
             });
             setIsEditMode(false); // Reset edit mode when user changes
         }
@@ -69,6 +73,11 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
+        setFormData(prev => ({...prev, tags}));
+    }
 
     const handleSaveChanges = async () => {
         try {
@@ -101,10 +110,13 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
 
     const handleCancelEdit = () => {
         // Reset form data to original user data
-        setFormData({
-            displayName: user.displayName || '',
-            phone: user.phone || '',
-        });
+        if (user) {
+            setFormData({
+                displayName: user.displayName || '',
+                phone: user.phone || '',
+                tags: user.tags || [],
+            });
+        }
         setIsEditMode(false);
     };
 
@@ -118,7 +130,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                             <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <DialogTitle className="text-xl font-bold font-headline">{user.displayName || user.email}</DialogTitle>
+                            <DialogTitle className="text-xl font-bold font-headline">{isEditMode ? formData.displayName : user.displayName || user.email}</DialogTitle>
                             <DialogDescription className="text-sm text-muted-foreground">{user.email}</DialogDescription>
                         </div>
                          <Button variant="outline" size="icon" className="ml-auto" onClick={() => setIsEditMode(!isEditMode)}>
@@ -136,9 +148,9 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                                 <CardTitle>Admin Actions</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                                <Button variant="outline" className="w-full">Change Role</Button>
-                                <Button variant="outline" className="w-full">Assign Tenant</Button>
-                                <Button variant="destructive" className="w-full">
+                                <Button variant="outline" className="w-full justify-start">Change Role</Button>
+                                <Button variant="outline" className="w-full justify-start">Assign Tenant</Button>
+                                <Button variant="destructive" className="w-full justify-start">
                                     {user.disabled ? 'Enable User' : 'Disable User'}
                                 </Button>
                             </CardContent>
@@ -173,6 +185,10 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                                             <Label htmlFor="phone">Phone</Label>
                                             <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} />
                                         </div>
+                                         <div className="grid gap-2">
+                                            <Label htmlFor="tags">Tags</Label>
+                                            <Input id="tags" name="tags" value={formData.tags.join(', ')} onChange={handleTagsChange} placeholder="Add tags, comma separated"/>
+                                        </div>
                                     </>
                                 ) : (
                                     <>
@@ -182,11 +198,17 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="text-muted-foreground flex items-center gap-2"><Mail className="size-4"/> Email</span>
-                                            <span>{user.email}</span>
+                                            <span className="truncate max-w-[200px]">{user.email}</span>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="text-muted-foreground flex items-center gap-2"><Phone className="size-4"/> Phone</span>
                                             <span>{user.phone || 'Not set'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground flex items-center gap-2"><Tag className="size-4"/> Tags</span>
+                                            <div className="flex flex-wrap gap-1 justify-end max-w-[200px]">
+                                                {user.tags && user.tags.length > 0 ? user.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>) : 'No tags'}
+                                            </div>
                                         </div>
                                     </>
                                 )}
