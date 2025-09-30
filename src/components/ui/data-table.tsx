@@ -17,6 +17,7 @@ import {
   useReactTable,
   Row,
   FilterFn,
+  ColumnSizingState,
 } from "@tanstack/react-table"
 import { rankItem } from '@tanstack/match-sorter-utils'
 
@@ -63,6 +64,8 @@ export function DataTable<TData, TValue>({
     []
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({});
+
 
   const table = useReactTable({
     data,
@@ -75,11 +78,14 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnFilters,
+      columnSizing,
     },
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnSizingChange: setColumnSizing,
+    columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -93,18 +99,31 @@ export function DataTable<TData, TValue>({
     <div className="space-y-4">
       <DataTableToolbar table={table} />
       <div className="rounded-md border">
-        <Table>
+        <Table style={{ width: table.getCenterTotalSize() }}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead 
+                        key={header.id} 
+                        colSpan={header.colSpan}
+                        style={{ width: header.getSize() }}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
                             header.getContext()
+                          )}
+                          {header.column.getCanResize() && (
+                            <div
+                                onMouseDown={header.getResizeHandler()}
+                                onTouchStart={header.getResizeHandler()}
+                                className={`resizer ${
+                                    header.column.getIsResizing() ? 'isResizing' : ''
+                                }`}
+                            ></div>
                           )}
                     </TableHead>
                   )
@@ -122,7 +141,11 @@ export function DataTable<TData, TValue>({
                   className="cursor-pointer"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-1 px-4">
+                    <TableCell 
+                        key={cell.id} 
+                        className="py-1 px-4"
+                        style={{ width: cell.column.getSize() }}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

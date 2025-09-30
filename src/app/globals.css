@@ -87,6 +87,14 @@ body {
   }
 }
 
+.resizer {
+  @apply absolute right-0 top-0 h-full w-[5px] cursor-col-resize select-none touch-none;
+}
+.resizer.isResizing {
+  @apply bg-primary opacity-50;
+}
+
+
 .react-grid-layout {
   position: relative;
   transition: height 200ms ease;
