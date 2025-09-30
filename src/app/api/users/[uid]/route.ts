@@ -63,3 +63,41 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { uid: string } }) {
+    try {
+        const { uid } = params;
+
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+        }
+        const idToken = authHeader.split('Bearer ')[1];
+
+        const adminAuth = getAdminAuth();
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        
+        if (decodedToken.role !== 'Super Admin') {
+            return NextResponse.json({ error: 'Forbidden. Only Super Admins can delete users.' }, { status: 403 });
+        }
+
+        await adminAuth.deleteUser(uid);
+        
+        // Optionally, delete user data from Firestore as well
+        const adminDb = getAdminDb();
+        await adminDb.collection('users').doc(uid).delete().catch(err => {
+            // Log error but don't fail the whole operation if Firestore deletion fails
+            console.error(`Failed to delete Firestore user profile for UID ${uid}:`, err);
+        });
+
+        return NextResponse.json({ message: 'User deleted successfully' });
+
+    } catch (error: any) {
+        console.error('Error deleting user:', error);
+        let errorMessage = 'An unexpected error occurred.';
+        if (error.code === 'auth/user-not-found') {
+            errorMessage = 'User not found.';
+        }
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
+    }
+}

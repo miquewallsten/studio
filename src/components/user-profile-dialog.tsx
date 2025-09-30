@@ -12,6 +12,16 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
     Card,
     CardContent,
     CardHeader,
@@ -21,7 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import { Briefcase, KeyRound, Ticket, Edit, Mail, Phone, User as UserIcon, Calendar, Info, Tag, X, Check, ChevronsUpDown } from 'lucide-react';
+import { Briefcase, KeyRound, Ticket, Edit, Mail, Phone, User as UserIcon, Calendar, Info, Tag, X, Check, ChevronsUpDown, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from './ui/separator';
 import { useState, useEffect, useRef } from 'react';
@@ -63,10 +73,12 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     const { role: currentUserRole } = useAuthRole();
     const [isEditMode, setIsEditMode] = useState(false);
     const [isChangeRoleOpen, setChangeRoleOpen] = useState(false);
+    const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    
     const [formData, setFormData] = useState({
-        displayName: user?.displayName || '',
-        phone: user?.phone || '',
-        tags: user?.tags || [] as string[],
+        displayName: '',
+        phone: '',
+        tags: [] as string[],
     });
 
     // For the multi-select combobox
@@ -74,6 +86,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     const [inputValue, setInputValue] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // This must come before the early return
     useEffect(() => {
         if (user) {
             setFormData({
@@ -131,6 +144,42 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         }
     };
 
+    const handleDeleteUser = async () => {
+        if (!user) return;
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) throw new Error("Not authenticated.");
+
+            const token = await getIdToken(currentUser);
+            
+            const res = await fetch(`/api/users/${user.uid}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to delete user');
+            }
+            
+            toast({
+                title: 'User Deleted',
+                description: `${user.email} has been permanently deleted.`,
+            });
+            setDeleteDialogOpen(false);
+            onOpenChange(false);
+            onUserUpdated();
+
+        } catch (err: any) {
+            toast({
+                title: 'Deletion Failed',
+                description: err.message,
+                variant: 'destructive',
+            });
+        }
+    }
+
+
     const handleCancelEdit = () => {
         // Reset form data to original user data
         if (user) {
@@ -149,9 +198,8 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
             setFormData(prev => ({...prev, tags: [...prev.tags, tag]}));
         }
         setInputValue("");
-        inputRef.current?.blur();
         setOpen(false);
-    }
+    };
     
     const handleTagCreate = (tagName: string) => {
         const newTag = tagName.trim();
@@ -160,19 +208,19 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
             setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
         }
         setInputValue("");
-        inputRef.current?.blur();
         setOpen(false);
-    }
+    };
 
     const handleTagRemove = (tag: string) => {
         setFormData(prev => ({...prev, tags: prev.tags.filter(t => t !== tag)}));
-    }
-
+    };
+    
     const availableTags = React.useMemo(() => {
+        if (!formData.tags) return allTags;
         const lowercasedSelectedTags = formData.tags.map(t => t.toLowerCase());
         return allTags.filter(tag => !lowercasedSelectedTags.includes(tag.toLowerCase()));
     }, [formData.tags, allTags]);
-    
+
     const showCreateOption = inputValue && !availableTags.some(tag => tag.toLowerCase() === inputValue.toLowerCase()) && !formData.tags.some(tag => tag.toLowerCase() === inputValue.toLowerCase());
 
     if (!user) return null;
@@ -189,6 +237,24 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                 onOpenChange(false); // Close profile dialog
             }}
         />
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the user account
+                    for <span className="font-bold">{user.email}</span> and all associated data.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteUser} className="bg-destructive hover:bg-destructive/90">
+                    Yes, delete user
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
@@ -220,6 +286,10 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                 <Button variant="outline" className="w-full justify-start">Assign Tenant</Button>
                                 <Button variant="destructive" className="w-full justify-start">
                                     {user.disabled ? 'Enable User' : 'Disable User'}
+                                </Button>
+                                <Button variant="destructive" className="w-full justify-start" onClick={() => setDeleteDialogOpen(true)}>
+                                    <Trash2 className="mr-2 size-4" />
+                                    Delete User
                                 </Button>
                             </CardContent>
                         </Card>
@@ -319,7 +389,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                                     <CommandItem
                                                                         key={tag}
                                                                         value={tag}
-                                                                        onSelect={handleTagSelect}
+                                                                        onSelect={() => handleTagSelect(tag)}
                                                                     >
                                                                         <Check className={cn("mr-2 h-4 w-4", formData.tags.includes(tag) ? "opacity-100" : "opacity-0")} />
                                                                         {tag}
@@ -401,8 +471,4 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         </>
     );
 }
-
-
-
-
 
