@@ -66,6 +66,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
 
     // For the multi-select combobox
     const [open, setOpen] = useState(false);
+    const [inputValue, setInputValue] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -130,13 +131,14 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     };
 
     const handleTagSelect = (tag: string) => {
+        setInputValue("");
         if (!formData.tags.includes(tag)) {
             setFormData(prev => ({...prev, tags: [...prev.tags, tag]}));
         }
-        inputRef?.current?.focus();
     }
     
     const handleTagCreate = (tagName: string) => {
+        setInputValue("");
         const newTag = tagName.trim();
         if (newTag && !formData.tags.includes(newTag)) {
              setFormData(prev => ({...prev, tags: [...prev.tags, newTag]}));
@@ -148,6 +150,9 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     }
 
     const availableTags = allTags.filter(tag => !formData.tags.includes(tag));
+    
+    const showCreateOption = inputValue && !availableTags.includes(inputValue) && !formData.tags.includes(inputValue);
+
 
     return (
         <>
@@ -266,18 +271,15 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                                      <Command>
                                                         <CommandInput 
-                                                            ref={inputRef} 
+                                                            ref={inputRef}
+                                                            value={inputValue}
+                                                            onValueChange={setInputValue}
                                                             placeholder="Search or create tag..."
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter' && e.currentTarget.value) {
-                                                                    e.preventDefault();
-                                                                    handleTagCreate(e.currentTarget.value);
-                                                                    e.currentTarget.value = '';
-                                                                }
-                                                            }}
                                                         />
                                                         <CommandList>
-                                                            <CommandEmpty>No results. Press Enter to create.</CommandEmpty>
+                                                            <CommandEmpty>
+                                                                {showCreateOption ? `Press Enter to create "${inputValue}"` : "No results found."}
+                                                            </CommandEmpty>
                                                             <CommandGroup>
                                                                 {availableTags.map((tag) => (
                                                                 <CommandItem
@@ -289,6 +291,15 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                                                     {tag}
                                                                 </CommandItem>
                                                                 ))}
+                                                                 {showCreateOption && (
+                                                                    <CommandItem
+                                                                        value={inputValue}
+                                                                        onSelect={() => handleTagCreate(inputValue)}
+                                                                    >
+                                                                        <Check className="mr-2 h-4 w-4 opacity-0" />
+                                                                        Create "{inputValue}"
+                                                                    </CommandItem>
+                                                                )}
                                                             </CommandGroup>
                                                         </CommandList>
                                                     </Command>
