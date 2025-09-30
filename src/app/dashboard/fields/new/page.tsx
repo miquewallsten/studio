@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -31,7 +30,6 @@ type SubField = {
   id: string;
   label: string;
   type: string;
-  required: boolean;
 };
 
 export default function NewFieldPage() {
@@ -40,7 +38,6 @@ export default function NewFieldPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [label, setLabel] = useState('');
   const [type, setType] = useState('');
-  const [required, setRequired] = useState(false);
   const [subFields, setSubFields] = useState<SubField[]>([]);
   const [aiInstructions, setAiInstructions] = useState('');
   const [internalFields, setInternalFields] = useState<SubField[]>([]);
@@ -64,7 +61,6 @@ export default function NewFieldPage() {
       const fieldData: any = {
         label,
         type,
-        required,
         aiInstructions,
         internalFields,
         createdAt: serverTimestamp(),
@@ -81,7 +77,7 @@ export default function NewFieldPage() {
         description: `The "${label}" field has been added to your library.`,
       });
 
-      router.push(`/dashboard/fields/${docRef.id}`);
+      router.push(`/dashboard/fields`);
 
     } catch (error) {
       console.error('Error creating field:', error);
@@ -143,15 +139,6 @@ export default function NewFieldPage() {
                     <SelectItem value="composite">Composite Field</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch 
-                    id="field-required"
-                    checked={required}
-                    onCheckedChange={setRequired}
-                    disabled={isLoading}
-                />
-                <Label htmlFor="field-required">Is this field required?</Label>
               </div>
             </CardContent>
           </Card>

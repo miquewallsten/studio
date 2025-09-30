@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Switch } from './ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 
@@ -26,7 +25,6 @@ type SubField = {
   id: string;
   label: string;
   type: string;
-  required: boolean;
 };
 
 interface SubFieldsEditorProps {
@@ -48,7 +46,6 @@ export default function SubFieldsEditor({
       id: `sf_${Date.now()}`,
       label: 'New Sub-Field',
       type: 'text',
-      required: false,
     };
     onSubFieldsChange([...subFields, newSubField]);
   };
@@ -94,7 +91,7 @@ export default function SubFieldsEditor({
             subFields.map((sf) => (
               <div key={sf.id}>
                 <div className="grid grid-cols-12 items-end gap-4 rounded-md border p-4">
-                  <div className="col-span-4 grid gap-2">
+                  <div className="col-span-5 grid gap-2">
                     <Label htmlFor={`sf-label-${sf.id}`}>Label</Label>
                     <Input 
                         id={`sf-label-${sf.id}`} 
@@ -102,7 +99,7 @@ export default function SubFieldsEditor({
                         onChange={(e) => handleSubFieldChange(sf.id, 'label', e.target.value)}
                     />
                   </div>
-                  <div className="col-span-4 grid gap-2">
+                  <div className="col-span-5 grid gap-2">
                     <Label htmlFor={`sf-type-${sf.id}`}>Type</Label>
                     <Select 
                         value={sf.type}
@@ -120,14 +117,6 @@ export default function SubFieldsEditor({
                         <SelectItem value="select">Select</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="col-span-2 flex items-center gap-2 pb-2">
-                    <Switch 
-                        id={`sf-required-${sf.id}`} 
-                        checked={sf.required}
-                        onCheckedChange={(checked) => handleSubFieldChange(sf.id, 'required', checked)}
-                    />
-                    <Label htmlFor={`sf-required-${sf.id}`}>Required</Label>
                   </div>
                   <div className="col-span-2 flex justify-end">
                     <Button

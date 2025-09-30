@@ -94,9 +94,6 @@ export function FieldEditorDialog({ field: initialField, isOpen, onOpenChange }:
                             <div>
                             <strong>Type:</strong> {field.type}
                             </div>
-                            <div>
-                            <strong>Required:</strong> {field.required ? 'Yes' : 'No'}
-                            </div>
                         </div>
                         </CardContent>
                     </Card>

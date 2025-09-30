@@ -37,14 +37,6 @@ export const columns = ({ onDeleteField, onEditField }: ColumnsProps): ColumnDef
     enableSorting: true,
   },
   {
-    accessorKey: "required",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Required" />
-    ),
-    cell: ({ row }) => (row.original.required ? "Yes" : "No"),
-    enableSorting: true,
-  },
-  {
     id: "actions",
     cell: ({ row }) => {
       const field = row.original
