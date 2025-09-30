@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, PlusCircle, UserCircle } from 'lucide-react';
+import { ArrowRight, PlusCircle, UserCircle, ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   collection,
@@ -30,6 +30,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import Link from 'next/link';
 
 type Request = {
   id: string;
@@ -160,9 +161,16 @@ export function ClientPortalWidget() {
               {user ? `Viewing as: ${user.email}` : 'Impersonate a client to begin.'}
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" disabled={!user}>
-            <PlusCircle className="mr-2" /> New Request
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm" disabled={!user}>
+              <Link href="/client/dashboard" target="_blank">
+                <ExternalLink className="mr-2" /> View Full Portal
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" disabled={!user}>
+                <PlusCircle className="mr-2" /> New Request
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-auto p-2">
