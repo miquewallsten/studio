@@ -2,13 +2,13 @@
 'use client';
 
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from '@/components/ui/sheet';
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
 import {
     Card,
     CardContent,
@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import { Briefcase, KeyRound, Ticket, UserCheck } from 'lucide-react';
+import { Briefcase, KeyRound, Ticket, UserCheck, Mail, Phone, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
@@ -37,13 +37,13 @@ type User = {
     createdAt: string;
 }
 
-interface UserProfileSheetProps {
+interface UserProfileDialogProps {
   user: User | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileSheetProps) {
+export function UserProfileDialog({ user, isOpen, onOpenChange }: UserProfileDialogProps) {
     const { toast } = useToast();
 
     if (!user) return null;
@@ -69,7 +69,6 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
                 description: `You are now logged in as ${user.email || 'user'}.`,
             });
             
-            // Close the sheet and redirect to the appropriate dashboard
             onOpenChange(false);
             if (user.role.startsWith('Tenant')) {
                  window.location.href = '/client/dashboard';
@@ -88,14 +87,14 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
 
 
     return (
-        <Sheet open={isOpen} onOpenChange={onOpenChange}>
-            <SheetContent className="w-full sm:max-w-md">
-                <SheetHeader>
-                    <SheetTitle>User Profile</SheetTitle>
-                    <SheetDescription>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>User Profile</DialogTitle>
+                    <DialogDescription>
                         View user details, metrics, and perform administrative actions.
-                    </SheetDescription>
-                </SheetHeader>
+                    </DialogDescription>
+                </DialogHeader>
                 <div className="py-6 space-y-6">
                     <div className="flex items-center gap-4">
                         <Avatar className="h-16 w-16">
@@ -103,7 +102,7 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
                             <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <h2 className="text-lg font-semibold">{user.displayName || user.email}</h2>
+                            <h2 className="text-lg font-semibold">{user.displayName || user.email?.split('@')[0]}</h2>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
                     </div>
@@ -113,6 +112,18 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
                             <CardTitle>Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 text-sm">
+                             <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground flex items-center gap-2"><UserIcon className="size-4"/> Full Name</span>
+                                <span>{user.displayName || 'Not set'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground flex items-center gap-2"><Mail className="size-4"/> Email</span>
+                                <span>{user.email}</span>
+                            </div>
+                             <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground flex items-center gap-2"><Phone className="size-4"/> Phone</span>
+                                <span className="text-muted-foreground">Not set</span>
+                            </div>
                              <div className="flex items-center justify-between">
                                 <span className="text-muted-foreground flex items-center gap-2"><KeyRound className="size-4"/> Role</span>
                                 <Badge variant={user.role === 'Unassigned' ? 'destructive' : 'secondary'}>{user.role}</Badge>
@@ -150,6 +161,7 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
                      <Card>
                         <CardHeader>
                             <CardTitle>Admin Actions</CardTitle>
+                            <CardDescription>These actions are only available to Super Admins.</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-2 gap-2">
                              <Button variant="outline">Change Role</Button>
@@ -158,15 +170,15 @@ export function UserProfileSheet({ user, isOpen, onOpenChange }: UserProfileShee
                                 {user.disabled ? 'Enable User' : 'Disable User'}
                             </Button>
                         </CardContent>
-                         <SheetFooter className="pt-4 pr-6">
+                         <DialogFooter className="pt-4 pr-6">
                             <Button onClick={handleImpersonate} className="w-full">
                                 <UserCheck className="mr-2 size-4" /> Impersonate User
                             </Button>
-                        </SheetFooter>
+                        </DialogFooter>
                     </Card>
 
                 </div>
-            </SheetContent>
-        </Sheet>
+            </DialogContent>
+        </Dialog>
     );
 }

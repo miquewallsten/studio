@@ -28,7 +28,7 @@ import { MoreHorizontal, AlertCircle, PlusCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
-import { UserProfileSheet } from '@/components/user-profile-sheet';
+import { UserProfileDialog } from '@/components/user-profile-dialog';
 
 type User = {
     uid: string;
@@ -80,7 +80,7 @@ export default function AdminUsersPage() {
         setSelectedUser(user);
     }
     
-    const handleSheetClose = () => {
+    const handleDialogClose = () => {
         setSelectedUser(null);
     }
 
@@ -93,10 +93,10 @@ export default function AdminUsersPage() {
             onOpenChange={setInviteDialogOpen}
             onUserInvited={handleUserInvited}
         />
-        <UserProfileSheet 
+        <UserProfileDialog 
             user={selectedUser}
             isOpen={!!selectedUser}
-            onOpenChange={handleSheetClose}
+            onOpenChange={handleDialogClose}
         />
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">User Management</h1>
