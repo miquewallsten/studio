@@ -9,16 +9,19 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LogIn, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle, LayoutDashboard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { auth } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
+import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { ClientPortalWidget } from '@/components/testing/client-portal-widget';
 import { EndUserPortalWidget } from '@/components/testing/end-user-portal-widget';
 import { WorkflowWidget } from '@/components/testing/workflow-widget';
 import { AnalystPortalWidget } from '@/components/testing/analyst-portal-widget';
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 type User = {
     uid: string;
@@ -27,6 +30,27 @@ type User = {
     tenantName: string | null;
 }
 
+const WIDGET_DEFINITIONS: {
+    [key: string]: { title: string; defaultLayout: Layout };
+  } = {
+    'client-portal': {
+      title: 'Client Portal',
+      defaultLayout: { i: 'client-portal', x: 0, y: 0, w: 1, h: 2, minW: 1, minH: 2 },
+    },
+    'end-user-portal': {
+      title: 'End-User Portal',
+      defaultLayout: { i: 'end-user-portal', x: 1, y: 0, w: 1, h: 2, minW: 1, minH: 2 },
+    },
+    'workflow': {
+        title: 'Manager\'s Workflow',
+        defaultLayout: { i: 'workflow', x: 0, y: 2, w: 2, h: 2, minW: 2, minH: 2 },
+    },
+    'analyst-portal': {
+        title: 'Analyst Portal',
+        defaultLayout: { i: 'analyst-portal', x: 0, y: 4, w: 2, h: 2, minW: 2, minH: 2 },
+    }
+  };
+
 
 export default function ImpersonateUserPage() {
     const [users, setUsers] = useState<User[]>([]);
@@ -34,6 +58,11 @@ export default function ImpersonateUserPage() {
     const [error, setError] = useState<string | null>(null);
     const [impersonatingUid, setImpersonatingUid] = useState<string | null>(null);
     const { toast } = useToast();
+
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [layouts, setLayouts] = useState<{[key: string]: Layout[]}>({});
+    const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
+    const [isClient, setIsClient] = useState(false);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -103,8 +132,21 @@ export default function ImpersonateUserPage() {
 
         initialize();
 
+        // Load layout from localStorage
+        setIsClient(true);
+        try {
+            const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts');
+            if (savedLayouts && isMounted) setLayouts(JSON.parse(savedLayouts));
+            // For now, all widgets are active by default
+            setActiveWidgets(['client-portal', 'end-user-portal', 'workflow', 'analyst-portal']);
+        } catch (error) {
+            console.error('Could not load layout from localStorage', error);
+            setActiveWidgets(['client-portal', 'end-user-portal', 'workflow', 'analyst-portal']);
+        }
+
+
         return () => { isMounted = false; };
-    }, [toast]);
+    }, []);
 
 
     const handleImpersonate = async (targetUid: string, targetEmail?: string) => {
@@ -140,6 +182,17 @@ export default function ImpersonateUserPage() {
         }
     }
 
+    const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+        if (isEditMode) {
+            try {
+                window.localStorage.setItem('testing-dashboard-layouts', JSON.stringify(allLayouts));
+                setLayouts(allLayouts);
+            } catch (error) {
+                console.error('Could not save layouts to localStorage', error);
+            }
+        }
+    };
+
     const handleRefreshUsers = () => {
       fetchUsers().then(setUsers);
     }
@@ -148,10 +201,25 @@ export default function ImpersonateUserPage() {
     const endUsers = users.filter(u => u.role === 'End User' && !u.tenantName);
     const analystUsers = users.filter(u => u.role === 'Analyst');
 
+    const currentLayout = (layouts.lg || []).filter(l => activeWidgets.includes(l.i));
+    const defaultLayoutForActive = activeWidgets
+      .filter(id => !currentLayout.some(l => l.i === id))
+      .map(id => WIDGET_DEFINITIONS[id].defaultLayout);
+    
+    const finalLayout = [...currentLayout, ...defaultLayoutForActive];
+
   return (
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">Live Workflow Dashboard</h1>
+        <Button
+            variant={isEditMode ? 'default' : 'outline'}
+            onClick={() => setIsEditMode(!isEditMode)}
+            className={isEditMode ? 'bg-accent hover:bg-accent/90' : ''}
+        >
+            <LayoutDashboard className="mr-2" />
+            {isEditMode ? 'Done Editing' : 'Edit Dashboard'}
+        </Button>
       </div>
       
       {error && (
@@ -166,35 +234,58 @@ export default function ImpersonateUserPage() {
             </AlertDescription>
         </Alert>
     )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <ClientPortalWidget 
-            users={clientUsers}
-            onImpersonate={handleImpersonate}
-            onUserCreated={handleRefreshUsers}
-            isImpersonating={!!impersonatingUid}
-        />
-
-        <EndUserPortalWidget 
-            users={endUsers}
-            onImpersonate={handleImpersonate}
-            isImpersonating={!!impersonatingUid}
-        />
-
-        <div className="lg:col-span-2">
-            <WorkflowWidget 
-                analysts={analystUsers}
-            />
-        </div>
-        <div className="lg:col-span-2">
-             <AnalystPortalWidget 
-                users={analystUsers}
-                onImpersonate={handleImpersonate}
-                isImpersonating={!!impersonatingUid}
-            />
-        </div>
-      </div>
+    {isClient && 
+        <ResponsiveGridLayout
+            className={`layout ${!isEditMode ? 'non-interactive' : ''}`}
+            layouts={layouts}
+            layout={finalLayout}
+            onLayoutChange={onLayoutChange}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 2, md: 2, sm: 1, xs: 1, xxs: 1 }}
+            rowHeight={150}
+            isDraggable={isEditMode}
+            isResizable={isEditMode}
+            draggableCancel=".non-draggable"
+        >
+             <div key="client-portal" className="overflow-hidden relative group/widget">
+                <ClientPortalWidget 
+                    users={clientUsers}
+                    onImpersonate={handleImpersonate}
+                    onUserCreated={handleRefreshUsers}
+                    isImpersonating={!!impersonatingUid}
+                />
+            </div>
+             <div key="end-user-portal" className="overflow-hidden relative group/widget">
+                <EndUserPortalWidget 
+                    users={endUsers}
+                    onImpersonate={handleImpersonate}
+                    isImpersonating={!!impersonatingUid}
+                />
+            </div>
+             <div key="workflow" className="overflow-hidden relative group/widget">
+                <WorkflowWidget 
+                    analysts={analystUsers}
+                />
+            </div>
+             <div key="analyst-portal" className="overflow-hidden relative group/widget">
+                 <AnalystPortalWidget 
+                    users={analystUsers}
+                    onImpersonate={handleImpersonate}
+                    isImpersonating={!!impersonatingUid}
+                />
+            </div>
+      </ResponsiveGridLayout>
+    }
+     <style jsx global>{`
+        .react-grid-item.react-grid-placeholder {
+          background: hsl(var(--accent)) !important;
+          opacity: 0.2;
+          border-radius: var(--radius);
+        }
+        .non-interactive .react-resizable-handle {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }
