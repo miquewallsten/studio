@@ -48,7 +48,7 @@ export default function NewFieldPage() {
     }
 
     try {
-      await addDoc(collection(db, 'fields'), {
+      const docRef = await addDoc(collection(db, 'fields'), {
         label,
         type,
         required,
@@ -60,7 +60,7 @@ export default function NewFieldPage() {
         description: `The "${label}" field has been added to your library.`,
       });
 
-      router.push('/dashboard/fields');
+      router.push(`/dashboard/fields/${docRef.id}`);
     } catch (error) {
       console.error('Error creating field:', error);
       toast({
