@@ -34,10 +34,13 @@ export function DataTableToolbar<TData>({
 
   const tenantNames = React.useMemo(() => {
     const names = new Set<string>();
-    table.getPreFilteredRowModel().rows.forEach(row => {
-        const tenantName = (row.original as any).tenantName;
-        if (tenantName) names.add(tenantName);
-    });
+    // Check if the column exists before trying to access its rows.
+    if (table.getColumn("tenantName")) {
+        table.getPreFilteredRowModel().rows.forEach(row => {
+            const tenantName = (row.original as any).tenantName;
+            if (tenantName) names.add(tenantName);
+        });
+    }
     return Array.from(names).map(name => ({ value: name, label: name }));
   }, [table]);
 
