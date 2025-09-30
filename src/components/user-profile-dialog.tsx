@@ -25,6 +25,7 @@ import { Separator } from './ui/separator';
 import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { ChangeRoleDialog } from './change-role-dialog';
 
 type User = {
     uid: string;
@@ -50,6 +51,7 @@ interface UserProfileDialogProps {
 export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }: UserProfileDialogProps) {
     const { toast } = useToast();
     const [isEditMode, setIsEditMode] = useState(false);
+    const [isChangeRoleOpen, setChangeRoleOpen] = useState(false);
     const [formData, setFormData] = useState({
         displayName: '',
         phone: '',
@@ -75,16 +77,23 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
     };
 
     const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
+        // Only split by comma, then trim whitespace from each resulting token
+        const tags = e.target.value.split(',').map(tag => tag.trim());
         setFormData(prev => ({...prev, tags}));
     }
 
     const handleSaveChanges = async () => {
         try {
+            // Filter out empty strings that might result from trailing commas
+            const payload = {
+                ...formData,
+                tags: formData.tags.filter(Boolean)
+            };
+
             const res = await fetch(`/api/users/${user.uid}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
             
             const data = await res.json();
@@ -121,6 +130,16 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
     };
 
     return (
+        <>
+        <ChangeRoleDialog
+            user={user}
+            isOpen={isChangeRoleOpen}
+            onOpenChange={setChangeRoleOpen}
+            onRoleChanged={() => {
+                onUserUpdated(); // Refresh main user list
+                onOpenChange(false); // Close profile dialog
+            }}
+        />
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
@@ -148,7 +167,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                                 <CardTitle>Admin Actions</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                                <Button variant="outline" className="w-full justify-start">Change Role</Button>
+                                <Button variant="outline" className="w-full justify-start" onClick={() => setChangeRoleOpen(true)}>Change Role</Button>
                                 <Button variant="outline" className="w-full justify-start">Assign Tenant</Button>
                                 <Button variant="destructive" className="w-full justify-start">
                                     {user.disabled ? 'Enable User' : 'Disable User'}
@@ -251,5 +270,6 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        </>
     );
 }
