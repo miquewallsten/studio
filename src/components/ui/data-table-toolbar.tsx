@@ -33,16 +33,17 @@ export function DataTableToolbar<TData>({
   ];
 
   const tenantNames = React.useMemo(() => {
-    const names = new Set<string>();
-    // Check if the column exists before trying to access its rows.
-    if (table.getColumn("tenantName")) {
-        table.getPreFilteredRowModel().rows.forEach(row => {
-            const tenantName = (row.original as any).tenantName;
-            if (tenantName) names.add(tenantName);
-        });
+    const tenantNameColumn = table.getColumn("tenantName");
+    if (!tenantNameColumn) {
+        return [];
     }
+    const names = new Set<string>();
+    table.getPreFilteredRowModel().rows.forEach(row => {
+        const tenantName = (row.original as any).tenantName;
+        if (tenantName) names.add(tenantName);
+    });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table]);
+  }, [table.getColumn("tenantName"), table.getPreFilteredRowModel().rows]);
 
 
   // Find a generic column to filter by text, like 'name' or 'displayName'
