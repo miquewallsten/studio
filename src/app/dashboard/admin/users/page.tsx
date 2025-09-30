@@ -28,6 +28,7 @@ import { MoreHorizontal, AlertCircle, PlusCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
+import { useRouter } from 'next/navigation';
 
 type User = {
     uid: string;
@@ -41,6 +42,7 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
+    const router = useRouter();
 
 
     const fetchUsers = async () => {
@@ -69,6 +71,10 @@ export default function AdminUsersPage() {
         fetchUsers(); // Re-fetch the user list after a new user is invited
     }
 
+    const handleRowClick = (uid: string) => {
+        router.push(`/dashboard/admin/users/${uid}`);
+    }
+
     const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
 
   return (
@@ -89,7 +95,7 @@ export default function AdminUsersPage() {
         <CardHeader>
           <CardTitle>All Authenticated Users</CardTitle>
           <CardDescription>
-            This is a list of all users in Firebase Authentication. From here, you can assign them to a client tenant.
+            This is a list of all users in Firebase Authentication. Click a user to see their profile.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -141,7 +147,7 @@ FIREBASE_PRIVATE_KEY="..."`}
                     </TableRow>
                 ) : (
                     users.map(user => (
-                        <TableRow key={user.uid}>
+                        <TableRow key={user.uid} onClick={() => handleRowClick(user.uid)} className="cursor-pointer">
                             <TableCell className="font-medium">{user.email || 'N/A'}</TableCell>
                             <TableCell>
                                 <Badge variant={user.role === 'Unassigned' ? 'destructive' : 'secondary'}>{user.role}</Badge>
@@ -150,14 +156,14 @@ FIREBASE_PRIVATE_KEY="..."`}
                             <TableCell className="text-right">
                                <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
                                         <span className="sr-only">Open menu</span>
                                         <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem>Assign to Tenant</DropdownMenuItem>
-                                        <DropdownMenuItem>Change Role</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={(e) => e.stopPropagation()}>Assign to Tenant</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={(e) => e.stopPropagation()}>Change Role</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>

@@ -18,6 +18,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -85,10 +87,9 @@ export function InviteUserDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Invite New Internal User</DialogTitle>
+          <DialogTitle>Invite New User</DialogTitle>
           <DialogDescription>
-            Create a new user account for an analyst, manager, or admin. They
-            will be created in Firebase Authentication.
+            Create a new user account. They will be created in Firebase Authentication.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -114,11 +115,19 @@ export function InviteUserDialog({
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Super Admin">Super Admin</SelectItem>
-                <SelectItem value="Admin">Admin</SelectItem>
-                <SelectItem value="Manager">Manager</SelectItem>
-                <SelectItem value="Analyst">Analyst</SelectItem>
-                <SelectItem value="View Only">View Only</SelectItem>
+                <SelectGroup>
+                    <SelectLabel>Internal Roles</SelectLabel>
+                    <SelectItem value="Super Admin">Super Admin</SelectItem>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                    <SelectItem value="Manager">Manager</SelectItem>
+                    <SelectItem value="Analyst">Analyst</SelectItem>
+                    <SelectItem value="View Only">View Only</SelectItem>
+                </SelectGroup>
+                <SelectGroup>
+                    <SelectLabel>Tenant Roles</SelectLabel>
+                    <SelectItem value="Tenant Admin">Tenant Admin</SelectItem>
+                    <SelectItem value="Tenant User">Tenant User</SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>

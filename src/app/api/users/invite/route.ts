@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 // Predefined roles
-const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin'];
+const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 'Tenant Admin', 'Tenant User'];
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
     }
     if (tenantId) {
         customClaims.tenantId = tenantId;
-        customClaims.role = 'End User'; // Assign a default role for end users
+        // If a tenantId is provided and no specific tenant role is assigned, default to Tenant User
+        customClaims.role = role && (role === 'Tenant Admin' || role === 'Tenant User') ? role : 'End User';
     }
 
     // Set custom claims for the role/tenant
