@@ -9,13 +9,16 @@ const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only'];
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, role } = await request.json();
+    const { email, role, tenantId } = await request.json();
 
-    if (!email || !role) {
-      return NextResponse.json({ error: 'Email and role are required.' }, { status: 400 });
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
+    }
+    if (!role && !tenantId) {
+        return NextResponse.json({ error: 'Either a role or a tenantId must be provided.' }, { status: 400 });
     }
 
-    if (!VALID_ROLES.includes(role)) {
+    if (role && !VALID_ROLES.includes(role)) {
       return NextResponse.json({ error: 'Invalid role specified.' }, { status: 400 });
     }
 
@@ -27,13 +30,22 @@ export async function POST(request: NextRequest) {
       emailVerified: false, // User will verify their email later
     });
 
-    // Set custom claims for the role
-    await adminAuth.setCustomUserClaims(userRecord.uid, { role: role });
+    const customClaims: {[key: string]: string} = {};
+    if (role) {
+        customClaims.role = role;
+    }
+    if (tenantId) {
+        customClaims.tenantId = tenantId;
+        customClaims.role = 'End User'; // Assign a default role for end users
+    }
+
+    // Set custom claims for the role/tenant
+    await adminAuth.setCustomUserClaims(userRecord.uid, customClaims);
     
     // You might want to trigger a password reset or invitation email here
     // For now, we just create the user.
 
-    return NextResponse.json({ uid: userRecord.uid, email: userRecord.email, role: role });
+    return NextResponse.json({ uid: userRecord.uid, email: userRecord.email, claims: customClaims });
 
   } catch (error: any) {
     console.error('Error creating user:', error);

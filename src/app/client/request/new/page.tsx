@@ -52,11 +52,28 @@ export default function NewRequestPage() {
     }
 
     try {
+      // Step 1: Create the end-user in Firebase Auth and associate with the client (tenant)
+      const inviteResponse = await fetch('/api/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // We use the logged-in client's UID as the tenantId for the new end-user
+        body: JSON.stringify({ email: email, tenantId: clientUser.uid }), 
+      });
+
+      const inviteData = await inviteResponse.json();
+      
+      // If a user already exists, we can proceed. Otherwise, fail fast.
+      if (!inviteResponse.ok && inviteData.error !== 'A user with this email address already exists.') {
+        throw new Error(inviteData.error || 'Failed to create the end-user account.');
+      }
+
+      // Step 2: Get AI-suggested compliance questions
       const { suggestedQuestions } = await suggestComplianceQuestions({
         reportType,
         description,
       });
 
+      // Step 3: Create the ticket in Firestore
       await addDoc(collection(db, 'tickets'), {
         subjectName,
         email,
@@ -65,8 +82,9 @@ export default function NewRequestPage() {
         suggestedQuestions,
         status: 'New',
         createdAt: serverTimestamp(),
-        clientId: clientUser.uid,
+        clientId: clientUser.uid, // The ID of the client company/user who made the request
         clientEmail: clientUser.email,
+        endUserId: inviteData.uid, // The ID of the newly created end-user who will fill the form
       });
 
       toast({
@@ -77,11 +95,11 @@ export default function NewRequestPage() {
 
       router.push('/client/dashboard');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating request:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create request. Please try again.',
+        description: error.message || 'Failed to create request. Please try again.',
         variant: 'destructive',
       });
     } finally {
