@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   KanbanSquare,
+  Library,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -40,6 +41,11 @@ const navItems = [
     href: '/dashboard/forms',
     icon: FileText,
     label: 'Forms',
+  },
+  {
+    href: '/dashboard/fields',
+    icon: Library,
+    label: 'Fields',
   },
 ];
 

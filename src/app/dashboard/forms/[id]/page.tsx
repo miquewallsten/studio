@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { FormFieldsTable, Field } from '@/components/form-fields-table';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type Form = {
@@ -15,9 +14,11 @@ type Form = {
   description: string;
 };
 
+// This page will be the form builder UI.
+// For now, it shows the form details and a placeholder for adding fields from the library.
+
 export default function FormDetailPage({ params }: { params: { id: string } }) {
   const [form, setForm] = useState<Form | null>(null);
-  const [fields, setFields] = useState<Field[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,23 +34,10 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
           description: data.description,
         });
       }
-      // We will set loading to false in the snapshot listener
+      setLoading(false);
     };
 
     getFormData();
-
-    const fieldsQuery = query(collection(db, 'forms', params.id, 'fields'), orderBy('order'));
-    const unsubscribe = onSnapshot(fieldsQuery, (querySnapshot) => {
-        const fieldsData: Field[] = [];
-        querySnapshot.forEach((doc) => {
-            fieldsData.push({ id: doc.id, ...doc.data() } as Field);
-        });
-        setFields(fieldsData);
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
-
   }, [params.id]);
 
   if (loading) {
@@ -79,7 +67,7 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
         <h1 className="text-3xl font-semibold font-headline">Edit Form: {form.name}</h1>
          <Button className="bg-accent hover:bg-accent/90">
             <PlusCircle className="mr-2 h-4 w-4" />
-            Add Field
+            Add Field from Library
         </Button>
       </div>
       
@@ -91,7 +79,9 @@ export default function FormDetailPage({ params }: { params: { id: string } }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FormFieldsTable fields={fields} />
+          <div className="h-40 flex items-center justify-center border-dashed border-2 rounded-md">
+            <p className="text-muted-foreground">The form builder to add and reorder fields will be here.</p>
+          </div>
         </CardContent>
       </Card>
     </div>
