@@ -3,19 +3,12 @@
  * @fileOverview A flow for sending emails via SMTP.
  *
  * - sendEmail - A function that sends an email.
- * - SendEmailInput - The input type for the sendEmail function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import * as nodemailer from 'nodemailer';
-
-export const SendEmailInputSchema = z.object({
-  to: z.string().describe('The recipient email address.'),
-  subject: z.string().describe('The subject of the email.'),
-  html: z.string().describe('The HTML body of the email.'),
-});
-export type SendEmailInput = z.infer<typeof SendEmailInputSchema>;
+import { SendEmailInputSchema, type SendEmailInput } from '@/ai/schemas/send-email-schema';
 
 export async function sendEmail(input: SendEmailInput): Promise<{ success: boolean; message: string }> {
   return sendEmailFlow(input);
@@ -55,7 +48,7 @@ const sendEmailFlow = ai.defineFlow(
         // In a real app, you might want more robust error handling or logging.
         // For now, we'll return a failure message.
         // Avoid exposing detailed error messages to the client.
-        return { success: false, message: 'Failed to send email.' };
+        return { success: false, message: 'Failed to send email. Please check server logs and SMTP configuration.' };
     }
   }
 );
