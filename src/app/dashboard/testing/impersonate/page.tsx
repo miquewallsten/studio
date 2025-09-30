@@ -20,6 +20,7 @@ import { ClientPortalWidget } from '@/components/testing/client-portal-widget';
 import { EndUserPortalWidget } from '@/components/testing/end-user-portal-widget';
 import { WorkflowWidget } from '@/components/testing/workflow-widget';
 import { AnalystPortalWidget } from '@/components/testing/analyst-portal-widget';
+import { InvitationInboxWidget } from '@/components/testing/invitation-inbox-widget';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -37,17 +38,21 @@ const WIDGET_DEFINITIONS: {
       title: 'Client Portal',
       defaultLayout: { i: 'client-portal', x: 0, y: 0, w: 1, h: 2, minW: 1, minH: 2 },
     },
+    'invitation-inbox': {
+      title: 'Invitation Inbox',
+      defaultLayout: { i: 'invitation-inbox', x: 1, y: 0, w: 1, h: 2, minW: 1, minH: 2 },
+    },
     'end-user-portal': {
       title: 'End-User Portal',
-      defaultLayout: { i: 'end-user-portal', x: 1, y: 0, w: 1, h: 2, minW: 1, minH: 2 },
+      defaultLayout: { i: 'end-user-portal', x: 0, y: 2, w: 1, h: 2, minW: 1, minH: 2 },
     },
     'workflow': {
         title: 'Manager\'s Workflow',
-        defaultLayout: { i: 'workflow', x: 0, y: 2, w: 2, h: 2, minW: 2, minH: 2 },
+        defaultLayout: { i: 'workflow', x: 0, y: 4, w: 2, h: 2, minW: 2, minH: 2 },
     },
     'analyst-portal': {
         title: 'Analyst Portal',
-        defaultLayout: { i: 'analyst-portal', x: 0, y: 4, w: 2, h: 2, minW: 2, minH: 2 },
+        defaultLayout: { i: 'analyst-portal', x: 1, y: 2, w: 1, h: 2, minW: 1, minH: 2 },
     }
   };
 
@@ -138,10 +143,10 @@ export default function ImpersonateUserPage() {
             const savedLayouts = window.localStorage.getItem('testing-dashboard-layouts');
             if (savedLayouts && isMounted) setLayouts(JSON.parse(savedLayouts));
             // For now, all widgets are active by default
-            setActiveWidgets(['client-portal', 'end-user-portal', 'workflow', 'analyst-portal']);
+            setActiveWidgets(['client-portal', 'invitation-inbox', 'end-user-portal', 'workflow', 'analyst-portal']);
         } catch (error) {
             console.error('Could not load layout from localStorage', error);
-            setActiveWidgets(['client-portal', 'end-user-portal', 'workflow', 'analyst-portal']);
+            setActiveWidgets(['client-portal', 'invitation-inbox', 'end-user-portal', 'workflow', 'analyst-portal']);
         }
 
 
@@ -198,7 +203,7 @@ export default function ImpersonateUserPage() {
     }
     
     const clientUsers = users.filter(u => u.role === 'End User' && u.tenantName);
-    const endUsers = users.filter(u => u.role === 'End User' && !u.tenantName);
+    const endUsers = users.filter(u => u.role === 'End User'); // All end users for all portals
     const analystUsers = users.filter(u => u.role === 'Analyst');
 
     const currentLayout = (layouts.lg || []).filter(l => activeWidgets.includes(l.i));
@@ -252,6 +257,12 @@ export default function ImpersonateUserPage() {
                     users={clientUsers}
                     onImpersonate={handleImpersonate}
                     onUserCreated={handleRefreshUsers}
+                    isImpersonating={!!impersonatingUid}
+                />
+            </div>
+            <div key="invitation-inbox" className="overflow-hidden relative group/widget">
+                <InvitationInboxWidget
+                    onImpersonate={handleImpersonate}
                     isImpersonating={!!impersonatingUid}
                 />
             </div>

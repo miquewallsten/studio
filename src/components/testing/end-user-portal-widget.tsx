@@ -101,7 +101,7 @@ export function EndUserPortalWidget({ users, onImpersonate, isImpersonating }: E
                 <div className="flex-1">
                     <CardTitle>End-User Portal</CardTitle>
                     <CardDescription>
-                        Impersonate an end-user to see and fill out their pending forms.
+                        Impersonate an end-user to see and fill out their pending forms. Use the Invitation Inbox to start.
                     </CardDescription>
                 </div>
                  <DropdownMenu>
