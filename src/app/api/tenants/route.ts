@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
             url: companyUrl || null,
             status: 'INVITED',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            invitationSentAt: admin.firestore.FieldValue.serverTimestamp(), // Track invitation date
             createdBy: decodedToken.uid,
         });
 
@@ -131,7 +132,8 @@ export async function GET(request: NextRequest) {
 
     const enrichedTenants = tenants.map(tenant => ({
         ...tenant,
-        createdAt: tenant.createdAt.toDate().toISOString(), // Convert timestamp to string
+        createdAt: tenant.createdAt?.toDate().toISOString(), // Convert timestamp to string
+        invitationSentAt: tenant.invitationSentAt?.toDate().toISOString() || null,
         userCount: userCounts[tenant.id] || 0,
         ticketsCreated: ticketCounts[tenant.id] || 0,
     }));
