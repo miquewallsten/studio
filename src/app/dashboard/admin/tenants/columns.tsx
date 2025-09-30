@@ -4,6 +4,7 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import type { Tenant } from "./schema"
+import { Badge } from "@/components/ui/badge"
 
 type ColumnsProps = {
   onSelectTenant: (tenant: Tenant) => void;
@@ -23,6 +24,19 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
     },
     enableSorting: true,
     enableHiding: false,
+  },
+  {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+        const status = row.original.status;
+        return (
+            <Badge variant={status === 'INVITED' ? 'destructive' : 'default'}>{status || 'ACTIVE'}</Badge>
+        )
+    },
+    enableSorting: true,
   },
   {
     accessorKey: "userCount",

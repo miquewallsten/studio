@@ -1,12 +1,13 @@
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
 async function getTenantData() {
     const adminDb = getAdminDb();
-    const tenantsSnapshot = await adminDb.collection('tenants').get();
+    const tenantsSnapshot = await adminDb.collection('tenants').orderBy('createdAt', 'desc').get();
     const tenants: any[] = [];
     tenantsSnapshot.forEach(doc => {
         tenants.push({ id: doc.id, ...doc.data() });
@@ -32,13 +33,93 @@ async function getTicketCountsByTenant() {
     const ticketsSnapshot = await adminDb.collection('tickets').get();
     const counts: { [key: string]: number } = {};
     ticketsSnapshot.forEach(doc => {
-        const clientId = doc.data().clientId; // clientId on a ticket is the tenantId
+        const clientId = doc.data().clientId; // In our schema, a ticket's clientId is the tenantId
         if (clientId) {
             counts[clientId] = (counts[clientId] || 0) + 1;
         }
     });
     return counts;
 }
+
+export async function POST(request: NextRequest) {
+    try {
+        const idToken = cookies().get('firebaseIdToken')?.value;
+        if (!idToken) {
+            return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+        }
+        const adminAuth = getAdminAuth();
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        if (decodedToken.role !== 'Super Admin') {
+            return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+        }
+
+        const { companyName, companyUrl, adminName, adminEmail, adminPhone } = await request.json();
+
+        if (!companyName || !adminEmail) {
+            return NextResponse.json({ error: 'Company Name and Admin Email are required.' }, { status: 400 });
+        }
+        
+        const adminDb = getAdminDb();
+
+        // Step 1: Create the Tenant Admin user in Firebase Auth
+        let adminUserRecord;
+        try {
+            adminUserRecord = await adminAuth.createUser({
+                email: adminEmail,
+                displayName: adminName,
+                phoneNumber: adminPhone,
+                emailVerified: false,
+            });
+        } catch (error: any) {
+            if (error.code === 'auth/email-already-exists') {
+                 // If user exists, we can still proceed to create the tenant and associate them.
+                 // This assumes an existing user can be made a tenant admin.
+                adminUserRecord = await adminAuth.getUserByEmail(adminEmail);
+            } else {
+                throw error; // Rethrow other user creation errors
+            }
+        }
+        
+        // Step 2: Create the Tenant document in Firestore
+        const tenantRef = await adminDb.collection('tenants').add({
+            name: companyName,
+            url: companyUrl || null,
+            status: 'INVITED',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdBy: decodedToken.uid,
+        });
+
+        // Step 3: Set custom claims on the Tenant Admin user
+        await adminAuth.setCustomUserClaims(adminUserRecord.uid, {
+            role: 'Tenant Admin',
+            tenantId: tenantRef.id,
+        });
+
+        // Step 4: Create a user profile document for the admin (optional but good practice)
+        await adminDb.collection('users').doc(adminUserRecord.uid).set({
+            displayName: adminName,
+            email: adminEmail,
+            phone: adminPhone,
+            role: 'Tenant Admin',
+            tenantId: tenantRef.id,
+        }, { merge: true });
+
+        // Step 5: Generate a single-use onboarding link (password reset link is a good proxy)
+        const onboardingLink = await adminAuth.generatePasswordResetLink(adminEmail);
+
+        return NextResponse.json({
+            message: 'Tenant and Admin created successfully.',
+            tenantId: tenantRef.id,
+            adminUserId: adminUserRecord.uid,
+            onboardingLink: onboardingLink,
+        }, { status: 201 });
+
+    } catch (error: any) {
+        console.error('Error creating tenant:', error);
+        return NextResponse.json({ error: error.message || 'An unexpected error occurred.' }, { status: 500 });
+    }
+}
+
 
 export async function GET(request: NextRequest) {
   try {

@@ -17,26 +17,25 @@ import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import type { Tenant } from './schema';
 import { TenantProfileDialog } from '@/components/tenant-profile-dialog';
+import { NewTenantDialog } from '@/components/new-tenant-dialog';
 
 export default function TenantsPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
-    const [allTags, setAllTags] = useState<string[]>([]); // We may not use tags for tenants, but good to have
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+    const [isNewTenantDialogOpen, setNewTenantDialogOpen] = useState(false);
 
     const fetchTenants = async () => {
         setLoading(true);
         setError(null);
         try {
-            // This endpoint will need to be created or updated to fetch enriched tenant data
             const response = await fetch('/api/tenants'); 
             const data = await response.json();
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to fetch tenants');
             }
             setTenants(data.tenants);
-            // setAllTags(data.allTags || []);
         } catch (err: any) {
             console.error(err);
             setError(err.message);
@@ -59,6 +58,11 @@ export default function TenantsPage() {
 
   return (
     <div className="flex-1 space-y-4">
+        <NewTenantDialog
+            isOpen={isNewTenantDialogOpen}
+            onOpenChange={setNewTenantDialogOpen}
+            onTenantCreated={fetchTenants}
+        />
         <TenantProfileDialog 
             tenant={selectedTenant}
             isOpen={!!selectedTenant}
@@ -67,12 +71,10 @@ export default function TenantsPage() {
         />
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">Tenant Management</h1>
-        <Button asChild className="bg-accent hover:bg-accent/90">
-            <Link href="/dashboard/admin/tenants/new">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              New Tenant
-            </Link>
-          </Button>
+        <Button className="bg-accent hover:bg-accent/90" onClick={() => setNewTenantDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            New Tenant
+        </Button>
       </div>
       <Card>
         <CardHeader>
