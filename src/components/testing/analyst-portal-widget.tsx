@@ -124,7 +124,7 @@ export function AnalystPortalWidget() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tickets.length === 0 && !loading ? (
+          {tickets.length === 0 ? (
             <TableRow>
               <TableCell colSpan={2} className="h-24 text-center text-sm">
                 No tickets in progress.
@@ -170,5 +170,3 @@ export function AnalystPortalWidget() {
     </Card>
   );
 }
-
-    
