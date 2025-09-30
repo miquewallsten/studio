@@ -20,6 +20,7 @@ import { Separator } from './ui/separator';
 import { auth } from '@/lib/firebase';
 import { getIdToken } from 'firebase/auth';
 import { sendEmail } from '@/ai/flows/send-email-flow';
+import type { SendEmailInput } from '@/ai/schemas/send-email-schema';
 
 interface NewTenantDialogProps {
   isOpen: boolean;
@@ -42,8 +43,7 @@ export function NewTenantDialog({
   const [adminEmail, setAdminEmail] = useState('');
   
   const [onboardingLink, setOnboardingLink] = useState('');
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
+  const [emailContent, setEmailContent] = useState<SendEmailInput>({ to: '', subject: '', html: '' });
 
 
   const resetForm = () => {
@@ -53,8 +53,7 @@ export function NewTenantDialog({
     setAdminName('');
     setAdminEmail('');
     setOnboardingLink('');
-    setEmailSubject('');
-    setEmailBody('');
+    setEmailContent({ to: '', subject: '', html: '' });
   }
 
   const handleClose = (open: boolean) => {
@@ -67,8 +66,11 @@ export function NewTenantDialog({
   const generateEmailContent = (link: string) => {
       const subject = `Your Invitation to the TenantCheck Platform`;
       const body = `Hello ${adminName},\n\nYou have been invited to become an administrator for ${companyName} on the TenantCheck platform.\n\nPlease use the following secure, single-use link to set up your account and get started:\n\n${link}\n\nThis link will expire after its first use.\n\nWelcome aboard,\nThe TenantCheck Team`;
-      setEmailSubject(subject);
-      setEmailBody(body);
+      setEmailContent({
+        to: adminEmail,
+        subject: subject,
+        html: body,
+      });
   }
 
   const handleCreateTenant = async (e: React.FormEvent) => {
@@ -101,7 +103,6 @@ export function NewTenantDialog({
             description: `"${companyName}" is now in an INVITED state.`,
         });
 
-        // Construct the full onboarding URL for the new /onboard page
         const passwordResetLink = data.onboardingLink;
         const actionCode = new URL(passwordResetLink).searchParams.get('oobCode');
         const fullOnboardingUrl = `${window.location.origin}/onboard?oobCode=${actionCode}`;
@@ -126,18 +127,18 @@ export function NewTenantDialog({
     setIsLoading(true);
     try {
         const result = await sendEmail({
-            to: adminEmail,
-            subject: emailSubject,
-            html: emailBody.replace(/\n/g, '<br>'), // Convert newlines to breaks for HTML email
+            to: emailContent.to,
+            subject: emailContent.subject,
+            html: emailContent.html.replace(/\n/g, '<br>'),
         });
         if (!result.success) {
             throw new Error(result.message);
         }
         toast({
             title: 'Invitation Sent',
-            description: `An email has been sent to ${adminEmail}.`,
+            description: `An email has been sent to ${emailContent.to}.`,
         });
-        handleClose(false); // Close dialog on success
+        handleClose(false);
     } catch(error: any) {
         toast({
             title: 'Email Failed to Send',
@@ -156,7 +157,7 @@ export function NewTenantDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
           {step === 1 && (
             <form onSubmit={handleCreateTenant}>
                 <DialogHeader>
@@ -172,13 +173,13 @@ export function NewTenantDialog({
                         <Input id="company-name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required disabled={isLoading} />
                     </div>
                      <div className="grid gap-2">
-                        <Label htmlFor="company-url">Company URL</Label>
+                        <Label htmlFor="company-url">Company URL (Optional)</Label>
                         <Input id="company-url" value={companyUrl} onChange={(e) => setCompanyUrl(e.target.value)} disabled={isLoading} placeholder="e.g., www.client.com" />
                     </div>
                     <Separator />
                     <h3 className="text-sm font-semibold text-muted-foreground">Tenant Admin Details</h3>
                      <div className="grid gap-2">
-                        <Label htmlFor="admin-name">Admin Name</Label>
+                        <Label htmlFor="admin-name">Admin Full Name</Label>
                         <Input id="admin-name" value={adminName} onChange={(e) => setAdminName(e.target.value)} required disabled={isLoading} />
                     </div>
                      <div className="grid gap-2">
@@ -200,27 +201,38 @@ export function NewTenantDialog({
           {step === 2 && (
              <>
                 <DialogHeader>
-                    <DialogTitle>Compose Invitation</DialogTitle>
+                    <DialogTitle>Compose Onboarding Invitation</DialogTitle>
                     <DialogDescription>
                         Review and send the onboarding email to the new Tenant Admin.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="to-email" className="text-right">To:</Label>
-                        <Input id="to-email" readOnly value={adminEmail} className="col-span-3" />
-                     </div>
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="subject" className="text-right">Subject:</Label>
-                        <Input id="subject" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="col-span-3" />
+                    <div className="flex items-center gap-4 rounded-md border p-3">
+                        <Label htmlFor="to-email" className="text-muted-foreground">To:</Label>
+                        <Input id="to-email" readOnly value={emailContent.to} className="border-0 shadow-none focus-visible:ring-0 p-0" />
+                    </div>
+                     <div className="flex items-center gap-4 rounded-md border p-3">
+                        <Label htmlFor="subject" className="text-muted-foreground">Subject:</Label>
+                        <Input 
+                            id="subject" 
+                            value={emailContent.subject} 
+                            onChange={(e) => setEmailContent(prev => ({ ...prev, subject: e.target.value}))} 
+                            className="border-0 shadow-none focus-visible:ring-0 p-0 font-medium"
+                        />
                      </div>
                      <div className="grid gap-2">
-                        <Label htmlFor="body">Message:</Label>
-                        <Textarea id="body" value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="h-48 text-sm" />
+                        {/* This will eventually be replaced by a rich text editor */}
+                        <Textarea 
+                            id="body" 
+                            value={emailContent.html} 
+                            onChange={(e) => setEmailContent(prev => ({ ...prev, html: e.target.value}))}
+                            className="h-64 text-sm" 
+                            placeholder="Email body..."
+                        />
                      </div>
                      <div className="text-xs text-muted-foreground">
                         The single-use link is included in the email body. You can also{' '}
-                        <button type="button" onClick={copyLink} className="underline">copy it directly</button>.
+                        <button type="button" onClick={copyLink} className="underline font-semibold">copy it directly</button>.
                      </div>
                 </div>
                 <DialogFooter>
