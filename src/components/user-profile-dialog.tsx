@@ -130,7 +130,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                             <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <DialogTitle className="text-xl font-bold font-headline">{isEditMode ? formData.displayName : user.displayName || user.email}</DialogTitle>
+                             <DialogTitle className="text-xl font-bold font-headline">{isEditMode ? formData.displayName : user.displayName || user.email}</DialogTitle>
                             <DialogDescription className="text-sm text-muted-foreground">{user.email}</DialogDescription>
                         </div>
                          <Button variant="outline" size="icon" className="ml-auto" onClick={() => setIsEditMode(!isEditMode)}>
@@ -219,7 +219,7 @@ export function UserProfileDialog({ user, isOpen, onOpenChange, onUserUpdated }:
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground flex items-center gap-2"><Briefcase className="size-4"/> Tenant</span>
-                                    <span>{user.tenantName || 'Internal Staff'}</span>
+                                    <span>{user.tenantName || 'N/A'}</span>
                                 </div>
                                 <Separator />
                                  <div className="flex items-center justify-between">
