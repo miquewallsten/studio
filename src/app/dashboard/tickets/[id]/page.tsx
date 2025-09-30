@@ -75,10 +75,10 @@ import {
               <div className="flex items-start justify-between">
                 <div className="grid gap-1">
                   <CardTitle className="text-2xl font-headline">
-                    Ticket #{ticket.id}
+                    Investigation: {ticket.subjectName}
                   </CardTitle>
                   <CardDescription>
-                    Created on {ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPP') : ''} by {ticket.clientEmail}
+                    Ticket ID: {ticket.id.substring(0, 7)}
                   </CardDescription>
                 </div>
                 <Badge className="text-sm" variant={getStatusVariant(ticket.status)}>
@@ -87,18 +87,24 @@ import {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold">Subject</h3>
-                  <p className="text-muted-foreground">{ticket.subjectName}</p>
+              <div className="space-y-6">
+                 <div>
+                  <h3 className="font-semibold text-muted-foreground">Requested By</h3>
+                  <p>{ticket.clientEmail}</p>
+                </div>
+                 <div>
+                  <h3 className="font-semibold text-muted-foreground">Requested On</h3>
+                  <p>{ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPP') : ''}</p>
                 </div>
                 <div>
-                  <h3 className="font-semibold">Report Type</h3>
-                  <p className="text-muted-foreground">{ticket.reportType}</p>
+                  <h3 className="font-semibold text-muted-foreground">Report Type</h3>
+                  <p>{ticket.reportType}</p>
                 </div>
                 <div>
-                  <h3 className="font-semibold">Description & Notes</h3>
-                  <p className="text-muted-foreground">{ticket.description}</p>
+                  <h3 className="font-semibold text-muted-foreground">Client Notes</h3>
+                  <p className="text-sm">
+                    {ticket.description || 'No notes provided.'}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -138,4 +144,3 @@ import {
       </div>
     );
   }
-  
