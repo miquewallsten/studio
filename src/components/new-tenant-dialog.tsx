@@ -15,10 +15,11 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Textarea } from './ui/textarea';
-import { Copy } from 'lucide-react';
+import { Copy, Mail } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { auth } from '@/lib/firebase';
 import { getIdToken } from 'firebase/auth';
+import { sendEmail } from '@/ai/flows/send-email-flow';
 
 interface NewTenantDialogProps {
   isOpen: boolean;
@@ -42,6 +43,9 @@ export function NewTenantDialog({
   const [adminPhone, setAdminPhone] = useState('');
   
   const [onboardingLink, setOnboardingLink] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+
 
   const resetForm = () => {
     setStep(1);
@@ -51,6 +55,8 @@ export function NewTenantDialog({
     setAdminEmail('');
     setAdminPhone('');
     setOnboardingLink('');
+    setEmailSubject('');
+    setEmailBody('');
   }
 
   const handleClose = (open: boolean) => {
@@ -60,7 +66,14 @@ export function NewTenantDialog({
     onOpenChange(open);
   }
 
-  const handleNext = async (e: React.FormEvent) => {
+  const generateEmailContent = (link: string) => {
+      const subject = `Your Invitation to the TenantCheck Platform`;
+      const body = `Hello ${adminName},\n\nYou have been invited to become an administrator for ${companyName} on the TenantCheck platform.\n\nPlease use the following secure, single-use link to set up your account and get started:\n\n${link}\n\nThis link will expire after its first use.\n\nWelcome aboard,\nThe TenantCheck Team`;
+      setEmailSubject(subject);
+      setEmailBody(body);
+  }
+
+  const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -91,6 +104,7 @@ export function NewTenantDialog({
         });
 
         setOnboardingLink(data.onboardingLink);
+        generateEmailContent(data.onboardingLink);
         onTenantCreated();
         setStep(2);
 
@@ -105,6 +119,33 @@ export function NewTenantDialog({
     }
   };
   
+  const handleSendEmail = async () => {
+    setIsLoading(true);
+    try {
+        const result = await sendEmail({
+            to: adminEmail,
+            subject: emailSubject,
+            html: emailBody.replace(/\n/g, '<br>'), // Convert newlines to breaks for HTML email
+        });
+        if (!result.success) {
+            throw new Error(result.message);
+        }
+        toast({
+            title: 'Invitation Sent',
+            description: `An email has been sent to ${adminEmail}.`,
+        });
+        handleClose(false); // Close dialog on success
+    } catch(error: any) {
+        toast({
+            title: 'Email Failed to Send',
+            description: error.message || "Please check your SMTP settings in the .env file.",
+            variant: 'destructive',
+        })
+    } finally {
+        setIsLoading(false);
+    }
+  }
+
   const copyLink = () => {
       navigator.clipboard.writeText(onboardingLink);
       toast({ title: "Copied!", description: "Onboarding link copied to clipboard." });
@@ -112,9 +153,9 @@ export function NewTenantDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
           {step === 1 && (
-            <form onSubmit={handleNext}>
+            <form onSubmit={handleCreateTenant}>
                 <DialogHeader>
                 <DialogTitle>Create New Tenant</DialogTitle>
                 <DialogDescription>
@@ -129,7 +170,7 @@ export function NewTenantDialog({
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="company-url">Company URL</Label>
-                        <Input id="company-url" value={companyUrl} onChange={(e) => setCompanyUrl(e.target.value)} disabled={isLoading} />
+                        <Input id="company-url" value={companyUrl} onChange={(e) => setCompanyUrl(e.target.value)} disabled={isLoading} placeholder="e.g., www.client.com" />
                     </div>
                     <Separator />
                     <h3 className="text-sm font-semibold text-muted-foreground">Tenant Admin Details</h3>
@@ -151,7 +192,7 @@ export function NewTenantDialog({
                     Cancel
                 </Button>
                 <Button type="submit" disabled={isLoading} className="bg-accent hover:bg-accent/90">
-                    {isLoading ? 'Creating...' : 'Next'}
+                    {isLoading ? 'Creating...' : 'Create & Compose Invite'}
                 </Button>
                 </DialogFooter>
             </form>
@@ -160,29 +201,36 @@ export function NewTenantDialog({
           {step === 2 && (
              <>
                 <DialogHeader>
-                    <DialogTitle>Onboarding Link Generated</DialogTitle>
+                    <DialogTitle>Compose Invitation</DialogTitle>
                     <DialogDescription>
-                        Send this single-use link to the Tenant Admin to complete their account setup.
+                        Review and send the onboarding email to the new Tenant Admin.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        This link will allow <span className="font-semibold">{adminName}</span> to set their password and finish onboarding for <span className="font-semibold">{companyName}</span>.
-                    </p>
-                    <div className="flex items-center space-x-2">
-                        <Textarea readOnly value={onboardingLink} className="text-xs h-24" />
-                        <Button type="button" size="icon" variant="outline" onClick={copyLink}>
-                            <Copy className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <p className="text-xs text-destructive">
-                        For security, this link will only be shown once. Please copy it now.
-                    </p>
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="to-email" className="text-right">To:</Label>
+                        <Input id="to-email" readOnly value={adminEmail} className="col-span-3" />
+                     </div>
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="subject" className="text-right">Subject:</Label>
+                        <Input id="subject" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="col-span-3" />
+                     </div>
+                     <div className="grid gap-2">
+                        <Label htmlFor="body">Message:</Label>
+                        <Textarea id="body" value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="h-48 text-sm" />
+                     </div>
+                     <div className="text-xs text-muted-foreground">
+                        The single-use link is included in the email body. You can also{' '}
+                        <button type="button" onClick={copyLink} className="underline">copy it directly</button>.
+                     </div>
                 </div>
                 <DialogFooter>
-                    {/* The email composer will be added here in a future step */}
-                    <Button type="button" variant="outline" onClick={() => handleClose(false)}>
-                        Done
+                    <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={isLoading}>
+                        Send Manually Later
+                    </Button>
+                    <Button type="button" onClick={handleSendEmail} className="bg-accent hover:bg-accent/90" disabled={isLoading}>
+                        <Mail className="mr-2 h-4 w-4" />
+                        {isLoading ? 'Sending...' : 'Send Invitation'}
                     </Button>
                 </DialogFooter>
             </>
