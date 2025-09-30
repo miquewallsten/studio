@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, PlusCircle, ShieldOff } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
 import { UserProfileDialog } from '@/components/user-profile-dialog';
@@ -64,6 +64,9 @@ export default function AdminUsersPage() {
     }
 
     const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
+
+    const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated }), [allTags, handleUserInvitedOrUpdated]);
+
 
     if (isRoleLoading) {
       return <p>Loading access rights...</p>
@@ -144,7 +147,7 @@ FIREBASE_PRIVATE_KEY="..."`}
              <p>Loading users...</p>
            ) : (
             <DataTable 
-                columns={columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated })} 
+                columns={memoizedColumns} 
                 data={users}
                 onRowClick={(row) => setSelectedUser(row.original)}
             />

@@ -85,7 +85,7 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
       const tenantName = row.getValue("tenantName") as string | null;
       return (
         <div className="flex items-center">
-          <span>{tenantName || "N/A"}</span>
+          <span>{tenantName || "Internal Staff"}</span>
         </div>
       )
     },
@@ -107,5 +107,6 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
   {
     id: "actions",
     cell: ({ row }) => <DataTableRowActions row={row} onSelectUser={onSelectUser} />,
+    enableResizing: false,
   },
 ]

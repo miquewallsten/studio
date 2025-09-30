@@ -31,6 +31,16 @@ export function DataTableToolbar<TData>({
       {value: "Unassigned", label: "Unassigned"},
   ];
 
+  const tenantNames = React.useMemo(() => {
+    const names = new Set<string>();
+    table.getCoreRowModel().rows.forEach(row => {
+        const tenantName = (row.original as any).tenantName;
+        if (tenantName) names.add(tenantName);
+    });
+    return Array.from(names).map(name => ({ value: name, label: name }));
+  }, [table.getCoreRowModel().rows]);
+
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
@@ -38,12 +48,11 @@ export function DataTableToolbar<TData>({
           placeholder="Filter by name or email..."
           value={(table.getColumn("displayName")?.getFilterValue() as string) ?? ""}
           onChange={(event) => {
-            const emailColumn = table.getColumn("email");
-            const nameColumn = table.getColumn("displayName");
-            emailColumn?.setFilterValue(event.target.value);
-            nameColumn?.setFilterValue(event.target.value);
-          }
-          }
+            // This is a bit of a hack to filter multiple columns with one input
+            // A more robust solution would use a global filter
+            table.getColumn("displayName")?.setFilterValue(event.target.value)
+            table.getColumn("email")?.setFilterValue(event.target.value)
+          }}
           className="h-8 w-[150px] lg:w-[250px]"
         />
         {table.getColumn("role") && (
@@ -52,6 +61,13 @@ export function DataTableToolbar<TData>({
             title="Role"
             options={roles}
           />
+        )}
+        {table.getColumn("tenantName") && (
+            <DataTableFacetedFilter
+                column={table.getColumn("tenantName")}
+                title="Tenant"
+                options={tenantNames}
+            />
         )}
         {isFiltered && (
           <Button

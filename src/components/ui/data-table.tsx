@@ -18,6 +18,7 @@ import {
   Row,
   FilterFn,
   ColumnSizingState,
+  ColumnOrderState,
 } from "@tanstack/react-table"
 import { rankItem } from '@tanstack/match-sorter-utils'
 
@@ -52,6 +53,8 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   return itemRank.passed
 }
 
+const tableStateLocalStorageKey = "data-table-state";
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -65,6 +68,32 @@ export function DataTable<TData, TValue>({
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({});
+  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>(
+    columns.map(c => c.id!)
+  );
+
+  // Load state from local storage on initial render
+  React.useEffect(() => {
+    const savedState = localStorage.getItem(tableStateLocalStorageKey);
+    if (savedState) {
+        const { columnVisibility, sorting, columnSizing, columnOrder } = JSON.parse(savedState);
+        if (columnVisibility) setColumnVisibility(columnVisibility);
+        if (sorting) setSorting(sorting);
+        if (columnSizing) setColumnSizing(columnSizing);
+        if (columnOrder) setColumnOrder(columnOrder);
+    }
+  }, []);
+
+  // Save state to local storage whenever it changes
+  React.useEffect(() => {
+    const stateToSave = {
+        columnVisibility,
+        sorting,
+        columnSizing,
+        columnOrder
+    };
+    localStorage.setItem(tableStateLocalStorageKey, JSON.stringify(stateToSave));
+  }, [columnVisibility, sorting, columnSizing, columnOrder]);
 
 
   const table = useReactTable({
@@ -79,12 +108,14 @@ export function DataTable<TData, TValue>({
       rowSelection,
       columnFilters,
       columnSizing,
+      columnOrder,
     },
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onColumnSizingChange: setColumnSizing,
+    onColumnOrderChange: setColumnOrder,
     columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
