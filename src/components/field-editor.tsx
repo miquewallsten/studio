@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Field as FieldType } from '@/app/dashboard/fields/schema';
 import { ScrollArea } from './ui/scroll-area';
 import { Trash2 } from 'lucide-react';
+import { Input } from './ui/input';
 
 interface FieldEditorProps {
     field: FieldType;
@@ -33,15 +34,20 @@ export function FieldEditor({ field: initialField, onFieldUpdated, onDeleteField
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    setField(initialField);
+  }, [initialField]);
+
  const handleSaveAll = async () => {
     if (!field) return;
     setIsSaving(true);
     try {
         const fieldRef = doc(db, 'fields', field.id);
         await updateDoc(fieldRef, {
+            label: field.label,
             subFields: field.subFields,
-            aiInstructions: field.aiInstructions,
             internalFields: field.internalFields,
+            aiInstructions: field.aiInstructions,
         });
         toast({
             title: 'Field Saved',
@@ -72,7 +78,7 @@ export function FieldEditor({ field: initialField, onFieldUpdated, onDeleteField
                 <div className="flex items-start justify-between">
                     <div>
                         <CardTitle className="text-2xl font-semibold font-headline">
-                            Edit Field: {field.label}
+                            Edit Field
                         </CardTitle>
                         <CardDescription>
                             Modify the configuration for this reusable library field.
@@ -84,6 +90,17 @@ export function FieldEditor({ field: initialField, onFieldUpdated, onDeleteField
                     </Button>
                 </div>
             </CardHeader>
+            <CardContent>
+                <div className="grid gap-2">
+                    <Label htmlFor="field-label">Field Label</Label>
+                    <Input 
+                        id="field-label"
+                        value={field.label}
+                        onChange={(e) => setField(f => ({...f, label: e.target.value}))}
+                        className="text-lg font-medium"
+                    />
+                </div>
+            </CardContent>
         </Card>
         
         {field.type === 'composite' && (
