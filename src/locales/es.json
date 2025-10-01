@@ -1,0 +1,38 @@
+{
+    "nav": {
+        "account": "Cuenta",
+        "profile": "Perfil",
+        "settings": "Configuración",
+        "language": "Idioma",
+        "logout": "Cerrar sesión"
+    },
+    "dashboard": {
+        "title": "Panel de control",
+        "edit_dashboard": "Editar panel",
+        "done_editing": "Terminar edición",
+        "new_tickets": "Tickets Nuevos",
+        "new_tickets_desc": "Esperando asignación de analista",
+        "in_progress": "En Progreso",
+        "in_progress_desc": "Actualmente en proceso",
+        "total_users": "Usuarios Totales",
+        "total_users_desc": "En todos los roles",
+        "completed": "Completados",
+        "completed_desc": "Este mes",
+        "recent_tickets": "Tickets Recientes",
+        "recent_tickets_desc": "Los últimos 5 tickets que se han creado.",
+        "no_tickets_yet": "Aún no hay tickets.",
+        "new_tenants": "Nuevos Inquilinos",
+        "new_tenants_desc": "Tus clientes más nuevos en la plataforma.",
+        "no_tenants_found": "No se encontraron inquilinos."
+    },
+    "common": {
+        "loading": "Cargando",
+        "view_all": "Ver todo",
+        "subject": "Sujeto",
+        "status": "Estado",
+        "date": "Fecha",
+        "action": "Acción",
+        "tenant_name": "Nombre del Inquilino",
+        "created": "Creado"
+    }
+}

@@ -43,6 +43,7 @@ import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { WidgetLibrary } from '@/components/dashboard/widget-library';
 import { AssistantWidget } from '@/components/dashboard/assistant-widget';
 import { NotificationsWidget } from '@/components/dashboard/notifications-widget';
+import { useLanguage } from '@/contexts/language-context';
 
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -102,6 +103,7 @@ const WIDGET_DEFINITIONS: {
 
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [userCount, setUserCount] = useState(0);
@@ -237,7 +239,7 @@ export default function DashboardPage() {
         return (
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">New Tickets</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('dashboard.new_tickets')}</CardTitle>
               <Inbox className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -245,7 +247,7 @@ export default function DashboardPage() {
                 {getTicketCountByStatus('New')}
               </div>
               <p className="text-xs text-muted-foreground">
-                Awaiting analyst assignment
+                {t('dashboard.new_tickets_desc')}
               </p>
             </CardContent>
           </Card>
@@ -254,7 +256,7 @@ export default function DashboardPage() {
         return (
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('dashboard.in_progress')}</CardTitle>
               <GanttChartSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -262,7 +264,7 @@ export default function DashboardPage() {
                 {getTicketCountByStatus('In Progress')}
               </div>
               <p className="text-xs text-muted-foreground">
-                Currently being worked on
+                {t('dashboard.in_progress_desc')}
               </p>
             </CardContent>
           </Card>
@@ -271,13 +273,13 @@ export default function DashboardPage() {
         return (
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('dashboard.total_users')}</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{userCount}</div>
               <p className="text-xs text-muted-foreground">
-                Across all roles
+                {t('dashboard.total_users_desc')}
               </p>
             </CardContent>
           </Card>
@@ -286,14 +288,14 @@ export default function DashboardPage() {
         return (
           <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('dashboard.completed')}</CardTitle>
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {getTicketCountByStatus('Completed')}
               </div>
-              <p className="text-xs text-muted-foreground">This month</p>
+              <p className="text-xs text-muted-foreground">{t('dashboard.completed_desc')}</p>
             </CardContent>
           </Card>
         );
@@ -303,24 +305,24 @@ export default function DashboardPage() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                Recent Tickets
+                {t('dashboard.recent_tickets')}
                 <Button asChild variant="ghost" size="sm">
-                  <Link href="/dashboard/tickets">View All</Link>
+                  <Link href="/dashboard/tickets">{t('common.view_all')}</Link>
                 </Button>
               </CardTitle>
               <CardDescription>
-                The latest 5 tickets that have been created.
+                {t('dashboard.recent_tickets_desc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>{t('common.subject')}</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
+                    <TableHead>{t('common.date')}</TableHead>
                     <TableHead>
-                      <span className="sr-only">Action</span>
+                      <span className="sr-only">{t('common.action')}</span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -328,7 +330,7 @@ export default function DashboardPage() {
                   {loading ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-24 text-center">
-                        Loading...
+                        {t('common.loading')}...
                       </TableCell>
                     </TableRow>
                   ) : recentTickets.length > 0 ? (
@@ -357,7 +359,7 @@ export default function DashboardPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={4} className="h-24 text-center">
-                        No tickets yet.
+                        {t('dashboard.no_tickets_yet')}
                       </TableCell>
                     </TableRow>
                   )}
@@ -371,23 +373,23 @@ export default function DashboardPage() {
             <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                New Tenants
+                {t('dashboard.new_tenants')}
                 <Button asChild variant="ghost" size="sm">
-                  <Link href="/dashboard/admin/tenants">View All</Link>
+                  <Link href="/dashboard/admin/tenants">{t('common.view_all')}</Link>
                 </Button>
               </CardTitle>
               <CardDescription>
-                Your newest clients on the platform.
+                {t('dashboard.new_tenants_desc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Tenant Name</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>{t('common.tenant_name')}</TableHead>
+                    <TableHead>{t('common.created')}</TableHead>
                     <TableHead>
-                      <span className="sr-only">Action</span>
+                      <span className="sr-only">{t('common.action')}</span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -395,7 +397,7 @@ export default function DashboardPage() {
                   {loading ? (
                     <TableRow>
                       <TableCell colSpan={3} className="h-24 text-center">
-                        Loading...
+                        {t('common.loading')}...
                       </TableCell>
                     </TableRow>
                   ) : tenants.length > 0 ? (
@@ -423,7 +425,7 @@ export default function DashboardPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={3} className="h-24 text-center">
-                        No tenants found.
+                        {t('dashboard.no_tenants_found')}
                       </TableCell>
                     </TableRow>
                   )}
@@ -449,7 +451,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold font-headline">Dashboard</h1>
+        <h1 className="text-3xl font-bold font-headline">{t('dashboard.title')}</h1>
         <div className="flex items-center gap-2">
             <WidgetLibrary 
                 allWidgets={WIDGET_DEFINITIONS}
@@ -462,7 +464,7 @@ export default function DashboardPage() {
                 className={isEditMode ? 'bg-accent hover:bg-accent/90' : ''}
             >
                 <LayoutDashboard className="mr-2" />
-                {isEditMode ? 'Done Editing' : 'Edit Dashboard'}
+                {isEditMode ? t('dashboard.done_editing') : t('dashboard.edit_dashboard')}
             </Button>
         </div>
       </div>

@@ -1,0 +1,38 @@
+{
+    "nav": {
+        "account": "Account",
+        "profile": "Profile",
+        "settings": "Settings",
+        "language": "Language",
+        "logout": "Log out"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "edit_dashboard": "Edit Dashboard",
+        "done_editing": "Done Editing",
+        "new_tickets": "New Tickets",
+        "new_tickets_desc": "Awaiting analyst assignment",
+        "in_progress": "In Progress",
+        "in_progress_desc": "Currently being worked on",
+        "total_users": "Total Users",
+        "total_users_desc": "Across all roles",
+        "completed": "Completed",
+        "completed_desc": "This month",
+        "recent_tickets": "Recent Tickets",
+        "recent_tickets_desc": "The latest 5 tickets that have been created.",
+        "no_tickets_yet": "No tickets yet.",
+        "new_tenants": "New Tenants",
+        "new_tenants_desc": "Your newest clients on the platform.",
+        "no_tenants_found": "No tenants found."
+    },
+    "common": {
+        "loading": "Loading",
+        "view_all": "View All",
+        "subject": "Subject",
+        "status": "Status",
+        "date": "Date",
+        "action": "Action",
+        "tenant_name": "Tenant Name",
+        "created": "Created"
+    }
+}
