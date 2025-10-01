@@ -21,15 +21,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { suggestComplianceQuestions } from '@/ai/flows/compliance-question-suggestions';
-import { db, auth } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
 
 export default function NewRequestPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const secureFetch = useSecureFetch();
+  const [user, loadingUser] = useAuthState(auth);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,9 +41,8 @@ export default function NewRequestPage() {
     const email = formData.get('email') as string;
     const reportType = formData.get('report-type') as string;
     const description = formData.get('description') as string;
-    const clientUser = auth.currentUser;
 
-    if (!clientUser) {
+    if (!user) {
         toast({
             title: 'Error',
             description: 'You must be logged in to create a request.',
@@ -52,40 +53,19 @@ export default function NewRequestPage() {
     }
 
     try {
-      // Step 1: Create the end-user in Firebase Auth and associate with the client (tenant)
-      const inviteResponse = await fetch('/api/users/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // We use the logged-in client's UID as the tenantId for the new end-user
-        body: JSON.stringify({ email: email, tenantId: clientUser.uid }), 
-      });
-
-      const inviteData = await inviteResponse.json();
-      
-      // If a user already exists, we can proceed. Otherwise, fail fast.
-      if (!inviteResponse.ok && inviteData.error !== 'A user with this email address already exists.') {
-        throw new Error(inviteData.error || 'Failed to create the end-user account.');
-      }
-
-      // Step 2: Get AI-suggested compliance questions
-      const { suggestedQuestions } = await suggestComplianceQuestions({
-        reportType,
-        description,
-      });
-
-      // Step 3: Create the ticket in Firestore
-      await addDoc(collection(db, 'tickets'), {
-        subjectName,
-        email,
-        reportType,
-        description,
-        suggestedQuestions,
-        status: 'New',
-        createdAt: serverTimestamp(),
-        clientId: clientUser.uid, // The ID of the client company/user who made the request
-        clientEmail: clientUser.email,
-        endUserId: inviteData.uid, // The ID of the newly created end-user who will fill the form
-      });
+        const response = await secureFetch('/api/client/tickets/create', {
+            method: 'POST',
+            body: JSON.stringify({
+                subjectName,
+                email,
+                reportType,
+                description,
+            }),
+        });
+        
+        if (response.error) {
+            throw new Error(response.error);
+        }
 
       toast({
         title: 'Request Created',
