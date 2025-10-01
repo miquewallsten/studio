@@ -16,6 +16,8 @@ import {
   getDocs,
   serverTimestamp,
   getCountFromServer,
+  where,
+  query,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getAdminAuth } from '@/lib/firebase-admin';
@@ -110,7 +112,7 @@ const getTicketMetricsTool = ai.defineTool(
   {
     name: 'getTicketMetrics',
     description: 'Retrieves the current count of tickets for each status.',
-    inputSchema: z.object({}),
+    inputSchema: z.object({}).optional(),
     outputSchema: z.object({
       New: z.number(),
       'In Progress': z.number(),
@@ -120,7 +122,7 @@ const getTicketMetricsTool = ai.defineTool(
     }),
   },
   async () => {
-    const statuses = ['New', 'In Progress', 'Pending Review', 'Completed'];
+    const statuses: Array<keyof ReturnType<typeof getTicketMetricsTool.outputSchema.parse>> = ['New', 'In Progress', 'Pending Review', 'Completed'];
     const counts = {
       New: 0,
       'In Progress': 0,
@@ -128,17 +130,25 @@ const getTicketMetricsTool = ai.defineTool(
       Completed: 0,
       Total: 0,
     };
-    const querySnapshot = await getDocs(collection(db, 'tickets'));
+    
+    const ticketsCollection = collection(db, 'tickets');
+
+    // This is less efficient than multiple queries but works for smaller datasets.
+    // For larger scale, you'd run separate getCountFromServer queries.
+    const querySnapshot = await getDocs(ticketsCollection);
+    
     querySnapshot.forEach(doc => {
       const status = doc.data().status;
       if (statuses.includes(status)) {
         counts[status as keyof typeof counts]++;
       }
     });
+
     counts.Total = querySnapshot.size;
     return counts;
   }
 );
+
 
 const getUserCountTool = ai.defineTool(
     {

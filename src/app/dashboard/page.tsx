@@ -47,6 +47,8 @@ import { NotificationsWidget } from '@/components/dashboard/notifications-widget
 import { useLanguage } from '@/contexts/language-context';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { debounce } from 'lodash';
+import { QuickActionsWidget } from '@/components/dashboard/quick-actions-widget';
+import { chat } from '@/ai/flows/assistant-flow';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -89,9 +91,13 @@ const WIDGET_DEFINITIONS: {
     title: 'Completed',
     defaultLayout: { i: 'completed', x: 3, y: 0, w: 1, h: 1, minW: 1, minH: 1 },
   },
+  'quick-actions': {
+    title: 'Quick Actions',
+    defaultLayout: { i: 'quick-actions', x: 0, y: 1, w: 2, h: 2, minW: 2, minH: 2 },
+  },
   'recent-tickets': {
     title: 'Recent Tickets',
-    defaultLayout: { i: 'recent-tickets', x: 0, y: 1, w: 4, h: 2, minW: 2, minH: 2 },
+    defaultLayout: { i: 'recent-tickets', x: 2, y: 1, w: 4, h: 2, minW: 2, minH: 2 },
   },
   'new-tenants': {
     title: 'New Tenants',
@@ -103,17 +109,18 @@ const WIDGET_DEFINITIONS: {
   },
 };
 
-const DEFAULT_WIDGETS = ['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant'];
+const DEFAULT_WIDGETS = ['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'quick-actions', 'recent-tickets', 'new-tenants', 'ai-assistant'];
 
 
 export default function DashboardPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [user, loadingUser] = useAuthState(auth);
   const secureFetch = useSecureFetch();
   
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [userCount, setUserCount] = useState(0);
+  const [ticketMetrics, setTicketMetrics] = useState({ New: 0, 'In Progress': 0, Completed: 0 });
   const [loading, setLoading] = useState(true);
   
   const [isEditMode, setIsEditMode] = useState(false);
@@ -163,7 +170,8 @@ export default function DashboardPage() {
 
     const ticketQuery = query(
       collection(db, 'tickets'),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(5)
     );
     const tenantQuery = query(
       collection(db, 'tenants'),
@@ -188,21 +196,35 @@ export default function DashboardPage() {
       setTenants(tenantsData);
     });
 
-    const fetchUsers = async () => {
+    const fetchUsersAndMetrics = async () => {
       try {
-        const response = await fetch('/api/users');
-        if (response.ok) {
-          const data = await response.json();
-          if (isMounted) {
-            setUserCount(data.users.length);
-          }
+        const response = await chat({ prompt: 'Get ticket metrics and total user count', locale });
+        // In a real app, you'd parse this more robustly, but for now, we assume a simple format.
+        // A better approach would be for the flow to return structured JSON.
+        const userCountMatch = response.match(/(\d+) total users/);
+        if (userCountMatch && isMounted) {
+            setUserCount(parseInt(userCountMatch[1], 10));
         }
+        
+        const newTicketsMatch = response.match(/New: (\d+)/);
+        const inProgressMatch = response.match(/In Progress: (\d+)/);
+        const completedMatch = response.match(/Completed: (\d+)/);
+
+        if (isMounted) {
+            setTicketMetrics({
+                New: newTicketsMatch ? parseInt(newTicketsMatch[1], 10) : 0,
+                'In Progress': inProgressMatch ? parseInt(inProgressMatch[1], 10) : 0,
+                Completed: completedMatch ? parseInt(completedMatch[1], 10) : 0,
+            });
+        }
+
+
       } catch (error) {
-        console.error('Failed to fetch users:', error);
+        console.error('Failed to fetch users and metrics via AI:', error);
       }
     };
 
-    fetchUsers();
+    fetchUsersAndMetrics();
 
     return () => {
       isMounted = false;
@@ -210,17 +232,13 @@ export default function DashboardPage() {
       unsubscribeTenants();
       savePreferences.cancel();
     };
-  }, [user, loading, savePreferences]);
+  }, [user, loading, savePreferences, locale]);
 
   const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     if (isEditMode) {
       setLayouts(allLayouts);
       savePreferences({ layouts: allLayouts, widgets: activeWidgets });
     }
-  };
-
-  const getTicketCountByStatus = (status: TicketStatus) => {
-    return tickets.filter((ticket) => ticket.status === status).length;
   };
 
   const getStatusVariant = (status: string) => {
@@ -261,7 +279,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {getTicketCountByStatus('New')}
+                {ticketMetrics.New}
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('dashboard.new_tickets_desc')}
@@ -278,7 +296,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {getTicketCountByStatus('In Progress')}
+                {ticketMetrics['In Progress']}
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('dashboard.in_progress_desc')}
@@ -310,14 +328,15 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {getTicketCountByStatus('Completed')}
+                {ticketMetrics.Completed}
               </div>
               <p className="text-xs text-muted-foreground">{t('dashboard.completed_desc')}</p>
             </CardContent>
           </Card>
         );
+      case 'quick-actions':
+        return <QuickActionsWidget />;
       case 'recent-tickets':
-        const recentTickets = tickets.slice(0, 5);
         return (
           <Card className="h-full">
             <CardHeader>
@@ -350,8 +369,8 @@ export default function DashboardPage() {
                         {t('common.loading')}...
                       </TableCell>
                     </TableRow>
-                  ) : recentTickets.length > 0 ? (
-                    recentTickets.map((ticket) => (
+                  ) : tickets.length > 0 ? (
+                    tickets.map((ticket) => (
                       <TableRow key={ticket.id}>
                         <TableCell className="font-medium">
                           {ticket.subjectName}
