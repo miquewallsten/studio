@@ -81,7 +81,7 @@ export function NotificationsWidget() {
         tenant={selectedTenant}
       />
       <Card className="h-full flex flex-col">
-        <CardHeader className="non-draggable">
+        <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <CardTitle className="flex items-center gap-2">
