@@ -62,7 +62,7 @@ export function AssistantWidget() {
 
     return (
         <Card className="h-full flex flex-col">
-            <CardHeader>
+            <CardHeader className="non-draggable">
                 <div className="flex items-center gap-2">
                     <Bot className="text-accent" />
                     <div>

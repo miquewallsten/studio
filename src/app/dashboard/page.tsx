@@ -26,7 +26,7 @@ import {
   LayoutDashboard,
   Bot,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   collection,
   onSnapshot,
@@ -35,7 +35,8 @@ import {
   limit,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -44,7 +45,8 @@ import { WidgetLibrary } from '@/components/dashboard/widget-library';
 import { AssistantWidget } from '@/components/dashboard/assistant-widget';
 import { NotificationsWidget } from '@/components/dashboard/notifications-widget';
 import { useLanguage } from '@/contexts/language-context';
-
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
+import { debounce } from 'lodash';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -101,9 +103,14 @@ const WIDGET_DEFINITIONS: {
   },
 };
 
+const DEFAULT_WIDGETS = ['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant'];
+
 
 export default function DashboardPage() {
   const { t } = useLanguage();
+  const [user, loadingUser] = useAuthState(auth);
+  const secureFetch = useSecureFetch();
+  
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [userCount, setUserCount] = useState(0);
@@ -111,31 +118,48 @@ export default function DashboardPage() {
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [layouts, setLayouts] = useState<{[key: string]: Layout[]}>({});
-  const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
+  const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_WIDGETS);
   const [isClient, setIsClient] = useState(false);
+  
+  const hasLoadedPrefs = useRef(false);
+
+  // Debounced save function
+  const savePreferences = useCallback(debounce(async (prefs: { layouts?: any, widgets?: any }) => {
+    if (!hasLoadedPrefs.current) return;
+    try {
+      await secureFetch('/api/user/preferences', {
+        method: 'POST',
+        body: JSON.stringify({ dashboard: prefs }),
+      }, false); // don't expect JSON back
+    } catch (e) {
+      console.error('Failed to save preferences', e);
+    }
+  }, 1000), [secureFetch]);
 
 
   useEffect(() => {
     setIsClient(true);
     let isMounted = true;
 
-    try {
-      const savedLayouts = window.localStorage.getItem('dashboard-layouts-v2');
-      const savedWidgets = window.localStorage.getItem('dashboard-widgets-v2');
-      
-      if (savedLayouts && isMounted) setLayouts(JSON.parse(savedLayouts));
-      
-      if (savedWidgets && isMounted) {
-        setActiveWidgets(JSON.parse(savedWidgets));
-      } else {
-        // Default widgets
-        setActiveWidgets(['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant']);
-      }
-
-    } catch (error) {
-      console.error('Could not load layout from localStorage', error);
-      setActiveWidgets(['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'recent-tickets', 'new-tenants', 'ai-assistant']);
+    // Fetch user preferences
+    if (user) {
+      const fetchPrefs = async () => {
+        try {
+          const data = await secureFetch('/api/user/preferences');
+          if (isMounted) {
+            if (data.dashboard?.layouts) setLayouts(data.dashboard.layouts);
+            if (data.dashboard?.widgets) setActiveWidgets(data.dashboard.widgets);
+          }
+        } catch (e) {
+          console.log('No saved preferences found, using defaults.');
+          setActiveWidgets(DEFAULT_WIDGETS);
+        } finally {
+            if(isMounted) hasLoadedPrefs.current = true;
+        }
+      };
+      fetchPrefs();
     }
+
 
     const ticketQuery = query(
       collection(db, 'tickets'),
@@ -184,17 +208,14 @@ export default function DashboardPage() {
       isMounted = false;
       unsubscribeTickets();
       unsubscribeTenants();
+      savePreferences.cancel();
     };
-  }, [loading]);
+  }, [user, loading, savePreferences]);
 
   const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     if (isEditMode) {
-        try {
-            window.localStorage.setItem('dashboard-layouts-v2', JSON.stringify(allLayouts));
-            setLayouts(allLayouts);
-        } catch (error) {
-            console.error('Could not save layouts to localStorage', error);
-        }
+      setLayouts(allLayouts);
+      savePreferences({ layouts: allLayouts, widgets: activeWidgets });
     }
   };
 
@@ -215,11 +236,7 @@ export default function DashboardPage() {
   
   const handleWidgetChange = (newWidgets: string[]) => {
     setActiveWidgets(newWidgets);
-    try {
-        window.localStorage.setItem('dashboard-widgets-v2', JSON.stringify(newWidgets));
-    } catch (error) {
-        console.error('Could not save widgets to localStorage', error);
-    }
+    savePreferences({ layouts, widgets: newWidgets });
   }
 
   const addWidget = (widgetId: string) => {
@@ -444,7 +461,8 @@ export default function DashboardPage() {
   const currentLayout = (layouts.lg || []).filter(l => activeWidgets.includes(l.i));
   const defaultLayoutForActive = activeWidgets
     .filter(id => !currentLayout.some(l => l.i === id))
-    .map(id => WIDGET_DEFINITIONS[id].defaultLayout);
+    .map(id => WIDGET_DEFINITIONS[id]?.defaultLayout)
+    .filter(Boolean);
   
   const finalLayout = [...currentLayout, ...defaultLayoutForActive];
 
