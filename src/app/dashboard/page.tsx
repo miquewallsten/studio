@@ -197,34 +197,33 @@ export default function DashboardPage() {
     });
 
     const fetchUsersAndMetrics = async () => {
-      try {
-        const response = await chat({ prompt: 'Get ticket metrics and total user count', locale });
-        // In a real app, you'd parse this more robustly, but for now, we assume a simple format.
-        // A better approach would be for the flow to return structured JSON.
-        const userCountMatch = response.match(/(\d+) total users/);
-        if (userCountMatch && isMounted) {
+        try {
+          // Use the AI assistant itself to get the initial stats.
+          const response = await chat({ prompt: 'Give me the latest platform metrics.', locale });
+          // In a real app, you'd parse this more robustly, but for now, we assume a simple format.
+          // A better approach would be for the flow to return structured JSON, but for a simple query, this is fine.
+          const userCountMatch = response.match(/(\d+) total users/i);
+          if (userCountMatch && isMounted) {
             setUserCount(parseInt(userCountMatch[1], 10));
-        }
-        
-        const newTicketsMatch = response.match(/New: (\d+)/);
-        const inProgressMatch = response.match(/In Progress: (\d+)/);
-        const completedMatch = response.match(/Completed: (\d+)/);
-
-        if (isMounted) {
+          }
+          
+          const newTicketsMatch = response.match(/New: (\d+)/i);
+          const inProgressMatch = response.match(/In Progress: (\d+)/i);
+          const completedMatch = response.match(/Completed: (\d+)/i);
+  
+          if (isMounted) {
             setTicketMetrics({
                 New: newTicketsMatch ? parseInt(newTicketsMatch[1], 10) : 0,
                 'In Progress': inProgressMatch ? parseInt(inProgressMatch[1], 10) : 0,
                 Completed: completedMatch ? parseInt(completedMatch[1], 10) : 0,
             });
+          }
+        } catch (error) {
+          console.error('Failed to fetch users and metrics via AI:', error);
         }
-
-
-      } catch (error) {
-        console.error('Failed to fetch users and metrics via AI:', error);
-      }
-    };
-
-    fetchUsersAndMetrics();
+      };
+  
+      fetchUsersAndMetrics();
 
     return () => {
       isMounted = false;

@@ -110,63 +110,58 @@ const createTicketTool = ai.defineTool(
   }
 );
 
-const getTicketMetricsTool = ai.defineTool(
+const getPlatformMetricsTool = ai.defineTool(
   {
-    name: 'getTicketMetrics',
-    description: 'Retrieves the current count of tickets for each status.',
+    name: 'getPlatformMetrics',
+    description: 'Retrieves current platform metrics, including ticket counts by status and total number of users. Use this to answer questions about users or tickets.',
     inputSchema: z.object({}).optional(),
     outputSchema: z.object({
-      New: z.number(),
-      'In Progress': z.number(),
-      'Pending Review': z.number(),
-      Completed: z.number(),
-      Total: z.number(),
+      totalUsers: z.number().describe('The total number of registered users.'),
+      tickets: z.object({
+        new: z.number(),
+        inProgress: z.number(),
+        pendingReview: z.number(),
+        completed: z.number(),
+        total: z.number(),
+      }).describe('The breakdown of tickets by status.'),
     }),
   },
   async () => {
-    const statuses: Array<keyof ReturnType<typeof getTicketMetricsTool.outputSchema.parse>> = ['New', 'In Progress', 'Pending Review', 'Completed'];
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
+
+    // Get user count
+    const listUsersResult = await adminAuth.listUsers();
+    const totalUsers = listUsersResult.users.length;
+
+    // Get ticket counts
+    const statuses: Array<'New' | 'In Progress' | 'Pending Review' | 'Completed'> = ['New', 'In Progress', 'Pending Review', 'Completed'];
     const counts = {
-      New: 0,
-      'In Progress': 0,
-      'Pending Review': 0,
-      Completed: 0,
-      Total: 0,
+      new: 0,
+      inProgress: 0,
+      pendingReview: 0,
+      completed: 0,
+      total: 0,
     };
     
-    const db = getAdminDb();
-    const ticketsCollection = db.collection('tickets');
-
-    // This is less efficient than multiple queries but works for smaller datasets.
-    // For larger scale, you'd run separate getCountFromServer queries.
+    const ticketsCollection = adminDb.collection('tickets');
     const querySnapshot = await ticketsCollection.get();
     
     querySnapshot.forEach(doc => {
       const status = doc.data().status;
-      if (statuses.includes(status)) {
-        counts[status as keyof typeof counts]++;
-      }
+      if (status === 'New') counts.new++;
+      else if (status === 'In Progress') counts.inProgress++;
+      else if (status === 'Pending Review') counts.pendingReview++;
+      else if (status === 'Completed') counts.completed++;
     });
 
-    counts.Total = querySnapshot.size;
-    return counts;
+    counts.total = querySnapshot.size;
+
+    return {
+      totalUsers: totalUsers,
+      tickets: counts,
+    };
   }
-);
-
-
-const getUserCountTool = ai.defineTool(
-    {
-        name: 'getUserCount',
-        description: 'Retrieves the total number of registered users.',
-        inputSchema: z.object({}),
-        outputSchema: z.object({
-            totalUsers: z.number(),
-        })
-    },
-    async () => {
-        const adminAuth = getAdminAuth();
-        const listUsersResult = await adminAuth.listUsers();
-        return { totalUsers: listUsersResult.users.length };
-    }
 );
 
 const impersonateUserTool = ai.defineTool(
@@ -231,7 +226,7 @@ const assistantFlow = ai.defineFlow(
         }
       },
       history: history,
-      tools: [createTenantTool, createTicketTool, getTicketMetricsTool, getUserCountTool, impersonateUserTool],
+      tools: [createTenantTool, createTicketTool, getPlatformMetricsTool, impersonateUserTool],
       system: systemPrompt,
     });
 
