@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -9,8 +10,8 @@ import {
   CardTitle,
   CardFooter
 } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useEffect, useState, useMemo } from 'react';
+import { doc, updateDoc, getDocs, collection, where, query, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +20,10 @@ import { useToast } from '@/hooks/use-toast';
 import type { Form as FormType } from '@/app/dashboard/forms/page';
 import { Trash2 } from 'lucide-react';
 import { Input } from './ui/input';
+import { Draggable, Droppable } from '@hello-pangea/dnd';
+import { Badge } from './ui/badge';
+import type { Field } from '@/app/dashboard/fields/schema';
+import { cn } from '@/lib/utils';
 
 interface FormEditorProps {
     form: FormType;
@@ -29,11 +34,34 @@ interface FormEditorProps {
 export function FormEditor({ form: initialForm, onFormUpdated, onDeleteForm }: FormEditorProps) {
   const [form, setForm] = useState<FormType>(initialForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [formFields, setFormFields] = useState<Field[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     setForm(initialForm);
   }, [initialForm]);
+
+  useEffect(() => {
+    if (form.fields && form.fields.length > 0) {
+      const fieldsQuery = query(
+        collection(db, 'fields'),
+        where(documentId(), 'in', form.fields)
+      );
+      getDocs(fieldsQuery).then((snapshot) => {
+        const fieldsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Field));
+        
+        // Preserve the order from the form's field array
+        const orderedFields = form.fields!.map(fieldId => 
+            fieldsData.find(field => field.id === fieldId)
+        ).filter((f): f is Field => f !== undefined);
+
+        setFormFields(orderedFields);
+      });
+    } else {
+      setFormFields([]);
+    }
+  }, [form.fields]);
+
 
  const handleSaveAll = async () => {
     if (!form) return;
@@ -106,17 +134,47 @@ export function FormEditor({ form: initialForm, onFormUpdated, onDeleteForm }: F
             </CardContent>
         </Card>
         
-        <Card>
-            <CardHeader>
-                <CardTitle>Form Fields</CardTitle>
-                <CardDescription>Drag and drop fields from the library to build your form.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed">
-                    <p className="text-muted-foreground">The form builder will be here.</p>
-                </div>
-            </CardContent>
-        </Card>
+        <Droppable droppableId="form-fields-drop-zone">
+            {(provided, snapshot) => (
+                <Card 
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                >
+                    <CardHeader>
+                        <CardTitle>Form Fields</CardTitle>
+                        <CardDescription>Drag and drop fields from the library to build your form.</CardDescription>
+                    </CardHeader>
+                    <CardContent className={cn("min-h-80 rounded-md border-2 border-dashed transition-colors", snapshot.isDraggingOver ? "border-primary bg-muted" : "")}>
+                         {formFields.length === 0 ? (
+                            <div className="flex h-full items-center justify-center">
+                                <p className="text-muted-foreground p-10 text-center">Drop fields from the library here</p>
+                            </div>
+                         ) : (
+                            <div className="space-y-2 pt-4">
+                                {formFields.map((field, index) => (
+                                     <Draggable key={field.id} draggableId={field.id} index={index}>
+                                        {(provided) => (
+                                            <div
+                                                ref={provided.innerRef}
+                                                {...provided.draggableProps}
+                                                {...provided.dragHandleProps}
+                                            >
+                                                <div className="w-full text-left p-3 rounded-lg border bg-card flex justify-between items-center transition-shadow hover:shadow-md">
+                                                    <span className="font-medium">{field.label}</span>
+                                                    <Badge variant="outline">{field.type}</Badge>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Draggable>
+                                ))}
+                            </div>
+                         )}
+                         {provided.placeholder}
+                    </CardContent>
+                </Card>
+            )}
+        </Droppable>
+
 
         <Card>
             <CardFooter className="justify-end gap-2">

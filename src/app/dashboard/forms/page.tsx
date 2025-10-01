@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ import {
 import { PlusCircle, Search } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
   Panel,
@@ -34,12 +35,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { NewFormDialog } from '@/components/new-form-dialog';
 import { FormEditor } from '@/components/form-editor';
+import { FieldLibrary } from '@/components/field-library';
+import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 
 export type Form = {
   id: string;
   name: string;
   description: string;
   createdAt: Timestamp;
+  fields?: string[];
 };
 
 export default function FormsPage() {
@@ -63,6 +67,7 @@ export default function FormsPage() {
           name: data.name,
           description: data.description,
           createdAt: data.createdAt,
+          fields: data.fields || []
         });
       });
       setForms(formsData);
@@ -85,6 +90,17 @@ export default function FormsPage() {
     return () => unsubscribe();
   }, []);
   
+  useEffect(() => {
+    // When the forms list updates, we need to update the selected form as well
+    // to get the latest field list for the editor.
+    if (selectedForm) {
+      const updatedSelectedForm = forms.find(f => f.id === selectedForm.id);
+      if (updatedSelectedForm) {
+        setSelectedForm(updatedSelectedForm);
+      }
+    }
+  }, [forms]);
+
   const filteredForms = useMemo(() => {
     if (!searchQuery) return forms;
     return forms.filter(form => form.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -118,11 +134,58 @@ export default function FormsPage() {
     setSelectedForm(form);
   };
   
-  const handleFormUpdate = () => {
-    // onSnapshot should handle the update, but we can force a re-render if needed
-  };
+  const handleDragEnd = async (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+
+    // 1. Check if the drop is valid
+    if (!destination) return;
+    if (source.droppableId === 'form-fields-drop-zone' && destination.droppableId === 'form-fields-drop-zone') {
+        // Reordering logic will go here
+        return;
+    }
+    if (destination.droppableId !== 'form-fields-drop-zone') return;
+    if (!selectedForm) return;
+
+    // 2. Add the field to the form
+    // Avoid adding duplicates
+    const currentFields = selectedForm.fields || [];
+    if (currentFields.includes(draggableId)) {
+        toast({
+            title: "Field already exists",
+            description: "This field is already in the form.",
+            variant: "default"
+        });
+        return;
+    }
+    
+    // Optimistic update
+    const newFields = [...currentFields, draggableId];
+    setSelectedForm(form => form ? {...form, fields: newFields} : null);
+
+    // 3. Update Firestore
+    const formRef = doc(db, 'forms', selectedForm.id);
+    try {
+        await updateDoc(formRef, {
+            fields: newFields
+        });
+        toast({
+            title: "Field Added",
+            description: "The field has been added to the form."
+        });
+    } catch (error) {
+        console.error("Error adding field to form: ", error);
+        toast({
+            title: "Error",
+            description: "Could not add the field to the form.",
+            variant: "destructive"
+        });
+        // Rollback optimistic update
+        setSelectedForm(form => form ? {...form, fields: currentFields} : null);
+    }
+};
 
   return (
+    <DragDropContext onDragEnd={handleDragEnd}>
     <div className="flex flex-col gap-4 h-[calc(100vh_-_8rem)]">
        <AlertDialog open={formToDelete !== null} onOpenChange={(open) => !open && setFormToDelete(null)}>
         <AlertDialogContent>
@@ -157,7 +220,7 @@ export default function FormsPage() {
       </div>
 
        <PanelGroup direction="horizontal" className="flex-1">
-        <Panel defaultSize={40} minSize={30}>
+        <Panel defaultSize={25} minSize={20}>
             <Card className="h-full flex flex-col">
                 <CardHeader>
                     <CardTitle>All Form Templates</CardTitle>
@@ -209,13 +272,13 @@ export default function FormsPage() {
             </Card>
         </Panel>
         <PanelResizeHandle className="w-2 bg-transparent hover:bg-muted transition-colors data-[resize-handle-state=drag]:bg-muted-foreground" />
-        <Panel defaultSize={60} minSize={40}>
+        <Panel defaultSize={50} minSize={40}>
            <div className="h-full overflow-y-auto pl-4">
             {selectedForm ? (
                     <FormEditor 
                         key={selectedForm.id}
                         form={selectedForm}
-                        onFormUpdated={handleFormUpdate}
+                        onFormUpdated={() => {}}
                         onDeleteForm={() => setFormToDelete(selectedForm)}
                     />
             ) : (
@@ -227,8 +290,15 @@ export default function FormsPage() {
             )}
            </div>
         </Panel>
+        <PanelResizeHandle className="w-2 bg-transparent hover:bg-muted transition-colors data-[resize-handle-state=drag]:bg-muted-foreground" />
+        <Panel defaultSize={25} minSize={20}>
+            <div className="h-full overflow-y-auto pl-4">
+              <FieldLibrary />
+            </div>
+        </Panel>
        </PanelGroup>
 
     </div>
+    </DragDropContext>
   );
 }
