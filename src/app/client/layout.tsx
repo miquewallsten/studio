@@ -5,7 +5,7 @@ import { UserNav } from '@/components/user-nav';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, getIdToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,10 +16,14 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
+        const token = await getIdToken(user);
+        // This cookie is used by our secureFetch hook
+        document.cookie = `firebaseIdToken=${token}; path=/;`;
       } else {
+        document.cookie = 'firebaseIdToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         router.push('/client/login');
       }
       setLoading(false);

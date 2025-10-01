@@ -11,15 +11,6 @@ import {
 import { PlusCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { db, auth } from '@/lib/firebase';
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  Timestamp,
-} from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import {
   Table,
@@ -30,47 +21,46 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
+import type { Timestamp } from 'firebase/firestore';
 
 type Request = {
   id: string;
   subjectName: string;
   reportType: string;
   status: string;
-  createdAt: Timestamp;
+  createdAt: string; // Will be an ISO string
 };
 
 export default function ClientDashboardPage() {
   const [user, loadingUser] = useAuthState(auth);
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
     if (user) {
-      const q = query(
-        collection(db, 'tickets'),
-        where('clientId', '==', user.uid)
-      );
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const requestsData: Request[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          requestsData.push({
-            id: doc.id,
-            subjectName: data.subjectName,
-            reportType: data.reportType,
-            status: data.status,
-            createdAt: data.createdAt,
-          });
-        });
-        setRequests(requestsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
-        setLoading(false);
-      });
+      const fetchRequests = async () => {
+        try {
+          setLoading(true);
+          const data = await secureFetch('/api/client/tickets');
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          setRequests(data.tickets);
+        } catch (err: any) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-      return () => unsubscribe();
+      fetchRequests();
     } else if (!loadingUser) {
         setLoading(false);
     }
-  }, [user, loadingUser]);
+  }, [user, loadingUser, secureFetch]);
 
   return (
     <div className="flex-1 space-y-4">
@@ -111,6 +101,12 @@ export default function ClientDashboardPage() {
                     Loading requests...
                   </TableCell>
                 </TableRow>
+               ) : error ? (
+                 <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-destructive">
+                    Error: {error}
+                  </TableCell>
+                </TableRow>
               ) : requests.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
@@ -134,7 +130,7 @@ export default function ClientDashboardPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {request.createdAt?.toDate().toLocaleDateString()}
+                      {new Date(request.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="ghost" size="icon">
