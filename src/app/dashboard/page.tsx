@@ -132,7 +132,7 @@ export default function DashboardPage() {
 
   // Debounced save function
   const savePreferences = useCallback(debounce(async (prefs: { layouts?: any, widgets?: any }) => {
-    if (!hasLoadedPrefs.current) return;
+    if (!hasLoadedPrefs.current || !auth.currentUser) return; // Add check for auth.currentUser
     try {
       await secureFetch('/api/user/preferences', {
         method: 'POST',
