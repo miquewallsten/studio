@@ -132,7 +132,8 @@ export default function DashboardPage() {
 
   // Debounced save function
   const savePreferences = useCallback(debounce(async (prefs: { layouts?: any, widgets?: any }) => {
-    if (!hasLoadedPrefs.current || !auth.currentUser) return; // Add check for auth.currentUser
+    const token = document.cookie.split('; ').find(row => row.startsWith('firebaseIdToken='));
+    if (!hasLoadedPrefs.current || !auth.currentUser || !token) return;
     try {
       await secureFetch('/api/user/preferences', {
         method: 'POST',
