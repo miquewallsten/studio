@@ -185,11 +185,13 @@ Your purpose is to assist the admin with managing the application by answering q
 Use the tools provided to you to answer questions and fulfill requests.
 Be conversational and confirm when you have completed an action.
 If you are asked to do something you don't have a tool for, clearly state that you do not have that capability.
+You MUST respond in the user's language. The user's current language is: {{locale}}.
 `;
 
 const ChatInputSchema = z.object({
   history: z.array(z.any()).optional(),
   prompt: z.string(),
+  locale: z.string().optional().default('en'),
 });
 export type ChatInput = z.infer<typeof ChatInputSchema>;
 
@@ -206,9 +208,14 @@ const assistantFlow = ai.defineFlow(
     inputSchema: ChatInputSchema,
     outputSchema: ChatOutputSchema,
   },
-  async ({ history, prompt }) => {
+  async ({ history, prompt, locale }) => {
     const llmResponse = await ai.generate({
-      prompt: prompt,
+      prompt: {
+        text: prompt,
+        context: {
+          locale,
+        }
+      },
       history: history,
       tools: [createTenantTool, createTicketTool, getTicketMetricsTool, getUserCountTool, impersonateUserTool],
       system: systemPrompt,

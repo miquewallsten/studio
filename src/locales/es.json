@@ -33,7 +33,12 @@
         "no_tickets_yet": "Aún no hay tickets.",
         "new_tenants": "Nuevos Clientes",
         "new_tenants_desc": "Tus clientes más nuevos en la plataforma.",
-        "no_tenants_found": "No se encontraron clientes."
+        "no_tenants_found": "No se encontraron clientes.",
+        "ai_assistant": {
+            "title": "Asistente de IA",
+            "description": "Tu asistente personal de Super Admin.",
+            "placeholder": "Pregunta lo que sea..."
+        }
     },
     "common": {
         "loading": "Cargando",
@@ -45,7 +50,7 @@
         "tenant_name": "Nombre del Cliente",
         "created": "Creado",
         "error": "Error",
-        "are_you_sure": "¿Estás absolutamente seguro?",
+        "are_you_sure": "¿Estás absolutely seguro?",
         "cancel": "Cancelar",
         "yes_delete": "Sí, eliminar",
         "no_results": "No se encontraron resultados."

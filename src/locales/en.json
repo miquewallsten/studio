@@ -33,7 +33,12 @@
         "no_tickets_yet": "No tickets yet.",
         "new_tenants": "New Tenants",
         "new_tenants_desc": "Your newest clients on the platform.",
-        "no_tenants_found": "No tenants found."
+        "no_tenants_found": "No tenants found.",
+        "ai_assistant": {
+            "title": "AI Assistant",
+            "description": "Your personal Super Admin assistant.",
+            "placeholder": "Ask anything..."
+        }
     },
     "common": {
         "loading": "Loading",

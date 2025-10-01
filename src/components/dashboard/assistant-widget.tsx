@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Send, User } from 'lucide-react';
 import { chat } from '@/ai/flows/assistant-flow';
+import { useLanguage } from '@/contexts/language-context';
 
 interface Message {
     role: 'user' | 'model';
@@ -18,6 +20,7 @@ export function AssistantWidget() {
     const [prompt, setPrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const { locale, t } = useLanguage();
 
     const handleSend = async () => {
         if (!prompt.trim()) return;
@@ -33,7 +36,8 @@ export function AssistantWidget() {
                     role: h.role,
                     content: [{text: h.text}]
                 })),
-                prompt
+                prompt,
+                locale,
             });
             const newModelMessage: Message = { role: 'model', text: response };
             setHistory(prev => [...prev, newModelMessage]);
@@ -62,8 +66,8 @@ export function AssistantWidget() {
                 <div className="flex items-center gap-2">
                     <Bot className="text-accent" />
                     <div>
-                        <CardTitle>AI Assistant</CardTitle>
-                        <CardDescription>Your personal Super Admin assistant.</CardDescription>
+                        <CardTitle>{t('dashboard.ai_assistant.title')}</CardTitle>
+                        <CardDescription>{t('dashboard.ai_assistant.description')}</CardDescription>
                     </div>
                 </div>
             </CardHeader>
@@ -83,7 +87,7 @@ export function AssistantWidget() {
                             <div className="flex items-start gap-3">
                                 <Bot className="flex-shrink-0 animate-pulse" />
                                 <div className="px-4 py-2 rounded-lg bg-muted">
-                                    <p className="text-sm">Thinking...</p>
+                                    <p className="text-sm">{t('common.loading')}...</p>
                                 </div>
                             </div>
                         )}
@@ -93,7 +97,7 @@ export function AssistantWidget() {
                     <Input
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Ask anything..."
+                        placeholder={t('dashboard.ai_assistant.placeholder')}
                         onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSend()}
                         disabled={isLoading}
                     />
