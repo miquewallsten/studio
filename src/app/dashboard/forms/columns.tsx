@@ -1,3 +1,4 @@
+
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
@@ -5,11 +6,11 @@ import { DataTableColumnHeader } from "@/components/ui/data-table-column-header"
 import type { Form } from "./page"
 import { format } from "date-fns"
 
-export const columns: ColumnDef<Form>[] = [
+export const columns = (t: (key: string) => string): ColumnDef<Form>[] => [
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Form Name" />
+      <DataTableColumnHeader column={column} title={t('forms.columns.name')} />
     ),
     cell: ({ row }) => {
         return (
@@ -21,7 +22,7 @@ export const columns: ColumnDef<Form>[] = [
   {
     accessorKey: "description",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Description" />
+      <DataTableColumnHeader column={column} title={t('forms.columns.description')} />
     ),
     cell: ({ row }) => {
         return (
@@ -32,7 +33,7 @@ export const columns: ColumnDef<Form>[] = [
   {
     accessorKey: "fields",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Fields" />
+      <DataTableColumnHeader column={column} title={t('forms.columns.fields')} />
     ),
     cell: ({ row }) => {
         const fieldCount = row.original.fields?.length || 0;
@@ -44,7 +45,7 @@ export const columns: ColumnDef<Form>[] = [
   {
     accessorKey: "createdAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created" />
+      <DataTableColumnHeader column={column} title={t('common.created')} />
     ),
     cell: ({ row }) => {
       const date = row.original.createdAt.toDate()

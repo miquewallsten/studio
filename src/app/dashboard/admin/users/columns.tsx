@@ -11,6 +11,7 @@ type ColumnsProps = {
   onSelectUser: (user: User) => void;
   allTags: string[];
   onUserUpdated: () => void;
+  t: (key: string) => string;
 }
 
 const getRoleVariant = (role: string) => {
@@ -24,11 +25,11 @@ const getRoleVariant = (role: string) => {
 }
 
 
-export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps): ColumnDef<User>[] => [
+export const columns = ({ onSelectUser, allTags, onUserUpdated, t }: ColumnsProps): ColumnDef<User>[] => [
   {
     accessorKey: "displayName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="User" />
+      <DataTableColumnHeader column={column} title={t('users.columns.user')} />
     ),
     cell: ({ row }) => {
         const user = row.original;
@@ -42,7 +43,7 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
   {
     accessorKey: "email",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
+      <DataTableColumnHeader column={column} title={t('users.columns.email')} />
     ),
     cell: ({ row }) => {
         return (
@@ -55,7 +56,7 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
   {
     accessorKey: "role",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Role" />
+      <DataTableColumnHeader column={column} title={t('users.columns.role')} />
     ),
     cell: ({ row }) => {
       const role = row.getValue("role") as string;
@@ -72,7 +73,7 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
   {
     accessorKey: "tags",
     header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Tags" />
+        <DataTableColumnHeader column={column} title={t('users.columns.tags')} />
     ),
     cell: ({ row }) => {
         const user = row.original;
@@ -89,7 +90,7 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
   {
     accessorKey: "tenantName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Tenant" />
+      <DataTableColumnHeader column={column} title={t('users.columns.tenant')} />
     ),
     cell: ({ row }) => {
       const tenantName = row.getValue("tenantName") as string | null;
@@ -106,7 +107,7 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated }: ColumnsProps):
     {
     accessorKey: "createdAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created" />
+      <DataTableColumnHeader column={column} title={t('common.created')} />
     ),
     cell: ({ row }) => {
       const date = new Date(row.getValue("createdAt"))

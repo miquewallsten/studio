@@ -1,10 +1,20 @@
+
 {
     "nav": {
         "account": "Account",
         "profile": "Profile",
         "settings": "Settings",
         "language": "Language",
-        "logout": "Log out"
+        "logout": "Log out",
+        "dashboard": "Dashboard",
+        "tickets": "Tickets",
+        "forms": "Forms",
+        "fields": "Fields",
+        "admin": "Admin",
+        "tenants": "Tenants",
+        "user_management": "User Management",
+        "system_settings": "System Settings",
+        "testing": "Testing"
     },
     "dashboard": {
         "title": "Dashboard",
@@ -33,6 +43,78 @@
         "date": "Date",
         "action": "Action",
         "tenant_name": "Tenant Name",
-        "created": "Created"
+        "created": "Created",
+        "error": "Error",
+        "are_you_sure": "Are you absolutely sure?",
+        "cancel": "Cancel",
+        "yes_delete": "Yes, delete",
+        "no_results": "No results found."
+    },
+    "tickets": {
+        "new_ticket_button": "New Ticket",
+        "list_view": "List",
+        "kanban_view": "Kanban",
+        "search_placeholder": "Search tickets...",
+        "table_title": "All Tickets",
+        "table_desc": "A dynamic list of all incoming requests.",
+        "columns": {
+            "report_type": "Report Type"
+        },
+        "status_new": "New",
+        "status_in_progress": "In Progress",
+        "status_pending_review": "Pending Review",
+        "status_completed": "Completed",
+        "tooltip_view_details": "Click to view ticket details"
+    },
+    "forms": {
+        "new_template_button": "New Form Template",
+        "all_templates_title": "All Form Templates",
+        "all_templates_desc": "Manage reusable form templates. Click a form to edit.",
+        "search_placeholder": "Search by name...",
+        "select_form_prompt": "Select a form to view and edit its details.",
+        "error_fetching": "Could not fetch forms.",
+        "deleted_title": "Form Deleted",
+        "deleted_desc": "The form \"{formName}\" has been deleted.",
+        "error_deleting": "Failed to delete the form.",
+        "field_exists_title": "Field already exists",
+        "field_exists_desc": "This field is already in the form.",
+        "field_added_title": "Field Added",
+        "field_added_desc": "The field has been added to the form.",
+        "error_adding_field": "Could not add the field to the form.",
+        "delete_confirm_desc": "This action cannot be undone. This will permanently delete the form template \"{formName}\".",
+        "columns": {
+            "name": "Form Name",
+            "description": "Description",
+            "fields": "Fields"
+        }
+    },
+    "users": {
+        "title": "User Management",
+        "new_user_button": "New User",
+        "table_title": "All Authenticated Users",
+        "table_desc": "This is a list of all users in Firebase Authentication. Use the actions menu to view or edit a user.",
+        "config_required": "Configuration Required",
+        "error_fetching": "Error Fetching Users",
+        "access_denied_title": "Access Denied",
+        "access_denied_desc_1": "You do not have the required permissions to view this page.",
+        "access_denied_desc_2": "Access is restricted to Super Admins only.",
+        "columns": {
+            "user": "User",
+            "email": "Email",
+            "role": "Role",
+            "tags": "Tags",
+            "tenant": "Tenant"
+        }
+    },
+    "tenants": {
+        "title": "Tenant Management",
+        "new_tenant_button": "New Tenant",
+        "table_title": "All Client Tenants",
+        "table_desc": "This is a list of your client tenants who can access the client portal. Click a row to view details.",
+        "columns": {
+            "portal_url": "Portal URL",
+            "users": "Users",
+            "tickets": "Tickets"
+        }
     }
 }

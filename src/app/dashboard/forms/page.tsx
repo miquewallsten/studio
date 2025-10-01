@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -37,6 +36,7 @@ import { NewFormDialog } from '@/components/new-form-dialog';
 import { FormEditor } from '@/components/form-editor';
 import { FieldLibrary } from '@/components/field-library';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { useLanguage } from '@/contexts/language-context';
 
 export type Form = {
   id: string;
@@ -54,6 +54,7 @@ export default function FormsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewFormDialogOpen, setNewFormDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const fetchForms = () => {
     setLoading(true);
@@ -75,8 +76,8 @@ export default function FormsPage() {
     }, (error) => {
         console.error("Error fetching forms:", error);
         toast({
-            title: "Error",
-            description: "Could not fetch forms.",
+            title: t('common.error'),
+            description: t('forms.error_fetching'),
             variant: "destructive"
         })
         setLoading(false);
@@ -111,16 +112,16 @@ export default function FormsPage() {
       try {
         await deleteDoc(doc(db, 'forms', formToDelete.id));
         toast({
-          title: 'Form Deleted',
-          description: `The form "${formToDelete.name}" has been deleted.`,
+          title: t('forms.deleted_title'),
+          description: t('forms.deleted_desc').replace('{formName}', formToDelete.name),
         });
         if (selectedForm?.id === formToDelete.id) {
           setSelectedForm(null);
         }
       } catch (error) {
         toast({
-          title: 'Error',
-          description: 'Failed to delete the form.',
+          title: t('common.error'),
+          description: t('forms.error_deleting'),
           variant: 'destructive',
         });
         console.error('Error deleting form:', error);
@@ -151,8 +152,8 @@ export default function FormsPage() {
     const currentFields = selectedForm.fields || [];
     if (currentFields.includes(draggableId)) {
         toast({
-            title: "Field already exists",
-            description: "This field is already in the form.",
+            title: t('forms.field_exists_title'),
+            description: t('forms.field_exists_desc'),
             variant: "default"
         });
         return;
@@ -169,14 +170,14 @@ export default function FormsPage() {
             fields: newFields
         });
         toast({
-            title: "Field Added",
-            description: "The field has been added to the form."
+            title: t('forms.field_added_title'),
+            description: t('forms.field_added_desc')
         });
     } catch (error) {
         console.error("Error adding field to form: ", error);
         toast({
-            title: "Error",
-            description: "Could not add the field to the form.",
+            title: t('common.error'),
+            description: t('forms.error_adding_field'),
             variant: "destructive"
         });
         // Rollback optimistic update
@@ -190,16 +191,15 @@ export default function FormsPage() {
        <AlertDialog open={formToDelete !== null} onOpenChange={(open) => !open && setFormToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t('common.are_you_sure')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              form template <span className="font-bold">"{formToDelete?.name}"</span>.
+              {t('forms.delete_confirm_desc').replace('{formName}', formToDelete?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Yes, delete form
+              {t('common.yes_delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -212,10 +212,10 @@ export default function FormsPage() {
       />
 
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold font-headline">Form Templates</h1>
+        <h1 className="text-3xl font-bold font-headline">{t('nav.forms')}</h1>
         <Button onClick={() => setNewFormDialogOpen(true)} className="bg-accent hover:bg-accent/90">
             <PlusCircle className="mr-2 h-4 w-4" />
-            New Form Template
+            {t('forms.new_template_button')}
         </Button>
       </div>
 
@@ -223,14 +223,14 @@ export default function FormsPage() {
         <Panel defaultSize={25} minSize={20}>
             <Card className="h-full flex flex-col">
                 <CardHeader>
-                    <CardTitle>All Form Templates</CardTitle>
+                    <CardTitle>{t('forms.all_templates_title')}</CardTitle>
                     <CardDescription>
-                        Manage reusable form templates. Click a form to edit.
+                        {t('forms.all_templates_desc')}
                     </CardDescription>
                     <div className="relative pt-2">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Search by name..."
+                            placeholder={t('forms.search_placeholder')}
                             className="pl-8"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -241,7 +241,7 @@ export default function FormsPage() {
                   <ScrollArea className="h-full">
                     <div className="p-6 pt-0">
                       {loading ? (
-                          <p className="text-muted-foreground text-sm p-4">Loading forms...</p>
+                          <p className="text-muted-foreground text-sm p-4">{t('common.loading')}...</p>
                       ) : (
                         <div className="space-y-2">
                           {filteredForms.map(form => (
@@ -264,7 +264,7 @@ export default function FormsPage() {
                         </div>
                       )}
                       {!loading && filteredForms.length === 0 && (
-                        <p className="text-center text-sm text-muted-foreground py-10">No forms found.</p>
+                        <p className="text-center text-sm text-muted-foreground py-10">{t('common.no_results')}</p>
                       )}
                     </div>
                   </ScrollArea>
@@ -284,7 +284,7 @@ export default function FormsPage() {
             ) : (
                     <Card className="h-full flex items-center justify-center">
                         <div className="text-center text-muted-foreground">
-                            <p>Select a form to view and edit its details.</p>
+                            <p>{t('forms.select_form_prompt')}</p>
                         </div>
                     </Card>
             )}

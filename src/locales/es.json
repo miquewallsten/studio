@@ -1,10 +1,20 @@
+
 {
     "nav": {
         "account": "Cuenta",
         "profile": "Perfil",
         "settings": "Configuración",
         "language": "Idioma",
-        "logout": "Cerrar sesión"
+        "logout": "Cerrar sesión",
+        "dashboard": "Panel",
+        "tickets": "Tickets",
+        "forms": "Formularios",
+        "fields": "Campos",
+        "admin": "Administración",
+        "tenants": "Inquilinos",
+        "user_management": "Gestión de Usuarios",
+        "system_settings": "Ajustes del Sistema",
+        "testing": "Pruebas"
     },
     "dashboard": {
         "title": "Panel de control",
@@ -21,9 +31,9 @@
         "recent_tickets": "Tickets Recientes",
         "recent_tickets_desc": "Los últimos 5 tickets que se han creado.",
         "no_tickets_yet": "Aún no hay tickets.",
-        "new_tenants": "Nuevos Inquilinos",
+        "new_tenants": "Nuevos Clientes",
         "new_tenants_desc": "Tus clientes más nuevos en la plataforma.",
-        "no_tenants_found": "No se encontraron inquilinos."
+        "no_tenants_found": "No se encontraron clientes."
     },
     "common": {
         "loading": "Cargando",
@@ -32,7 +42,79 @@
         "status": "Estado",
         "date": "Fecha",
         "action": "Acción",
-        "tenant_name": "Nombre del Inquilino",
-        "created": "Creado"
+        "tenant_name": "Nombre del Cliente",
+        "created": "Creado",
+        "error": "Error",
+        "are_you_sure": "¿Estás absolutamente seguro?",
+        "cancel": "Cancelar",
+        "yes_delete": "Sí, eliminar",
+        "no_results": "No se encontraron resultados."
+    },
+    "tickets": {
+        "new_ticket_button": "Nuevo Ticket",
+        "list_view": "Lista",
+        "kanban_view": "Kanban",
+        "search_placeholder": "Buscar tickets...",
+        "table_title": "Todos los Tickets",
+        "table_desc": "Una lista dinámica de todas las solicitudes entrantes.",
+        "columns": {
+            "report_type": "Tipo de Informe"
+        },
+        "status_new": "Nuevo",
+        "status_in_progress": "En Progreso",
+        "status_pending_review": "Pendiente de Revisión",
+        "status_completed": "Completado",
+        "tooltip_view_details": "Haz clic para ver los detalles del ticket"
+    },
+    "forms": {
+        "new_template_button": "Nueva Plantilla de Formulario",
+        "all_templates_title": "Todas las Plantillas de Formularios",
+        "all_templates_desc": "Gestiona plantillas de formularios reutilizables. Haz clic en un formulario para editar.",
+        "search_placeholder": "Buscar por nombre...",
+        "select_form_prompt": "Selecciona un formulario para ver y editar sus detalles.",
+        "error_fetching": "No se pudieron obtener los formularios.",
+        "deleted_title": "Formulario Eliminado",
+        "deleted_desc": "El formulario \"{formName}\" ha sido eliminado.",
+        "error_deleting": "No se pudo eliminar el formulario.",
+        "field_exists_title": "El campo ya existe",
+        "field_exists_desc": "Este campo ya está en el formulario.",
+        "field_added_title": "Campo Agregado",
+        "field_added_desc": "El campo ha sido agregado al formulario.",
+        "error_adding_field": "No se pudo agregar el campo al formulario.",
+        "delete_confirm_desc": "Esta acción no se puede deshacer. Esto eliminará permanentemente la plantilla de formulario \"{formName}\".",
+        "columns": {
+            "name": "Nombre del Formulario",
+            "description": "Descripción",
+            "fields": "Campos"
+        }
+    },
+    "users": {
+        "title": "Gestión de Usuarios",
+        "new_user_button": "Nuevo Usuario",
+        "table_title": "Todos los Usuarios Autenticados",
+        "table_desc": "Esta es una lista de todos los usuarios en Firebase Authentication. Usa el menú de acciones para ver o editar un usuario.",
+        "config_required": "Configuración Requerida",
+        "error_fetching": "Error al Obtener Usuarios",
+        "access_denied_title": "Acceso Denegado",
+        "access_denied_desc_1": "No tienes los permisos necesarios para ver esta página.",
+        "access_denied_desc_2": "El acceso está restringido solo para Super Admins.",
+        "columns": {
+            "user": "Usuario",
+            "email": "Correo Electrónico",
+            "role": "Rol",
+            "tags": "Etiquetas",
+            "tenant": "Cliente"
+        }
+    },
+    "tenants": {
+        "title": "Gestión de Clientes",
+        "new_tenant_button": "Nuevo Cliente",
+        "table_title": "Todos los Clientes",
+        "table_desc": "Esta es una lista de tus clientes que pueden acceder al portal de clientes. Haz clic en una fila para ver detalles.",
+        "columns": {
+            "portal_url": "URL del Portal",
+            "users": "Usuarios",
+            "tickets": "Tickets"
+        }
     }
 }

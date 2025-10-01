@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -52,6 +53,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useLanguage } from '@/contexts/language-context';
 
 type Ticket = {
   id: string;
@@ -109,6 +111,7 @@ export default function TicketsPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useLanguage();
 
   useEffect(() => {
     const q = query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
@@ -187,15 +190,22 @@ export default function TicketsPage() {
         ticket.status.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [allTickets, searchQuery]);
+  
+  const translatedColumns = useMemo(() => ({
+      new: { name: t('tickets.status_new'), items: columns.new.items },
+      'in-progress': { name: t('tickets.status_in_progress'), items: columns['in-progress'].items },
+      'pending-review': { name: t('tickets.status_pending_review'), items: columns['pending-review'].items },
+      completed: { name: t('tickets.status_completed'), items: columns.completed.items },
+  }), [t, columns]);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold font-headline">Tickets</h1>
+        <h1 className="text-3xl font-bold font-headline">{t('nav.tickets')}</h1>
         <Button asChild className="bg-accent hover:bg-accent/90">
           <Link href="/dashboard/tickets/new">
             <PlusCircle className="mr-2 h-4 w-4" />
-            New Ticket
+            {t('tickets.new_ticket_button')}
           </Link>
         </Button>
       </div>
@@ -205,18 +215,18 @@ export default function TicketsPage() {
           <TabsList>
             <TabsTrigger value="list">
               <List className="mr-2 h-4 w-4" />
-              List
+              {t('tickets.list_view')}
             </TabsTrigger>
             <TabsTrigger value="kanban">
               <KanbanSquare className="mr-2 h-4 w-4" />
-              Kanban
+              {t('tickets.kanban_view')}
             </TabsTrigger>
           </TabsList>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search tickets..."
+              placeholder={t('tickets.search_placeholder')}
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -227,21 +237,21 @@ export default function TicketsPage() {
         <TabsContent value="list">
           <Card>
             <CardHeader>
-              <CardTitle>All Tickets</CardTitle>
+              <CardTitle>{t('tickets.table_title')}</CardTitle>
               <CardDescription>
-                A dynamic list of all incoming requests.
+                {t('tickets.table_desc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Report Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created At</TableHead>
+                    <TableHead>{t('common.subject')}</TableHead>
+                    <TableHead>{t('tickets.columns.report_type')}</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
+                    <TableHead>{t('common.created')}</TableHead>
                     <TableHead>
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{t('common.action')}</span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -249,13 +259,13 @@ export default function TicketsPage() {
                   {loading ? (
                     <TableRow>
                       <TableCell colSpan={5} className="h-24 text-center">
-                        Loading tickets...
+                        {t('common.loading')}...
                       </TableCell>
                     </TableRow>
                   ) : filteredTickets.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="h-24 text-center">
-                        No tickets found.
+                        {t('common.no_results')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -315,7 +325,7 @@ export default function TicketsPage() {
                   </Card>
                 ))
               ) : (
-                Object.entries(columns).map(([columnId, column]) => (
+                Object.entries(translatedColumns).map(([columnId, column]) => (
                   <Droppable key={columnId} droppableId={columnId}>
                     {(provided, snapshot) => (
                       <Card
@@ -366,7 +376,7 @@ export default function TicketsPage() {
                                               {item.reportType}
                                             </p>
                                             <p className="mt-2 text-xs text-muted-foreground">
-                                              Created:{' '}
+                                              {t('common.created')}:{' '}
                                               {item.createdAt
                                                 ? format(
                                                     item.createdAt.toDate(),
@@ -378,7 +388,7 @@ export default function TicketsPage() {
                                         </Link>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p>Click to view ticket details</p>
+                                        <p>{t('tickets.tooltip_view_details')}</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>

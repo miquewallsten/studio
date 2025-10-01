@@ -18,6 +18,7 @@ import { columns } from './columns';
 import type { Tenant } from './schema';
 import { TenantProfileDialog } from '@/components/tenant-profile-dialog';
 import { NewTenantDialog } from '@/components/new-tenant-dialog';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function TenantsPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -25,6 +26,7 @@ export default function TenantsPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
     const [isNewTenantDialogOpen, setNewTenantDialogOpen] = useState(false);
+    const { t } = useLanguage();
 
     const fetchTenants = async () => {
         setLoading(true);
@@ -52,7 +54,7 @@ export default function TenantsPage() {
         setSelectedTenant(null);
     }
 
-    const memoizedColumns = useMemo(() => columns({ onSelectTenant: setSelectedTenant }), []);
+    const memoizedColumns = useMemo(() => columns({ onSelectTenant: setSelectedTenant, t }), [t]);
 
     const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
 
@@ -70,17 +72,17 @@ export default function TenantsPage() {
             onTenantUpdated={fetchTenants}
         />
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold font-headline">Tenant Management</h1>
+        <h1 className="text-3xl font-bold font-headline">{t('tenants.title')}</h1>
         <Button className="bg-accent hover:bg-accent/90" onClick={() => setNewTenantDialogOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            New Tenant
+            {t('tenants.new_tenant_button')}
         </Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>All Client Tenants</CardTitle>
+          <CardTitle>{t('tenants.table_title')}</CardTitle>
           <CardDescription>
-            This is a list of your client tenants who can access the client portal. Click a row to view details.
+            {t('tenants.table_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -97,7 +99,7 @@ export default function TenantsPage() {
                 </Alert>
             )}
            {loading ? (
-             <p>Loading tenants...</p>
+             <p>{t('common.loading')}...</p>
            ) : (
             <DataTable 
                 columns={memoizedColumns} 

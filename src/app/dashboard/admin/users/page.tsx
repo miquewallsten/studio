@@ -18,6 +18,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import type { User } from './schema';
 import { useAuthRole } from '@/hooks/use-auth-role';
+import { useLanguage } from '@/contexts/language-context';
 
 
 export default function AdminUsersPage() {
@@ -28,6 +29,7 @@ export default function AdminUsersPage() {
     const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const { role, isLoading: isRoleLoading } = useAuthRole();
+    const { t } = useLanguage();
 
 
     const fetchUsers = async () => {
@@ -65,11 +67,11 @@ export default function AdminUsersPage() {
 
     const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
 
-    const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated }), [allTags, handleUserInvitedOrUpdated]);
+    const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, handleUserInvitedOrUpdated, t]);
 
 
     if (isRoleLoading) {
-      return <p>Loading access rights...</p>
+      return <p>{t('common.loading')}...</p>
     }
 
     if (role !== 'Super Admin') {
@@ -77,11 +79,11 @@ export default function AdminUsersPage() {
          <Card className="mt-8">
           <CardHeader className="items-center text-center">
             <ShieldOff className="size-12 text-destructive" />
-            <CardTitle className="text-2xl">Access Denied</CardTitle>
+            <CardTitle className="text-2xl">{t('users.access_denied_title')}</CardTitle>
             <CardDescription>
-              You do not have the required permissions to view this page.
+              {t('users.access_denied_desc_1')}
               <br/>
-              Access is restricted to Super Admins only.
+              {t('users.access_denied_desc_2')}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -103,24 +105,24 @@ export default function AdminUsersPage() {
             onUserUpdated={handleUserInvitedOrUpdated}
         />
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold font-headline">User Management</h1>
+        <h1 className="text-3xl font-bold font-headline">{t('users.title')}</h1>
         <Button className="bg-accent hover:bg-accent/90" onClick={() => setInviteDialogOpen(true)}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          New User
+          {t('users.new_user_button')}
         </Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>All Authenticated Users</CardTitle>
+          <CardTitle>{t('users.table_title')}</CardTitle>
           <CardDescription>
-            This is a list of all users in Firebase Authentication. Use the actions menu to view or edit a user.
+            {t('users.table_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
             {error && (
                  <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{isCredentialError ? 'Configuration Required' : 'Error Fetching Users'}</AlertTitle>
+                    <AlertTitle>{isCredentialError ? t('users.config_required') : t('users.error_fetching')}</AlertTitle>
                     <AlertDescription>
                         {error}
                         {isCredentialError && (
@@ -144,7 +146,7 @@ FIREBASE_PRIVATE_KEY="..."`}
                 </Alert>
             )}
            {loading ? (
-             <p>Loading users...</p>
+             <p>{t('common.loading')}...</p>
            ) : (
             <DataTable 
                 columns={memoizedColumns} 

@@ -10,13 +10,14 @@ import { Button } from "@/components/ui/button"
 
 type ColumnsProps = {
   onSelectTenant: (tenant: Tenant) => void;
+  t: (key: string) => string;
 }
 
-export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] => [
+export const columns = ({ onSelectTenant, t }: ColumnsProps): ColumnDef<Tenant>[] => [
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Tenant Name" />
+      <DataTableColumnHeader column={column} title={t('common.tenant_name')} />
     ),
     cell: ({ row }) => {
         const tenant = row.original;
@@ -30,7 +31,7 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
   {
     accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
+      <DataTableColumnHeader column={column} title={t('common.status')} />
     ),
     cell: ({ row }) => {
         const status = row.original.status;
@@ -43,7 +44,7 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
     {
     accessorKey: "url",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Portal URL" />
+      <DataTableColumnHeader column={column} title={t('tenants.columns.portal_url')} />
     ),
     cell: ({ row }) => {
         const url = row.original.url;
@@ -66,7 +67,7 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
   {
     accessorKey: "userCount",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Users" />
+      <DataTableColumnHeader column={column} title={t('tenants.columns.users')} />
     ),
      cell: ({ row }) => {
         return (
@@ -79,7 +80,7 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
   {
     accessorKey: "ticketsCreated",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Tickets" />
+      <DataTableColumnHeader column={column} title={t('tenants.columns.tickets')} />
     ),
      cell: ({ row }) => {
         return (
@@ -92,7 +93,7 @@ export const columns = ({ onSelectTenant }: ColumnsProps): ColumnDef<Tenant>[] =
   {
     accessorKey: "createdAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created" />
+      <DataTableColumnHeader column={column} title={t('common.created')} />
     ),
     cell: ({ row }) => {
       const date = new Date(row.getValue("createdAt"))

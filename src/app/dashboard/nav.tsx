@@ -22,57 +22,59 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from '@/components/ui/sidebar';
-
-const navItems = [
-  {
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    label: 'Dashboard',
-  },
-  {
-    href: '/dashboard/tickets',
-    icon: Ticket,
-    label: 'Tickets',
-  },
-  {
-    href: '/dashboard/forms',
-    icon: FileText,
-    label: 'Forms',
-  },
-  {
-    href: '/dashboard/fields',
-    icon: Library,
-    label: 'Fields',
-  },
-];
-
-const adminNavItems = [
-  {
-    href: '/dashboard/admin/tenants',
-    icon: Building,
-    label: 'Tenants',
-  },
-  {
-    href: '/dashboard/admin/users',
-    icon: Users,
-    label: 'User Management',
-    requiredRole: 'Super Admin',
-  },
-  {
-    href: '/dashboard/admin/settings',
-    icon: Settings,
-    label: 'System Settings',
-  },
-  {
-    href: '/dashboard/testing/impersonate',
-    icon: TestTube,
-    label: 'Testing',
-  }
-];
+import { useLanguage } from '@/contexts/language-context';
 
 export function DashboardNav() {
   const pathname = usePathname();
   const { role } = useAuthRole();
+  const { t } = useLanguage();
+
+  const navItems = [
+    {
+      href: '/dashboard',
+      icon: LayoutDashboard,
+      label: t('nav.dashboard'),
+    },
+    {
+      href: '/dashboard/tickets',
+      icon: Ticket,
+      label: t('nav.tickets'),
+    },
+    {
+      href: '/dashboard/forms',
+      icon: FileText,
+      label: t('nav.forms'),
+    },
+    {
+      href: '/dashboard/fields',
+      icon: Library,
+      label: t('nav.fields'),
+    },
+  ];
+  
+  const adminNavItems = [
+    {
+      href: '/dashboard/admin/tenants',
+      icon: Building,
+      label: t('nav.tenants'),
+    },
+    {
+      href: '/dashboard/admin/users',
+      icon: Users,
+      label: t('nav.user_management'),
+      requiredRole: 'Super Admin',
+    },
+    {
+      href: '/dashboard/admin/settings',
+      icon: Settings,
+      label: t('nav.system_settings'),
+    },
+    {
+      href: '/dashboard/testing/impersonate',
+      icon: TestTube,
+      label: t('nav.testing'),
+    }
+  ];
 
   return (
     <SidebarMenu>
@@ -80,7 +82,7 @@ export function DashboardNav() {
         <SidebarMenuItem key={item.href}>
           <Link href={item.href}>
             <SidebarMenuButton
-              isActive={pathname.startsWith(item.href)}
+              isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
               tooltip={item.label}
             >
               <item.icon className="size-4" />
@@ -90,7 +92,7 @@ export function DashboardNav() {
         </SidebarMenuItem>
       ))}
       <SidebarGroup className="p-0 pt-4">
-        <SidebarGroupLabel className="px-2">Admin</SidebarGroupLabel>
+        <SidebarGroupLabel className="px-2">{t('nav.admin')}</SidebarGroupLabel>
         {adminNavItems.map((item) => {
           if (item.requiredRole && item.requiredRole !== role) {
             return null;
