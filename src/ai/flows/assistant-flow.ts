@@ -19,8 +19,8 @@ import {
   where,
   query,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
+import admin from 'firebase-admin';
 
 // //////////////////////////////////////////////////////////////////
 // Tools
@@ -41,9 +41,10 @@ const createTenantTool = ai.defineTool(
   },
   async ({ name }) => {
     try {
-      const docRef = await addDoc(collection(db, 'tenants'), {
+      const db = getAdminDb();
+      const docRef = await db.collection('tenants').add({
         name: name,
-        createdAt: serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       return {
         success: true,
@@ -87,15 +88,16 @@ const createTicketTool = ai.defineTool(
   },
   async ({ subjectName, subjectEmail, reportType, description }) => {
     try {
+      const db = getAdminDb();
       // In a real scenario, we might want to associate this with a client,
       // but for a Super Admin assistant, creating it directly is fine.
-      const docRef = await addDoc(collection(db, 'tickets'), {
+      const docRef = await db.collection('tickets').add({
         subjectName,
         email: subjectEmail,
         reportType,
         description,
         status: 'New',
-        createdAt: serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       return {
         success: true,
@@ -131,11 +133,12 @@ const getTicketMetricsTool = ai.defineTool(
       Total: 0,
     };
     
-    const ticketsCollection = collection(db, 'tickets');
+    const db = getAdminDb();
+    const ticketsCollection = db.collection('tickets');
 
     // This is less efficient than multiple queries but works for smaller datasets.
     // For larger scale, you'd run separate getCountFromServer queries.
-    const querySnapshot = await getDocs(ticketsCollection);
+    const querySnapshot = await ticketsCollection.get();
     
     querySnapshot.forEach(doc => {
       const status = doc.data().status;
