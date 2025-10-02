@@ -109,11 +109,11 @@ const WIDGET_DEFINITIONS: {
   },
   'new-tenants': {
     title: 'New Tenants',
-    defaultLayout: { i: 'new-tenants', x: 4, y: 2, w: 2, h: 1, minW: 2, minH: 1 },
+    defaultLayout: { i: 'new-tenants', x: 4, y: 3, w: 2, h: 2, minW: 2, minH: 2 },
   },
   'ai-assistant': {
     title: 'AI Assistant',
-    defaultLayout: { i: 'ai-assistant', x: 0, y: 5, w: 6, h: 3, minW: 3, minH: 2 },
+    defaultLayout: { i: 'ai-assistant', x: 0, y: 5, w: 6, h: 2, minW: 3, minH: 2 },
   },
 };
 
@@ -529,12 +529,12 @@ export default function DashboardPage() {
             draggableCancel=".non-draggable"
         >
             {activeWidgets.map((widgetId) => (
-            <div key={widgetId} className="overflow-hidden relative group/widget">
+            <div key={widgetId} className="relative group/widget">
                 {isEditMode && (
                     <Button 
                         variant="destructive" 
                         size="icon" 
-                        className="absolute top-2 right-2 z-10 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 z-20 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
                         onClick={() => removeWidget(widgetId)}
                     >
                         <span className="sr-only">Remove widget</span>
