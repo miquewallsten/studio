@@ -63,7 +63,9 @@
         "table_title": "All Tickets",
         "table_desc": "A dynamic list of all incoming requests.",
         "columns": {
-            "report_type": "Report Type"
+            "report_type": "Report Type",
+            "requester": "Requester",
+            "assignee": "Assignee"
         },
         "status_new": "New",
         "status_in_progress": "In Progress",

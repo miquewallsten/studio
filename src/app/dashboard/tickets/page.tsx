@@ -45,23 +45,10 @@ import {
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { useLanguage } from '@/contexts/language-context';
-
-type Ticket = {
-  id: string;
-  subjectName: string;
-  reportType: string;
-  status: 'New' | 'In Progress' | 'Pending Review' | 'Completed';
-  createdAt: Timestamp;
-};
+import { columns } from './columns';
+import type { Ticket } from './schema';
 
 type Columns = {
   [key: string]: {
@@ -110,7 +97,6 @@ export default function TicketsPage() {
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -136,6 +122,9 @@ export default function TicketsPage() {
 
     return () => unsubscribe();
   }, []);
+  
+  const memoizedColumns = useMemo(() => columns(t), [t]);
+
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -181,15 +170,6 @@ export default function TicketsPage() {
       updateDoc(ticketRef, { status: newStatus });
     }
   };
-
-  const filteredTickets = useMemo(() => {
-    return allTickets.filter(
-      (ticket) =>
-        ticket.subjectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ticket.reportType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ticket.status.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [allTickets, searchQuery]);
   
   const translatedColumns = useMemo(() => ({
       new: { name: t('tickets.status_new'), items: columns.new.items },
@@ -211,8 +191,7 @@ export default function TicketsPage() {
       </div>
 
       <Tabs defaultValue="list" className="w-full">
-        <div className="flex items-center justify-between">
-          <TabsList>
+        <TabsList>
             <TabsTrigger value="list">
               <List className="mr-2 h-4 w-4" />
               {t('tickets.list_view')}
@@ -221,18 +200,8 @@ export default function TicketsPage() {
               <KanbanSquare className="mr-2 h-4 w-4" />
               {t('tickets.kanban_view')}
             </TabsTrigger>
-          </TabsList>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder={t('tickets.search_placeholder')}
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
+        </TabsList>
+        
 
         <TabsContent value="list">
           <Card>
@@ -243,66 +212,11 @@ export default function TicketsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('common.subject')}</TableHead>
-                    <TableHead>{t('tickets.columns.report_type')}</TableHead>
-                    <TableHead>{t('common.status')}</TableHead>
-                    <TableHead>{t('common.created')}</TableHead>
-                    <TableHead>
-                      <span className="sr-only">{t('common.action')}</span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        {t('common.loading')}...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredTickets.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        {t('common.no_results')}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredTickets.map((ticket) => (
-                      <TableRow key={ticket.id}>
-                        <TableCell className="font-medium">
-                          {ticket.subjectName}
-                        </TableCell>
-                        <TableCell>{ticket.reportType}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              ticket.status === 'New'
-                                ? 'destructive'
-                                : 'secondary'
-                            }
-                          >
-                            {ticket.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {ticket.createdAt
-                            ? format(ticket.createdAt.toDate(), 'PPP')
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild variant="ghost" size="icon">
-                            <Link href={`/dashboard/tickets/${ticket.id}`}>
-                              <ArrowRight className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                {loading ? (
+                    <p>{t('common.loading')}...</p>
+                ) : (
+                    <DataTable columns={memoizedColumns} data={allTickets} />
+                )}
             </CardContent>
           </Card>
         </TabsContent>

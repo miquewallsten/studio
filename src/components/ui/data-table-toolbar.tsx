@@ -32,6 +32,19 @@ export function DataTableToolbar<TData>({
       {value: "Unassigned", label: "Unassigned"},
   ];
 
+  const ticketStatuses = [
+      {value: "New", label: "New"},
+      {value: "In Progress", label: "In Progress"},
+      {value: "Pending Review", label: "Pending Review"},
+      {value: "Completed", label: "Completed"},
+  ]
+  
+  const reportTypes = [
+      {value: "background-check", label: "Background Check"},
+      {value: "tenant-screening", label: "Tenant Screening"},
+      {value: "employment-verification", label: "Employment Verification"},
+  ]
+
   const tenantNames = React.useMemo(() => {
     const tenantNameColumn = table.getAllColumns().find(c => c.id === 'tenantName');
     if (!tenantNameColumn) {
@@ -52,8 +65,10 @@ export function DataTableToolbar<TData>({
     return id.includes('name') || id.includes('email') || id.includes('subject');
   });
 
-  const roleColumn = table.getAllColumns().find(c => c.id === 'role');
-  const tenantNameColumn = table.getAllColumns().find(c => c.id === 'tenantName');
+  const roleColumn = table.getColumn('role');
+  const tenantNameColumn = table.getColumn('tenantName');
+  const statusColumn = table.getColumn('status');
+  const reportTypeColumn = table.getColumn('reportType');
 
   return (
     <div className="flex items-center justify-between">
@@ -74,6 +89,20 @@ export function DataTableToolbar<TData>({
             title="Role"
             options={roles}
           />
+        )}
+        {statusColumn && (
+            <DataTableFacetedFilter
+                column={statusColumn}
+                title="Status"
+                options={ticketStatuses}
+            />
+        )}
+        {reportTypeColumn && (
+            <DataTableFacetedFilter
+                column={reportTypeColumn}
+                title="Report Type"
+                options={reportTypes}
+            />
         )}
         {tenantNameColumn && tenantNames.length > 0 && (
             <DataTableFacetedFilter

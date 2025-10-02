@@ -63,7 +63,9 @@
         "table_title": "Todos los Tickets",
         "table_desc": "Una lista dinámica de todas las solicitudes entrantes.",
         "columns": {
-            "report_type": "Tipo de Informe"
+            "report_type": "Tipo de Informe",
+            "requester": "Solicitante",
+            "assignee": "Asignado a"
         },
         "status_new": "Nuevo",
         "status_in_progress": "En Progreso",
