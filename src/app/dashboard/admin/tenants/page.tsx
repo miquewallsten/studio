@@ -105,6 +105,7 @@ export default function TenantsPage() {
                 columns={memoizedColumns} 
                 data={tenants}
                 onRowClick={(row) => setSelectedTenant(row.original)}
+                tableId="tenants-table"
             />
            )}
         </CardContent>

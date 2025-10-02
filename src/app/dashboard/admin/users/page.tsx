@@ -152,6 +152,7 @@ FIREBASE_PRIVATE_KEY="..."`}
                 columns={memoizedColumns} 
                 data={users}
                 onRowClick={(row) => setSelectedUser(row.original)}
+                tableId="users-table"
             />
            )}
         </CardContent>

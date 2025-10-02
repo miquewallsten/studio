@@ -34,5 +34,5 @@ export function useAuthRole() {
     }
   }, [user, loading]);
 
-  return { role, isLoading };
+  return { role, user, isLoading };
 }

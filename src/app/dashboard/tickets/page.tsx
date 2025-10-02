@@ -74,6 +74,7 @@ export default function TicketsPage() {
             <DataTable 
                 columns={memoizedColumns} 
                 data={allTickets}
+                tableId="tickets-table"
             />
            )}
         </CardContent>

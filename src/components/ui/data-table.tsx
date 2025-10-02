@@ -31,11 +31,15 @@ import {
 
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { DataTableToolbar } from "@/components/ui/data-table-toolbar"
+import { useSecureFetch } from "@/hooks/use-secure-fetch"
+import { useAuthRole } from "@/hooks/use-auth-role"
+import { debounce } from "lodash"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[],
   onRowClick?: (row: Row<TData>) => void
+  tableId: string;
 }
 
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
@@ -55,6 +59,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   onRowClick,
+  tableId,
 }: DataTableProps<TData, TValue>) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -62,29 +67,53 @@ export function DataTable<TData, TValue>({
     []
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const { user } = useAuthRole();
+  const secureFetch = useSecureFetch();
+  const hasLoadedPrefs = React.useRef(false);
 
-  // Load state from local storage on initial render
-  React.useEffect(() => {
-    const savedStateJSON = localStorage.getItem("data-table-state");
-    if (savedStateJSON) {
-      try {
-        const savedState = JSON.parse(savedStateJSON);
-        if (savedState.columnVisibility) setColumnVisibility(savedState.columnVisibility);
-        if (savedState.sorting) setSorting(savedState.sorting);
-      } catch (e) {
-        console.error("Failed to parse table state from localStorage", e);
-      }
+  // Debounced save function
+  const savePreferences = React.useCallback(debounce(async (prefs: { columnVisibility?: VisibilityState, sorting?: SortingState }) => {
+    if (!hasLoadedPrefs.current || !user) return;
+    try {
+      await secureFetch('/api/user/preferences', {
+        method: 'POST',
+        body: JSON.stringify({
+          [tableId]: prefs
+        }),
+      });
+    } catch (e) {
+      console.error('Failed to save table preferences', e);
     }
-  }, []);
+  }, 1000), [secureFetch, user, tableId]);
 
-  // Save state to local storage whenever it changes
+  // Load state from Firestore on initial render
   React.useEffect(() => {
-    const stateToSave = {
-        columnVisibility,
-        sorting,
-    };
-    localStorage.setItem("data-table-state", JSON.stringify(stateToSave));
-  }, [columnVisibility, sorting]);
+    let isMounted = true;
+    if (user) {
+      const fetchPrefs = async () => {
+        try {
+          const data = await secureFetch('/api/user/preferences');
+          if (isMounted && data[tableId]) {
+            if (data[tableId].columnVisibility) setColumnVisibility(data[tableId].columnVisibility);
+            if (data[tableId].sorting) setSorting(data[tableId].sorting);
+          }
+        } catch (e) {
+          console.log(`No saved preferences found for table ${tableId}, using defaults.`);
+        } finally {
+            if(isMounted) hasLoadedPrefs.current = true;
+        }
+      };
+      fetchPrefs();
+    }
+     return () => { isMounted = false; };
+  }, [user, tableId, secureFetch]);
+
+  // Save state to Firestore whenever it changes
+  React.useEffect(() => {
+    if (hasLoadedPrefs.current) {
+        savePreferences({ columnVisibility, sorting });
+    }
+  }, [columnVisibility, sorting, savePreferences]);
 
 
   const table = useReactTable({
