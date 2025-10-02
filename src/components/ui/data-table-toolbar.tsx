@@ -57,13 +57,13 @@ export function DataTableToolbar<TData>({
         if (tenantName) names.add(tenantName);
     });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table.getColumn, table.getPreFilteredRowModel]);
+  }, [table]);
 
 
   // Find a generic column to filter by text, like 'name' or 'email' or 'subject'
   const filterColumn = table.getAllColumns().find(c => {
     const id = c.id.toLowerCase();
-    return id.includes('name') || id.includes('email') || id.includes('subject');
+    return id.includes('name') || id.includes('email') || id.includes('subjectname');
   });
 
   const roleColumn = table.getColumn('role');
