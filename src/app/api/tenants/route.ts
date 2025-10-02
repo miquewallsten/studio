@@ -1,13 +1,10 @@
 
-'use server';
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-
-export const dynamic = 'force-dynamic';
 
 // --- ONE-TIME SEEDING LOGIC ---
 const seedCheckFilePath = path.join(process.cwd(), 'seed-check.json');
