@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -21,10 +22,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { suggestComplianceQuestions } from '@/ai/flows/compliance-question-suggestions';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
+import { generateText } from '@/lib/ai';
 
 export default function NewTicketPage() {
   const { toast } = useToast();
@@ -41,11 +42,18 @@ export default function NewTicketPage() {
     const description = formData.get('description') as string;
 
     try {
-      // 1. Call the AI flow to get suggested questions
-      const { suggestedQuestions } = await suggestComplianceQuestions({
-        reportType,
-        description,
-      });
+      // 1. Call the AI to get suggested questions
+      const prompt = `You are an AI assistant that suggests specialized compliance questions. Given the report type and description below, suggest a list of 3-5 compliance questions. Return *only* a JSON object with a "suggestedQuestions" key containing an array of strings. Do not add any other text, markdown, or explanation.\n\nReport Type: ${reportType}\nDescription: ${description}`;
+      
+      const aiResponse = await generateText(prompt);
+      let suggestedQuestions: string[] = [];
+      try {
+        const jsonResponse = aiResponse.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(jsonResponse);
+        suggestedQuestions = parsed.suggestedQuestions || [];
+      } catch (e) {
+        console.error("Failed to parse AI response for compliance questions:", e);
+      }
       
       // 2. Save the ticket and form data to Firestore.
       await addDoc(collection(db, 'tickets'), {

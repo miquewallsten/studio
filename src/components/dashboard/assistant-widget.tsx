@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Send, User } from 'lucide-react';
-import { chat } from '@/ai/flows/assistant-flow';
 import { useLanguage } from '@/contexts/language-context';
+import { generateText } from '@/lib/ai';
 
 interface Message {
     role: 'user' | 'model';
@@ -27,18 +27,17 @@ export function AssistantWidget() {
 
         const newUserMessage: Message = { role: 'user', text: prompt };
         setHistory(prev => [...prev, newUserMessage]);
+        
+        const currentPrompt = prompt;
         setPrompt('');
         setIsLoading(true);
 
         try {
-            const response = await chat({
-                history: history.map(h => ({
-                    role: h.role,
-                    content: [{text: h.text}]
-                })),
-                prompt,
-                locale,
-            });
+            const systemPrompt = `You are a helpful AI assistant for a Super Admin of the TenantCheck platform. Your purpose is to assist the admin with managing the application by answering questions about metrics and performing actions on their behalf. If the user asks to seed the database, you cannot do that. Be conversational and confirm when you have completed an action. If you are asked to do something you don't have a tool for, clearly state that you do not have that capability. You MUST respond in the user's language. The user's current language is: ${locale}.`;
+            const historyText = history.map(h => `${h.role}: ${h.text}`).join('\n');
+            const fullPrompt = `${systemPrompt}\n\n${historyText}\nuser: ${currentPrompt}\nmodel:`;
+            
+            const response = await generateText(fullPrompt);
             const newModelMessage: Message = { role: 'model', text: response };
             setHistory(prev => [...prev, newModelMessage]);
         } catch (error) {

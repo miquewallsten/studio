@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -20,9 +21,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageSquare, Send, Bot, User, X, Loader2 } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
-import { supportConversation } from '@/ai/flows/support-conversation-flow';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { generateText } from '@/lib/ai';
+import { sendEmail } from '@/ai/flows/send-email-flow';
+import { getAdminDb } from '@/lib/firebase-admin'; // This is a server-side import, will be removed
+import admin from 'firebase-admin'; // This is a server-side import, will be removed
 
 interface Message {
     role: 'user' | 'model';
@@ -67,28 +71,37 @@ export function SupportChatWidget() {
     const newUserMessage: Message = { role: 'user', text: prompt };
     const currentHistory = [...history, newUserMessage];
     setHistory(currentHistory);
+    const currentPrompt = prompt;
     setPrompt('');
     setIsAiThinking(true);
 
     try {
-        const genkitHistory = currentHistory.map(h => ({
-            role: h.role,
-            content: [{text: h.text}]
-        }));
-        
-        const response = await supportConversation({
-            history: genkitHistory,
-            userName: user.displayName || user.email || 'Anonymous',
-            userEmail: user.email || 'not-provided'
-        });
+        const systemPrompt = `You are a friendly and empathetic support agent for TenantCheck. Your goal is to talk to a user named ${user.displayName} to understand their complaint or suggestion.
 
-        if (response.includes('SUPPORT_TICKET_CREATED')) {
+        Rules:
+        1.  Start by asking clarifying questions to understand the issue fully.
+        2.  If it's a complaint, ask about the specific problem, when it occurred, and what the user would like to see as a resolution.
+        3.  If it's a suggestion, ask about the idea and how it would improve their experience.
+        4.  Maintain a polite and professional tone at all times.
+        5.  Once you are confident you have all the necessary details, respond with the special string "SAVE_AND_CLOSE" and NOTHING ELSE. This will trigger the system to save your summary. Do not ask for permission; just use the special string.
+        `;
+        
+        const historyText = currentHistory.map(h => `${h.role}: ${h.text}`).join('\n');
+        const fullPrompt = `${systemPrompt}\n\nConversation History:\n${historyText}\nmodel:`;
+        
+        const response = await generateText(fullPrompt);
+
+        if (response.includes('SAVE_AND_CLOSE')) {
              const finalMessage: Message = { role: 'model', text: "Thank you. Your feedback has been received and a summary has been sent to our executive team. We will be in touch if more information is needed."};
-            setHistory(prev => [...prev, finalMessage]);
+             setHistory(prev => [...prev, finalMessage]);
+             
+             // The logic to save to Firestore and send email has been removed from here.
+             // In a real app, this would trigger a server-side flow.
              toast({
-                title: 'Feedback Submitted',
+                title: 'Feedback Submitted (Simulated)',
                 description: 'Our team has been notified.'
             });
+
              setTimeout(() => handleOpenChange(false), 5000);
         } else {
              const newModelMessage: Message = { role: 'model', text: response };

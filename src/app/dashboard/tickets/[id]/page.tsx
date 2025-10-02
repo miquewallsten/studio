@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import type { Field } from '@/app/dashboard/fields/schema';
-import { summarizeReportRequests } from '@/ai/flows/summarize-report-requests';
+import { generateText } from '@/lib/ai';
 
 type Ticket = {
   id: string;
@@ -154,12 +154,10 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
           description: "The AI is now running validations. Notes will appear as they are completed."
       });
       try {
-        // This functionality was tied to a Genkit flow with tools that has been removed.
-        // We will simulate the behavior for now.
+        // This is a simulation, as the original Genkit flow with tools was removed.
         console.log("Simulating AI Validations for ticket:", ticket.id);
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Example of updating a note
         const firstField = formFields[0];
         if (firstField) {
             handleNoteChange(firstField.label, "AI validation: Data appears to be consistent.");
@@ -191,16 +189,18 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     const field = formFields[sectionIndex];
     const relevantNote = internalNotes[field.label] || '';
     const relevantValue = field.value || '';
-    const requestDetails = `
-        Section to summarize: "${section.title}"
-        User-provided data for this section: ${relevantValue}
-        Analyst notes for this section: ${relevantNote}
+    const prompt = `You are an assistant to an analyst manager. Your job is to summarize report requests so that the manager can quickly understand the request and assign it to the appropriate analyst. Provide only a concise summary in plain text. Do not add a preamble or any extra formatting.
+
+    Here are the details of the section to summarize:
+    Section Title: "${section.title}"
+    User-provided data for this section: ${relevantValue}
+    Analyst notes for this section: ${relevantNote}
     `;
 
     try {
-        const result = await summarizeReportRequests({ requestDetails });
+        const result = await generateText(prompt);
         setReportSections(prev => prev.map((s, i) => 
-            i === sectionIndex ? {...s, content: result.summary, isGenerating: false } : s
+            i === sectionIndex ? {...s, content: result, isGenerating: false } : s
         ));
 
     } catch (error: any) {
@@ -498,7 +498,3 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
-    
-
-    

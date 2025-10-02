@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { chat } from '@/ai/flows/assistant-flow';
 import { Building, Ticket, Bot, Zap, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/language-context';
+import { generateText } from '@/lib/ai';
 
 type Action = 'createTenant' | 'createTicket' | null;
 
@@ -43,7 +43,10 @@ export function QuickActionsWidget() {
     }
 
     try {
-      const response = await chat({ prompt, locale });
+        const systemPrompt = `You are a helpful AI assistant for a Super Admin. Your purpose is to assist the admin by performing actions on their behalf. You MUST respond in the user's language. The user's current language is: ${locale}.`;
+        const fullPrompt = `${systemPrompt}\n\nuser: ${prompt}\nmodel:`;
+        const response = await generateText(fullPrompt);
+
       setResult(response);
       toast({
         title: 'Action Successful',

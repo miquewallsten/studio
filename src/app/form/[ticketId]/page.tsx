@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -18,13 +19,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
-import { conversationalForm } from '@/ai/flows/conversational-form-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Send, User, Check, RefreshCcw } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { generateText } from '@/lib/ai';
 
 
 type Ticket = {
@@ -185,16 +186,23 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     setIsAiThinking(true);
 
     try {
-        const genkitHistory = currentHistory.map(h => ({
-            role: h.role,
-            content: [{text: h.text}]
-        }));
+        const systemPrompt = `You are a friendly and professional AI assistant. Your goal is to guide a user named ${user?.displayName || user?.email} through a series of questions to fill out a form.
 
-        const response = await conversationalForm({
-            history: genkitHistory,
-            questions: currentTicket.suggestedQuestions || [],
-            userName: user?.displayName || user?.email || 'user',
-        });
+        Here are the questions you need to ask:
+        ${(currentTicket.suggestedQuestions || []).map(q => `- ${q}`).join('\n')}
+
+        Rules:
+        1.  Ask only ONE question at a time.
+        2.  Start by greeting the user by their name and asking the first question.
+        3.  Wait for the user's response before moving to the next question.
+        4.  If a user's answer is very short or unclear, you can ask a polite follow-up question like "Could you please provide a bit more detail?".
+        5.  Once you have asked all the questions and received answers for them, respond with ONLY the following message, exactly as written: "FORM_COMPLETE". Do not add any other text or explanation before or after this message.
+        `;
+
+        const historyText = currentHistory.map(h => `${h.role}: ${h.text}`).join('\n');
+        const fullPrompt = `${systemPrompt}\n\nConversation History:\n${historyText}\nmodel:`;
+        
+        const response = await generateText(fullPrompt);
         
         if (response.includes('FORM_COMPLETE')) {
             setIsFormComplete(true);

@@ -51,8 +51,8 @@ import { useLanguage } from '@/contexts/language-context';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { debounce } from 'lodash';
 import { QuickActionsWidget } from '@/components/dashboard/quick-actions-widget';
-import { chat } from '@/ai/flows/assistant-flow';
 import { CustomerExperienceWidget } from '@/components/dashboard/customer-experience-widget';
+import { generateText } from '@/lib/ai';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -207,28 +207,27 @@ export default function DashboardPage() {
 
     const fetchUsersAndMetrics = async () => {
         try {
-          // Use the AI assistant itself to get the initial stats.
-          const response = await chat({ prompt: 'Give me the latest platform metrics.', locale });
-          // In a real app, you'd parse this more robustly, but for now, we assume a simple format.
-          // A better approach would be for the flow to return structured JSON, but for a simple query, this is fine.
-          const userCountMatch = response.match(/(\d+) total users/i);
-          if (userCountMatch && isMounted) {
-            setUserCount(parseInt(userCountMatch[1], 10));
+          // In a real app, you would have dedicated API endpoints for these metrics
+          // For now, we'll fetch all users to get a count, and all tickets for metrics
+          const userResponse = await secureFetch('/api/users');
+          if (userResponse.users && isMounted) {
+              setUserCount(userResponse.users.length);
           }
-          
-          const newTicketsMatch = response.match(/New: (\d+)/i);
-          const inProgressMatch = response.match(/In Progress: (\d+)/i);
-          const completedMatch = response.match(/Completed: (\d+)/i);
-  
+
+          const ticketsSnapshot = await getDocs(collection(db, 'tickets'));
           if (isMounted) {
-            setTicketMetrics({
-                New: newTicketsMatch ? parseInt(newTicketsMatch[1], 10) : 0,
-                'In Progress': inProgressMatch ? parseInt(inProgressMatch[1], 10) : 0,
-                Completed: completedMatch ? parseInt(completedMatch[1], 10) : 0,
-            });
+              const metrics = { New: 0, 'In Progress': 0, Completed: 0 };
+              ticketsSnapshot.forEach(doc => {
+                  const status = doc.data().status as TicketStatus;
+                  if (metrics[status] !== undefined) {
+                      metrics[status]++;
+                  }
+              });
+              setTicketMetrics(metrics);
           }
+
         } catch (error) {
-          console.error('Failed to fetch users and metrics via AI:', error);
+          console.error('Failed to fetch users and metrics:', error);
         }
       };
   
@@ -240,7 +239,7 @@ export default function DashboardPage() {
       unsubscribeTenants();
       savePreferences.cancel();
     };
-  }, [user, loading, savePreferences, locale, secureFetch]);
+  }, [user, loading, savePreferences, secureFetch]);
 
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     if (isEditMode && hasLoadedPrefs.current) {
