@@ -113,7 +113,7 @@ const WIDGET_DEFINITIONS: {
   },
   'ai-assistant': {
     title: 'AI Assistant',
-    defaultLayout: { i: 'ai-assistant', x: 0, y: 5, w: 6, h: 2, minW: 3, minH: 2 },
+    defaultLayout: { i: 'ai-assistant', x: 0, y: 5, w: 6, h: 3, minW: 3, minH: 3 },
   },
 };
 
@@ -529,7 +529,7 @@ export default function DashboardPage() {
             draggableCancel=".non-draggable"
         >
             {activeWidgets.map((widgetId) => (
-            <div key={widgetId} className="relative group/widget">
+            <div key={widgetId} className="relative group/widget overflow-hidden">
                 {isEditMode && (
                     <Button 
                         variant="destructive" 
