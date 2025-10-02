@@ -52,7 +52,6 @@ export function CustomerExperienceWidget() {
     const ratingsQuery = query(
       collection(db, 'tickets'),
       where('rating', '<=', 3),
-      orderBy('rating', 'asc'),
       orderBy('ratingSubmittedAt', 'desc'),
       limit(10)
     );
@@ -68,6 +67,10 @@ export function CustomerExperienceWidget() {
       snapshot.forEach(doc => tickets.push({ id: doc.id, ...doc.data() } as LowRatedTicket));
       setLowRated(tickets);
       setLoading(false);
+    }, (error) => {
+        console.error("Error fetching low ratings:", error);
+        // Don't crash the widget if the index is missing.
+        setLoading(false);
     });
 
     const unsubscribeFeedback = onSnapshot(feedbackQuery, (snapshot) => {
