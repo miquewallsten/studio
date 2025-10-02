@@ -21,11 +21,11 @@ const getStatusVariant = (status: string) => {
     }
   };
 
-export const columns = (t: (key: string) => string): ColumnDef<Ticket>[] => [
+export const columns: ColumnDef<Ticket>[] = [
   {
     accessorKey: "subjectName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('common.subject')} />
+      <DataTableColumnHeader column={column} title={"Subject"} />
     ),
     cell: ({ row }) => {
         return (
@@ -37,14 +37,14 @@ export const columns = (t: (key: string) => string): ColumnDef<Ticket>[] => [
   {
     accessorKey: "reportType",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('tickets.columns.report_type')} />
+      <DataTableColumnHeader column={column} title={"Report Type"} />
     ),
     enableSorting: true,
   },
   {
     accessorKey: "clientEmail",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('tickets.columns.requester')} />
+      <DataTableColumnHeader column={column} title={"Requester"} />
     ),
     cell: ({ row }) => {
         return (
@@ -56,7 +56,7 @@ export const columns = (t: (key: string) => string): ColumnDef<Ticket>[] => [
   {
     accessorKey: "assignedAnalystId",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('tickets.columns.assignee')} />
+      <DataTableColumnHeader column={column} title={"Assignee"} />
     ),
     cell: ({ row }) => {
         const assignee = row.original.assignedAnalystId; // In a real app, you'd resolve this to a name
@@ -69,7 +69,7 @@ export const columns = (t: (key: string) => string): ColumnDef<Ticket>[] => [
   {
     accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('common.status')} />
+      <DataTableColumnHeader column={column} title={"Status"} />
     ),
     cell: ({ row }) => {
         const status = row.original.status;
@@ -84,7 +84,7 @@ export const columns = (t: (key: string) => string): ColumnDef<Ticket>[] => [
   {
     accessorKey: "createdAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={t('common.created')} />
+      <DataTableColumnHeader column={column} title={"Created"} />
     ),
     cell: ({ row }) => {
       const date = row.original.createdAt.toDate()

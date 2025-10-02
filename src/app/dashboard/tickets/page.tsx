@@ -95,7 +95,7 @@ const getColumnIdFromStatus = (status: string) => {
 
 export default function TicketsPage() {
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
-  const [columns, setColumns] = useState<Columns>(initialColumns);
+  const [columnsData, setColumnsData] = useState<Columns>(initialColumns);
   const [loading, setLoading] = useState(true);
   const { t } = useLanguage();
 
@@ -116,14 +116,14 @@ export default function TicketsPage() {
           newColumns[columnId].items.push(ticket);
         }
       });
-      setColumns(newColumns);
+      setColumnsData(newColumns);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
   
-  const memoizedColumns = useMemo(() => columns(t), [t]);
+  const memoizedColumns = useMemo(() => columns, []);
 
 
   const onDragEnd = (result: DropResult) => {
@@ -132,12 +132,12 @@ export default function TicketsPage() {
 
     if (source.droppableId === destination.droppableId) {
       // Reordering within the same column
-      const column = columns[source.droppableId];
+      const column = columnsData[source.droppableId];
       const copiedItems = [...column.items];
       const [removed] = copiedItems.splice(source.index, 1);
       copiedItems.splice(destination.index, 0, removed);
-      setColumns({
-        ...columns,
+      setColumnsData({
+        ...columnsData,
         [source.droppableId]: {
           ...column,
           items: copiedItems,
@@ -145,15 +145,15 @@ export default function TicketsPage() {
       });
     } else {
       // Moving to a different column
-      const sourceColumn = columns[source.droppableId];
-      const destColumn = columns[destination.droppableId];
+      const sourceColumn = columnsData[source.droppableId];
+      const destColumn = columnsData[destination.droppableId];
       const sourceItems = [...sourceColumn.items];
       const destItems = [...destColumn.items];
       const [removed] = sourceItems.splice(source.index, 1);
       destItems.splice(destination.index, 0, removed);
 
-      setColumns({
-        ...columns,
+      setColumnsData({
+        ...columnsData,
         [source.droppableId]: {
           ...sourceColumn,
           items: sourceItems,
@@ -172,11 +172,11 @@ export default function TicketsPage() {
   };
   
   const translatedColumns = useMemo(() => ({
-      new: { name: t('tickets.status_new'), items: columns.new.items },
-      'in-progress': { name: t('tickets.status_in_progress'), items: columns['in-progress'].items },
-      'pending-review': { name: t('tickets.status_pending_review'), items: columns['pending-review'].items },
-      completed: { name: t('tickets.status_completed'), items: columns.completed.items },
-  }), [t, columns]);
+      new: { name: t('tickets.status_new'), items: columnsData.new.items },
+      'in-progress': { name: t('tickets.status_in_progress'), items: columnsData['in-progress'].items },
+      'pending-review': { name: t('tickets.status_pending_review'), items: columnsData['pending-review'].items },
+      completed: { name: t('tickets.status_completed'), items: columnsData.completed.items },
+  }), [t, columnsData]);
 
   return (
     <div className="flex flex-col gap-4">
