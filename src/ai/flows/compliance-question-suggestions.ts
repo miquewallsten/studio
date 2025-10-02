@@ -39,7 +39,6 @@ const prompt = ai.definePrompt({
 
   Suggest compliance questions:
   `,
-  model: DEFAULT_MODEL,
 });
 
 const suggestComplianceQuestionsFlow = ai.defineFlow(
@@ -49,7 +48,7 @@ const suggestComplianceQuestionsFlow = ai.defineFlow(
     outputSchema: SuggestComplianceQuestionsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, { model: DEFAULT_MODEL });
     return output!;
   }
 );

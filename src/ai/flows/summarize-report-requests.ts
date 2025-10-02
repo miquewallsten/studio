@@ -37,7 +37,6 @@ const prompt = ai.definePrompt({
   {{requestDetails}}
 
   Please provide a concise summary.`,  
-  model: DEFAULT_MODEL,
 });
 
 const summarizeReportRequestsFlow = ai.defineFlow(
@@ -47,7 +46,7 @@ const summarizeReportRequestsFlow = ai.defineFlow(
     outputSchema: SummarizeReportRequestsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, { model: DEFAULT_MODEL });
     return output!;
   }
 );
