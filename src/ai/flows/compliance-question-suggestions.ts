@@ -1,54 +1,43 @@
+
 'use server';
 
 /**
  * @fileOverview An AI agent that suggests specialized compliance questions to include in forms.
  *
  * - suggestComplianceQuestions - A function that suggests compliance questions for a given report type.
- * - SuggestComplianceQuestionsInput - The input type for the suggestComplianceQuestions function.
- * - SuggestComplianceQuestionsOutput - The return type for the suggestComplianceQuestions function.
  */
 
-import {ai, DEFAULT_MODEL} from '@/ai/genkit';
-import {z} from 'genkit';
+import { generateText } from '@/lib/ai';
 
-const SuggestComplianceQuestionsInputSchema = z.object({
-  reportType: z.string().describe('The type of report requested (e.g., background check, tenant screening).'),
-  description: z.string().optional().describe('A description of the person or company to be investigated.'),
-});
-export type SuggestComplianceQuestionsInput = z.infer<typeof SuggestComplianceQuestionsInputSchema>;
+export type SuggestComplianceQuestionsInput = {
+  reportType: string;
+  description?: string;
+};
 
-const SuggestComplianceQuestionsOutputSchema = z.object({
-  suggestedQuestions: z.array(z.string()).describe('An array of specialized compliance questions to include in the form.'),
-});
-export type SuggestComplianceQuestionsOutput = z.infer<typeof SuggestComplianceQuestionsOutputSchema>;
+export type SuggestComplianceQuestionsOutput = {
+  suggestedQuestions: string[];
+};
 
 export async function suggestComplianceQuestions(input: SuggestComplianceQuestionsInput): Promise<SuggestComplianceQuestionsOutput> {
-  return suggestComplianceQuestionsFlow(input);
-}
+    const prompt = `You are an AI assistant that suggests specialized compliance questions to include in forms based on the report type requested.
 
-const prompt = ai.definePrompt({
-  name: 'suggestComplianceQuestionsPrompt',
-  input: {schema: SuggestComplianceQuestionsInputSchema},
-  output: {schema: SuggestComplianceQuestionsOutputSchema},
-  prompt: `You are an AI assistant that suggests specialized compliance questions to include in forms based on the report type requested.
+  Given the report type and description below, suggest a list of 3-5 compliance questions that should be included in the form to improve the quality of the report and make the creation process more efficient.
+  Return *only* a JSON object with a "suggestedQuestions" key containing an array of strings. Do not add any other text, markdown, or explanation.
 
-  Given the report type and description below, suggest a list of compliance questions that should be included in the form to improve the quality of the report and make the creation process more efficient.
-
-  Report Type: {{{reportType}}}
-  Description: {{{description}}}
-
-  Suggest compliance questions:
-  `,
-});
-
-const suggestComplianceQuestionsFlow = ai.defineFlow(
-  {
-    name: 'suggestComplianceQuestionsFlow',
-    inputSchema: SuggestComplianceQuestionsInputSchema,
-    outputSchema: SuggestComplianceQuestionsOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input, { model: DEFAULT_MODEL });
-    return output!;
+  Report Type: ${input.reportType}
+  Description: ${input.description}
+  `;
+  
+  const response = await generateText(prompt);
+  
+  try {
+      // Clean the response to ensure it's valid JSON
+      const jsonResponse = response.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(jsonResponse);
+      return parsed;
+  } catch (e) {
+      console.error("Failed to parse AI response for compliance questions:", e);
+      // Fallback in case of parsing error
+      return { suggestedQuestions: [] };
   }
-);
+}
