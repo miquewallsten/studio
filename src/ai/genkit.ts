@@ -1,6 +1,6 @@
 import 'server-only';
 import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/googleai';
+import {googleAI} from '@genkit-ai/google-genai';
 
 export const ai = genkit({
   plugins: [
@@ -13,8 +13,9 @@ export const ai = genkit({
 export const DEFAULT_MODEL = 'googleai/gemini-1.5-flash';
 
 export async function generateText(prompt: string) {
-    return await ai.generate({
+    const llmResponse = await ai.generate({
         model: DEFAULT_MODEL,
         prompt: prompt,
     });
+    return llmResponse.text;
 }
