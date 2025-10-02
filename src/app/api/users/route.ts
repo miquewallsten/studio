@@ -2,6 +2,7 @@
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
+import admin from 'firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ async function getTicketCounts(tenantId?: string) {
     const ticketsSnapshot = await query.get();
     const counts: { [key: string]: number } = {};
     ticketsSnapshot.forEach(doc => {
-        const clientId = doc.data().clientId;
+        const clientId = doc.data().clientId; // In our schema, a ticket's clientId is the tenantId
         if (clientId) {
             if (!counts[clientId]) {
                 counts[clientId] = 0;
@@ -65,7 +66,6 @@ export async function GET(request: NextRequest) {
     const adminAuth = getAdminAuth();
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     
-    // Check if the user is a Tenant Admin and get their tenantId
     const callerRole = decodedToken.role;
     const callerTenantId = callerRole === 'Tenant Admin' ? decodedToken.tenantId : undefined;
 
@@ -78,8 +78,6 @@ export async function GET(request: NextRequest) {
     let userRecords: admin.auth.UserRecord[];
 
     if (callerTenantId) {
-        // If the caller is a Tenant Admin, only list users for their tenant.
-        // This is less efficient than listUsers() but necessary for security.
         const userProfiles = Object.keys(profiles);
         if (userProfiles.length === 0) {
             userRecords = [];
@@ -88,7 +86,6 @@ export async function GET(request: NextRequest) {
              userRecords = result.users;
         }
     } else {
-        // Super Admins see all users
         const listUsersResult = await adminAuth.listUsers();
         userRecords = listUsersResult.users;
     }
@@ -98,7 +95,6 @@ export async function GET(request: NextRequest) {
         let role = userRecord.customClaims?.role || 'Unassigned';
         const profile = profiles[userRecord.uid];
 
-        // Ensure the primary user is always a Super Admin by setting their custom claim if not already set.
         if (userRecord.email === 'mikewallsten@me.com' && userRecord.customClaims?.role !== 'Super Admin') {
             role = 'Super Admin';
             try {

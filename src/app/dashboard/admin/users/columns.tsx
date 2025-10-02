@@ -39,6 +39,7 @@ export const columns = ({ onSelectUser, allTags, onUserUpdated, t }: ColumnsProp
     },
     enableSorting: true,
     enableHiding: false,
+    filterFn: 'fuzzy',
   },
   {
     accessorKey: "email",
