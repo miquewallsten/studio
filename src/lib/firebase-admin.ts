@@ -1,6 +1,5 @@
 
 import admin from 'firebase-admin';
-import 'dotenv/config';
 
 const initializeAdmin = () => {
     if (!admin.apps.length) {
