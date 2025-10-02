@@ -49,6 +49,7 @@ import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { debounce } from 'lodash';
 import { QuickActionsWidget } from '@/components/dashboard/quick-actions-widget';
 import { chat } from '@/ai/flows/assistant-flow';
+import { CustomerExperienceWidget } from '@/components/dashboard/customer-experience-widget';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -74,6 +75,10 @@ const WIDGET_DEFINITIONS: {
   'notifications': {
     title: 'Notifications',
     defaultLayout: { i: 'notifications', x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+  },
+  'customer-experience': {
+    title: 'Customer Experience',
+    defaultLayout: { i: 'customer-experience', x: 0, y: 3, w: 6, h: 2, minW: 3, minH: 2 },
   },
   'new-tickets': {
     title: 'New Tickets',
@@ -105,11 +110,11 @@ const WIDGET_DEFINITIONS: {
   },
   'ai-assistant': {
     title: 'AI Assistant',
-    defaultLayout: { i: 'ai-assistant', x: 0, y: 3, w: 6, h: 3, minW: 3, minH: 2 },
+    defaultLayout: { i: 'ai-assistant', x: 0, y: 5, w: 6, h: 3, minW: 3, minH: 2 },
   },
 };
 
-const DEFAULT_WIDGETS = ['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'quick-actions', 'recent-tickets', 'new-tenants', 'ai-assistant'];
+const DEFAULT_WIDGETS = ['notifications', 'new-tickets', 'in-progress', 'total-users', 'completed', 'quick-actions', 'recent-tickets', 'new-tenants', 'customer-experience', 'ai-assistant'];
 
 
 export default function DashboardPage() {
@@ -270,6 +275,8 @@ export default function DashboardPage() {
     switch (widgetId) {
       case 'notifications':
         return <NotificationsWidget />;
+      case 'customer-experience':
+        return <CustomerExperienceWidget />;
       case 'new-tickets':
         return (
           <Card className="h-full">

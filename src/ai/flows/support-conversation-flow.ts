@@ -10,6 +10,8 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { sendEmail } from './send-email-flow';
+import { getAdminDb } from '@/lib/firebase-admin';
+import admin from 'firebase-admin';
 
 const MessageSchema = z.object({
   role: z.enum(['user', 'model']),
@@ -43,6 +45,7 @@ const extractAndSummarizeTool = ai.defineTool(
     async ({ summary, category }, flow) => {
         const { userName, userEmail } = flow.input as SupportConversationInput;
         
+        // 1. Send email to executives
         await sendEmail({
             to: 'executives@example.com',
             subject: `New Tenant Feedback Received: ${category}`,
@@ -54,6 +57,17 @@ const extractAndSummarizeTool = ai.defineTool(
                 <p><strong>AI Summary:</strong></p>
                 <p>${summary}</p>
             `
+        });
+
+        // 2. Save feedback to Firestore for dashboard widget
+        const db = getAdminDb();
+        await db.collection('feedback').add({
+            userName,
+            userEmail,
+            summary,
+            category,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            source: 'SupportChatbot'
         });
 
         // The presence of this specific string signals the UI to close.
