@@ -287,5 +287,3 @@ const assistantFlow = ai.defineFlow(
     return llmResponse.text;
   }
 );
-
-    

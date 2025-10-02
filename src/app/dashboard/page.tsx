@@ -141,8 +141,7 @@ export default function DashboardPage() {
 
   // Debounced save function
   const savePreferences = useCallback(debounce(async (prefs: { layouts?: any, widgets?: any }) => {
-    const token = document.cookie.split('; ').find(row => row.startsWith('firebaseIdToken='));
-    if (!hasLoadedPrefs.current || !auth.currentUser || !token) return;
+    if (!hasLoadedPrefs.current || !auth.currentUser) return;
     try {
       await secureFetch('/api/user/preferences', {
         method: 'POST',
@@ -158,23 +157,8 @@ export default function DashboardPage() {
     setIsClient(true);
     let isMounted = true;
 
-    // One-time check to seed the database if necessary
-    const seedDatabase = async () => {
-        if (hasSeeded.current) return;
-        hasSeeded.current = true; // Prevent re-running
-        console.log("Attempting to seed database...");
-        try {
-            await chat({ prompt: "Seed the database.", locale});
-            console.log("Database seeding tool triggered successfully.");
-        } catch (error) {
-            console.error("Database seeding via AI chat failed:", error);
-        }
-    };
-    
-
     // Fetch user preferences
     if (user) {
-      seedDatabase();
       const fetchPrefs = async () => {
         try {
           const data = await secureFetch('/api/user/preferences');
@@ -578,5 +562,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

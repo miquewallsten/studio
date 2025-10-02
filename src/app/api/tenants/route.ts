@@ -178,7 +178,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // --- ONE-TIME SEEDING ---
-    await performDatabaseSeeding();
+    // This is no longer the primary seeding mechanism. It will only run if it already has.
+    // The main seeding is now handled by the `seedDatabase` AI tool.
     // ------------------------
 
     const [tenants, userCounts, ticketCounts] = await Promise.all([
