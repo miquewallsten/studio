@@ -46,11 +46,12 @@ export function DataTableToolbar<TData>({
   ]
 
   const tenantNames = React.useMemo(() => {
-    const tenantNameColumn = table.getAllColumns().find(c => c.id === 'tenantName');
+    const tenantNameColumn = table.getColumn('tenantName');
     if (!tenantNameColumn) {
         return [];
     }
     const names = new Set<string>();
+    // Use getPreFilteredRowModel to get all rows before filtering
     table.getPreFilteredRowModel().rows.forEach(row => {
         const tenantName = (row.original as any).tenantName;
         if (tenantName) names.add(tenantName);
