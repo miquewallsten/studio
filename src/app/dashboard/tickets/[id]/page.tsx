@@ -10,7 +10,7 @@ import {
   } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileUp, MessageSquare, Save, UserPlus, CheckCircle, Upload } from 'lucide-react';
+import { FileUp, MessageSquare, Save, UserPlus, CheckCircle, Upload, Bot } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { doc, onSnapshot, Timestamp, updateDoc, collection, getDoc, getDocs, where, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -124,6 +124,14 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     } finally {
         setIsSaving(false);
     }
+  }
+  
+  const handleRunValidations = () => {
+      // Placeholder for the AI validation flow
+      toast({
+          title: "AI Validations Started",
+          description: "The AI is now running validations in the background. Notes will appear as they are completed."
+      })
   }
 
   const handleCompleteTicket = async () => {
@@ -344,6 +352,10 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+             <Button className="w-full" variant="outline" onClick={handleRunValidations}>
+                <Bot className="mr-2" />
+                Run AI Validations
+            </Button>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
             <Button className="w-full" variant="outline" onClick={handleUploadClick} disabled={!!ticket.reportUrl}>
               <Upload className="mr-2 size-4" /> 

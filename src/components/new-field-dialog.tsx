@@ -173,6 +173,15 @@ export function NewFieldDialog({ isOpen, onOpenChange, onFieldCreated }: NewFiel
                   onSubFieldsChange={setSubFields}
                 />
               )}
+               {type === 'file-extraction' && (
+                <SubFieldsEditor 
+                  title="Fields to Extract"
+                  description="Define the fields the AI should try to extract from the uploaded document."
+                  subFields={subFields}
+                  onSubFieldsChange={setSubFields}
+                />
+              )}
+
 
               <div>
                   <Label htmlFor="ai-instructions" className="text-base font-semibold">AI Automation</Label>

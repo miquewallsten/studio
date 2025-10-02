@@ -20,10 +20,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import { conversationalForm } from '@/ai/flows/conversational-form-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, User, Check } from 'lucide-react';
+import { Bot, Send, User, Check, RefreshCcw } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 type Ticket = {
@@ -52,14 +53,20 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  
+  const [formMode, setFormMode] = useState<'ai' | 'manual'>('ai');
 
+  // AI Chat state
   const [history, setHistory] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isFormComplete, setIsFormComplete] = useState(false);
   const [isAgreed, setIsAgreed] = useState(false);
-
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
+  // Selfie state
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
 
   useEffect(() => {
@@ -108,7 +115,7 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
           const finalTicketData = { ...ticketData, suggestedQuestions: questions };
           setTicket(finalTicketData);
           
-          if (history.length === 0) {
+          if (history.length === 0 && formMode === 'ai') {
             handleSend(true, finalTicketData);
           }
         }
@@ -125,18 +132,44 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
 
     getTicketData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loadingAuth, authError, params.ticketId, router, toast]);
+  }, [user, loadingAuth, authError, params.ticketId, router, toast, formMode]);
 
-    // Auto-scroll to bottom
+    // Auto-scroll to bottom for chat
   useEffect(() => {
-    if (scrollAreaRef.current) {
+    if (formMode === 'ai' && scrollAreaRef.current) {
         const scrollableView = scrollAreaRef.current.querySelector('div');
         if(scrollableView) {
             scrollableView.scrollTop = scrollableView.scrollHeight;
         }
     }
-  }, [history]);
+  }, [history, formMode]);
   
+  // Camera permission for selfie
+  useEffect(() => {
+    if (formMode === 'manual') { // Or wherever the selfie component is rendered
+        const getCameraPermission = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({video: true});
+            setHasCameraPermission(true);
+
+            if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            }
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings to use this app.',
+            });
+        }
+        };
+
+        getCameraPermission();
+    }
+  }, [formMode, toast]);
+
   const handleSend = async (isFirstMessage = false, currentTicket = ticket) => {
     if (!currentTicket || (!prompt.trim() && !isFirstMessage)) return;
 
@@ -282,49 +315,94 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
       )
   }
   
+  const renderManualForm = () => (
+    <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
+        <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Please fill out all the fields below.</p>
+                 {/* This is a placeholder for rendering actual fields */}
+                <div className="space-y-4">
+                     <div className="space-y-2">
+                        <Label>Full Name</Label>
+                        <Input placeholder="Your full name"/>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Date of Birth</Label>
+                        <Input type="date"/>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Selfie Verification</Label>
+                        <div className="border rounded-lg p-4 space-y-4">
+                            <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted />
+                            {hasCameraPermission === false && (
+                                <Alert variant="destructive">
+                                    <AlertTitle>Camera Access Required</AlertTitle>
+                                    <AlertDescription>
+                                        Please allow camera access to use this feature.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            <Button className="w-full" disabled={!hasCameraPermission}>Take Picture</Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </ScrollArea>
+    </CardContent>
+  );
+
+  const renderAIForm = () => (
+     <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
+        <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
+            <div className="space-y-4">
+                {history.map((msg, index) => (
+                    <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                        {msg.role === 'model' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
+                        <div className={`px-4 py-2 rounded-lg max-w-[80%] ${msg.role === 'model' ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}>
+                            <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                        </div>
+                        {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><User className="w-5 h-5"/></AvatarFallback></Avatar>}
+                    </div>
+                ))}
+                 {isAiThinking && (
+                    <div className="flex items-start gap-3">
+                        <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>
+                        <div className="px-4 py-2 rounded-lg bg-muted flex items-center">
+                            <div className="w-2 h-2 bg-primary rounded-full animate-pulse [animation-delay:-0.3s]"></div>
+                            <div className="w-2 h-2 bg-primary rounded-full animate-pulse [animation-delay:-0.15s] mx-1"></div>
+                            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </ScrollArea>
+    </CardContent>
+  );
+  
 
   return (
     <RootComponent>
       <Card className="w-full max-w-2xl flex flex-col h-[80vh]">
             <CardHeader>
-              <div className="flex items-center gap-4">
+              <div className="flex items-start gap-4">
                 <Icons.logo className="size-8 text-primary hidden sm:block" />
-                <div>
+                <div className="flex-1">
                     <CardTitle className="font-headline text-2xl">
                     Information Request
                     </CardTitle>
                     <CardDescription>
-                    An AI assistant will guide you through the questions for your {ticket.reportType}.
+                    {formMode === 'ai' 
+                        ? `An AI assistant will guide you through the questions for your ${ticket.reportType}.`
+                        : `Please manually fill out the form for your ${ticket.reportType}.`}
                     </CardDescription>
                 </div>
+                 <Button variant="outline" size="sm" onClick={() => setFormMode(formMode === 'ai' ? 'manual' : 'ai')}>
+                    <RefreshCcw className="mr-2"/>
+                     Switch to {formMode === 'ai' ? 'Manual' : 'AI'} Form
+                </Button>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-                <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
-                    <div className="space-y-4">
-                        {history.map((msg, index) => (
-                            <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                                {msg.role === 'model' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
-                                <div className={`px-4 py-2 rounded-lg max-w-[80%] ${msg.role === 'model' ? 'bg-muted' : 'bg-primary text-primary-foreground'}`}>
-                                    <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
-                                </div>
-                                {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><User className="w-5 h-5"/></AvatarFallback></Avatar>}
-                            </div>
-                        ))}
-                         {isAiThinking && (
-                            <div className="flex items-start gap-3">
-                                <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>
-                                <div className="px-4 py-2 rounded-lg bg-muted flex items-center">
-                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse [animation-delay:-0.3s]"></div>
-                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse [animation-delay:-0.15s] mx-1"></div>
-                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </ScrollArea>
-
-            </CardContent>
+            {formMode === 'ai' ? renderAIForm() : renderManualForm()}
             <CardFooter className="border-t pt-4">
                 {isFormComplete ? (
                     <div className="w-full space-y-4">
@@ -353,9 +431,9 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
                             onChange={(e) => setPrompt(e.target.value)}
                             placeholder="Type your answer here..."
                             onKeyDown={(e) => e.key === 'Enter' && !isAiThinking && handleSend()}
-                            disabled={isAiThinking}
+                            disabled={isAiThinking || formMode === 'manual'}
                             />
-                        <Button onClick={() => handleSend()} disabled={isAiThinking}>
+                        <Button onClick={() => handleSend()} disabled={isAiThinking || formMode === 'manual'}>
                             <Send />
                         </Button>
                     </div>
