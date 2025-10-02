@@ -66,8 +66,7 @@ export default function AdminUsersPage() {
         setSelectedUser(null);
     }
 
-    const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
-    const isPemError = error && error.includes('Invalid PEM formatted message');
+    const isCredentialError = error && (error.includes('credential') || error.includes('GOOGLE_APPLICATION_CREDENTIALS'));
 
     const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, t]);
 
@@ -124,28 +123,10 @@ export default function AdminUsersPage() {
             {error && (
                  <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{isCredentialError || isPemError ? t('users.config_required') : t('users.error_fetching')}</AlertTitle>
+                    <AlertTitle>{isCredentialError ? t('users.config_required') : t('users.error_fetching')}</AlertTitle>
                     <AlertDescription>
                         {error}
-                        {isPemError && (
-                            <div className="mt-4 bg-gray-900 text-white p-4 rounded-md text-sm">
-                                <p className="font-semibold">Action Required: Fix Private Key Format</p>
-                                <p className="mt-2">The `FIREBASE_PRIVATE_KEY` in your `.env` file is not formatted correctly. It must be a single line with `\n` for newlines.</p>
-                                <ol className="list-decimal list-inside space-y-2 mt-3">
-                                    <li>Open your service account JSON file.</li>
-                                    <li>Copy the entire `private_key` value, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines.</li>
-                                    <li>Paste it into a text editor.</li>
-                                    <li>Manually replace every newline character with the two characters `\n`.</li>
-                                    <li>The result should be a single, long line of text.</li>
-                                    <li>Copy this new single line and paste it into your `.env` file.</li>
-                                </ol>
-                                <p className="mt-3 font-semibold">It should look like this:</p>
-                                <pre className="mt-1 text-xs bg-gray-800 p-2 rounded whitespace-pre-wrap">
-{`FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...your key content...\\n...more key content...\\n-----END PRIVATE KEY-----\\n"`}
-                                </pre>
-                            </div>
-                        )}
-                        {isCredentialError && !isPemError && (
+                        {isCredentialError && (
                             <div className="mt-4 bg-gray-900 text-white p-4 rounded-md text-sm">
                                 <p className="font-semibold">Action Required: Set Server Credentials</p>
                                 <p className="mt-2">To use server-side features like user management, you must provide a Firebase Service Account key.</p>
@@ -159,15 +140,12 @@ export default function AdminUsersPage() {
                                     <li>
                                         Click the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Generate new private key</span> button to download a JSON file.
                                     </li>
-                                     <li>Open the `.env` file in the file explorer to your left.</li>
-                                    <li>Copy the `project_id`, `client_email`, and `private_key` from the JSON file and paste them into your `.env` file. See the guide above for formatting the private key.</li>
+                                     <li>In the file explorer to your left, drag and drop the downloaded JSON file into the root of your project.</li>
+                                     <li>Rename the file to `service-account.json`.</li>
+                                    <li>
+                                        The application will automatically use this file. You may need to restart the development server.
+                                    </li>
                                 </ol>
-                                <pre className="mt-3 text-xs bg-gray-800 p-2 rounded whitespace-pre-wrap">
-{`FIREBASE_PROJECT_ID="..."
-FIREBASE_CLIENT_EMAIL="..."
-FIREBASE_PRIVATE_KEY="..."`}
-                                </pre>
-                                <p className="mt-3">The application will automatically restart and pick up these new values.</p>
                             </div>
                         )}
                     </AlertDescription>
