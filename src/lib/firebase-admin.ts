@@ -1,8 +1,7 @@
 
-import { applicationDefault, getApps, initializeApp, getApp } from 'firebase-admin/app';
+import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import admin from 'firebase-admin';
 
 // This guard prevents the module from ever being imported on the client.
 if (typeof window !== 'undefined') {
@@ -12,6 +11,7 @@ if (typeof window !== 'undefined') {
 const initializeAdmin = () => {
     if (getApps().length === 0) {
         try {
+            // This will automatically use the file path from the GOOGLE_APPLICATION_CREDENTIALS environment variable.
             initializeApp({
                 credential: applicationDefault(),
             });
