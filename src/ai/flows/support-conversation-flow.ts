@@ -95,7 +95,7 @@ const supportConversationFlow = ai.defineFlow(
   },
   async ({ history, userName, userEmail }) => {
     const llmResponse = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
+      model: 'googleai/gemini-pro',
       prompt: {
         text: history[history.length -1].content[0].text,
         context: {
@@ -116,3 +116,5 @@ const supportConversationFlow = ai.defineFlow(
     return llmResponse.text;
   }
 );
+
+    

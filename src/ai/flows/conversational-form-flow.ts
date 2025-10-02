@@ -53,7 +53,7 @@ const conversationalFormFlow = ai.defineFlow(
   },
   async ({ history, questions, userName }) => {
     const llmResponse = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
+      model: 'googleai/gemini-pro',
       prompt: {
         text: history.length > 0 ? history[history.length -1].content[0].text : "Let's begin.",
         context: {
@@ -68,3 +68,5 @@ const conversationalFormFlow = ai.defineFlow(
     return llmResponse.text;
   }
 );
+
+    
