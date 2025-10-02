@@ -10,11 +10,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download } from 'lucide-react';
+import { Download, Star } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { sendEmail } from '@/ai/flows/send-email-flow';
+import { cn } from '@/lib/utils';
 
 type Ticket = {
   id: string;
@@ -23,11 +26,13 @@ type Ticket = {
   status: string;
   createdAt: Timestamp;
   reportUrl?: string;
+  rating?: number;
 };
 
 export default function ClientTicketDetailPage({ params }: { params: { id: string } }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const ticketRef = doc(db, 'tickets', params.id);
@@ -49,6 +54,45 @@ export default function ClientTicketDetailPage({ params }: { params: { id: strin
       default: return 'secondary';
     }
   }
+  
+  const handleRating = async (rating: number) => {
+    if (!ticket || ticket.rating) return;
+    
+    try {
+        const ticketRef = doc(db, 'tickets', ticket.id);
+        await updateDoc(ticketRef, {
+            rating: rating,
+            ratingSubmittedAt: Timestamp.now(),
+        });
+
+        toast({
+            title: 'Thank You!',
+            description: `You've rated this report ${rating} out of 5 stars.`,
+        });
+
+        // If rating is low, send an email to execs
+        if (rating <= 3) {
+             await sendEmail({
+                to: 'executives@example.com', // Replace with actual exec email or distribution list
+                subject: `Low Rating Alert: Ticket ${ticket.id}`,
+                html: `
+                    <p>A low rating of <strong>${rating} stars</strong> was just submitted for ticket #${ticket.id}.</p>
+                    <p><strong>Subject:</strong> ${ticket.subjectName}</p>
+                    <p><strong>Report Type:</strong> ${ticket.reportType}</p>
+                    <p>Please review the ticket and consider following up with the client.</p>
+                `
+            });
+        }
+    } catch(err) {
+        console.error("Failed to save rating:", err);
+        toast({
+            title: 'Error',
+            description: 'Could not submit your rating. Please try again.',
+            variant: 'destructive',
+        })
+    }
+  }
+
 
   if (loading) {
     return (
@@ -101,20 +145,44 @@ export default function ClientTicketDetailPage({ params }: { params: { id: strin
                 </div>
               </div>
 
-            {ticket.status === 'Completed' && ticket.reportUrl ? (
-                <div className="pt-6">
-                    <h3 className="text-lg font-semibold mb-2">Final Report</h3>
+            {ticket.status === 'Completed' ? (
+                <>
+                {ticket.reportUrl && (
+                    <div className="pt-6">
+                        <h3 className="text-lg font-semibold mb-2">Final Report</h3>
+                        <div className="border rounded-lg p-4 flex items-center justify-between">
+                            <div>
+                                <p className="font-medium">The background check report is ready.</p>
+                                <p className="text-sm text-muted-foreground">Click the button to download the final document.</p>
+                            </div>
+                            <Button>
+                                <Download className="mr-2" />
+                                Download Report
+                            </Button>
+                        </div>
+                    </div>
+                )}
+                 <div className="pt-6">
+                    <h3 className="text-lg font-semibold mb-2">Rate Our Service</h3>
                     <div className="border rounded-lg p-4 flex items-center justify-between">
                         <div>
-                            <p className="font-medium">The background check report is ready.</p>
-                            <p className="text-sm text-muted-foreground">Click the button to download the final document.</p>
+                            <p className="font-medium">How was your experience with this report?</p>
+                            <p className="text-sm text-muted-foreground">Your feedback helps us improve.</p>
                         </div>
-                        <Button>
-                            <Download className="mr-2" />
-                            Download Report
-                        </Button>
+                        <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button key={star} onClick={() => handleRating(star)} disabled={!!ticket.rating}>
+                                    <Star className={cn(
+                                        "size-6 transition-colors",
+                                        ticket.rating && star <= ticket.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300",
+                                        !ticket.rating && "hover:text-yellow-300 cursor-pointer"
+                                    )}/>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
+                </>
             ) : (
                 <div className="pt-6">
                      <h3 className="text-lg font-semibold mb-2">Report Status</h3>

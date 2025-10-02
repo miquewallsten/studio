@@ -218,7 +218,7 @@ const assistantFlow = ai.defineFlow(
   },
   async ({ history, prompt, locale }) => {
     const llmResponse = await ai.generate({
-      model: 'googleai/gemini-2.5-flash-lite',
+      model: 'googleai/gemini-pro',
       prompt: {
         text: prompt,
         context: {

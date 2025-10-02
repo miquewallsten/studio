@@ -10,6 +10,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SupportChatWidget } from '@/components/support-chat-widget';
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -80,6 +81,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
       <main className="flex flex-1 flex-col gap-4 p-4 sm:px-6 sm:py-6 md:gap-8">
         {children}
       </main>
+      <SupportChatWidget />
     </div>
   );
 }
