@@ -1,9 +1,66 @@
 
+'use server';
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 export const dynamic = 'force-dynamic';
+
+// --- ONE-TIME SEEDING LOGIC ---
+const seedCheckFilePath = path.join(process.cwd(), 'seed-check.json');
+
+async function hasSeedingBeenPerformed(): Promise<boolean> {
+    try {
+        await fs.access(seedCheckFilePath);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function markSeedingAsPerformed() {
+    await fs.writeFile(seedCheckFilePath, JSON.stringify({ seeded: true, seededAt: new Date().toISOString() }));
+}
+
+async function performDatabaseSeeding() {
+    if (await hasSeedingBeenPerformed()) {
+        return; // Seeding has already been done
+    }
+
+    console.log("Performing one-time database seeding...");
+    const adminDb = getAdminDb();
+    const batch = adminDb.batch();
+    let collectionsSeeded = 0;
+
+    const collectionsToSeed = {
+        'tenants': { name: 'Seed Tenant', status: 'ACTIVE', createdAt: admin.firestore.FieldValue.serverTimestamp() },
+        'expertise_groups': { name: 'General Analysts (Seed)', analystUids: [], createdAt: admin.firestore.FieldValue.serverTimestamp() },
+        'feedback': { category: 'Suggestion', summary: 'Initial seed document.', userName: 'system', createdAt: admin.firestore.FieldValue.serverTimestamp() },
+        'user_preferences': { dashboard: { widgets: [] } },
+        'email_templates': { name: 'Seed Template', subject: 'Subject', body: 'Body', placeholders: [] }
+    };
+
+    for (const [collectionName, data] of Object.entries(collectionsToSeed)) {
+        const collectionRef = adminDb.collection(collectionName);
+        const snapshot = await collectionRef.limit(1).get();
+        if (snapshot.empty) {
+            const docRef = collectionRef.doc(`seed_${collectionName}`);
+            batch.set(docRef, data);
+            collectionsSeeded++;
+        }
+    }
+
+    if (collectionsSeeded > 0) {
+        await batch.commit();
+        console.log(`Successfully seeded ${collectionsSeeded} collections.`);
+    }
+    
+    await markSeedingAsPerformed();
+}
+
 
 async function getTenantData() {
     const adminDb = getAdminDb();
@@ -124,6 +181,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // --- ONE-TIME SEEDING ---
+    await performDatabaseSeeding();
+    // ------------------------
+
     const [tenants, userCounts, ticketCounts] = await Promise.all([
         getTenantData(),
         getUserCountsByTenant(),
