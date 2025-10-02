@@ -138,7 +138,7 @@ export default function DashboardPage() {
       await secureFetch('/api/user/preferences', {
         method: 'POST',
         body: JSON.stringify({ dashboard: prefs }),
-      }, false); // don't expect JSON back
+      }); // No JSON expected back, so we don't await the result directly
     } catch (e) {
       console.error('Failed to save preferences', e);
     }
@@ -232,7 +232,7 @@ export default function DashboardPage() {
       unsubscribeTenants();
       savePreferences.cancel();
     };
-  }, [user, loading, savePreferences, locale]);
+  }, [user, loading, savePreferences, locale, secureFetch]);
 
   const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     if (isEditMode) {
@@ -481,7 +481,7 @@ export default function DashboardPage() {
   const defaultLayoutForActive = activeWidgets
     .filter(id => !currentLayout.some(l => l.i === id))
     .map(id => WIDGET_DEFINITIONS[id]?.defaultLayout)
-    .filter(Boolean);
+    .filter(Boolean) as Layout[];
   
   const finalLayout = [...currentLayout, ...defaultLayoutForActive];
 
