@@ -25,8 +25,6 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { generateText } from '@/lib/ai';
 import { sendEmail } from '@/ai/flows/send-email-flow';
-import { getAdminDb } from '@/lib/firebase-admin'; // This is a server-side import, will be removed
-import admin from 'firebase-admin'; // This is a server-side import, will be removed
 
 interface Message {
     role: 'user' | 'model';
