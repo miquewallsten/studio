@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
         if (role === 'Super Admin' || role === 'Admin') {
             fetchUsers();
         }
-    }, [role, secureFetch]);
+    }, [role]);
     
     const handleUserInvitedOrUpdated = () => {
         fetchUsers(); // Re-fetch the user list after a new user is invited or updated
