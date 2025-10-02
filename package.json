@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "lint:llm": "node scripts/check-llm-strings.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "genkit:dev": "genkit dev",
+    "genkit:watch": "genkit watch"
   },
   "dependencies": {
     "@google/generative-ai": "^0.15.0",
@@ -47,6 +49,8 @@
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
     "firebase-admin": "^12.3.0",
+    "genkit": "^1.2.0",
+    "@genkit-ai/googleai": "^1.0.3",
     "lodash": "^4.17.21",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",

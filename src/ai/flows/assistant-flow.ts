@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A conversational AI assistant for Super Admins.
@@ -5,7 +6,7 @@
  * - chat - A function that handles the conversational chat with the assistant.
  */
 
-import { generateText } from '@/lib/ai';
+import { generateText } from '@/ai/genkit';
 
 const systemPrompt = `You are a helpful AI assistant for a Super Admin of the TenantCheck platform.
 Your purpose is to assist the admin with managing the application by answering questions about metrics and performing actions on their behalf.
@@ -34,5 +35,6 @@ user: ${prompt}
 model:
 `;
     
-  return generateText(fullPrompt);
+  const response = await generateText(fullPrompt);
+  return response;
 }

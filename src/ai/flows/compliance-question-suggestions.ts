@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -6,7 +7,7 @@
  * - suggestComplianceQuestions - A function that suggests compliance questions for a given report type.
  */
 
-import { generateText } from '@/lib/ai';
+import { generateText } from '@/ai/genkit';
 
 export type SuggestComplianceQuestionsInput = {
   reportType: string;

@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A conversational AI agent for tenant support.
@@ -5,7 +6,7 @@
  * - supportConversation - A function that handles a support conversation.
  */
 
-import { generateText } from '@/lib/ai';
+import { generateText } from '@/ai/genkit';
 import { sendEmail } from './send-email-flow';
 import { getAdminDb } from '@/lib/firebase-admin';
 import admin from 'firebase-admin';

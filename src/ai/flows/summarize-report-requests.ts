@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -6,7 +7,7 @@
  * - summarizeReportRequests - A function that summarizes client report requests.
  */
 
-import { generateText } from '@/lib/ai';
+import { generateText } from '@/ai/genkit';
 
 export type SummarizeReportRequestsInput = {
   requestDetails: string;

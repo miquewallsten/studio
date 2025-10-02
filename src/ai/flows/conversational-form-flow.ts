@@ -1,10 +1,11 @@
+
 'use server';
 /**
  * @fileOverview A conversational AI agent for filling out forms.
  *
  * - conversationalForm - A function that handles the conversational chat for form filling.
  */
-import { generateText } from '@/lib/ai';
+import { generateText } from '@/ai/genkit';
 
 export type Message = {
   role: 'user' | 'model';
@@ -35,5 +36,6 @@ export async function conversationalForm(input: ConversationalFormInput): Promis
 
     const fullPrompt = `${systemPrompt}\n\nConversation History:\n${history.map(h => `${h.role}: ${h.content[0].text}`).join('\n')}\nmodel:`;
     
-    return generateText(fullPrompt);
+    const response = await generateText(fullPrompt);
+    return response;
 }
