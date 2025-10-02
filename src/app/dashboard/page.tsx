@@ -162,28 +162,12 @@ export default function DashboardPage() {
     const seedDatabase = async () => {
         if (hasSeeded.current) return;
         hasSeeded.current = true; // Prevent re-running
-
+        console.log("Attempting to seed database...");
         try {
-            const batch = writeBatch(db);
-            const collectionsToSeed = {
-                'tenants': { name: 'Test Tenant', status: 'ACTIVE', createdAt: Timestamp.now() },
-                'expertise_groups': { name: 'General Analysts', analystUids: [], createdAt: Timestamp.now() },
-                'feedback': { category: 'Suggestion', summary: 'Initial seed document', userName: 'system', createdAt: Timestamp.now() },
-                'user_preferences': { dashboard: { widgets: DEFAULT_WIDGETS } }
-            };
-
-            for (const [collectionName, data] of Object.entries(collectionsToSeed)) {
-                const collectionRef = collection(db, collectionName);
-                const snapshot = await getDocs(query(collectionRef, limit(1)));
-                if (snapshot.empty) {
-                    const docRef = doc(collectionRef, `seed_${Date.now()}`);
-                    batch.set(docRef, data);
-                    console.log(`Seeding '${collectionName}' collection...`);
-                }
-            }
-            await batch.commit();
+            await chat({ prompt: "Seed the database.", locale});
+            console.log("Database seeding tool triggered successfully.");
         } catch (error) {
-            console.error("Database seeding failed:", error);
+            console.error("Database seeding via AI chat failed:", error);
         }
     };
     
@@ -594,3 +578,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

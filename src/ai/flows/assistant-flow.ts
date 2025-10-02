@@ -18,6 +18,7 @@ import {
   getCountFromServer,
   where,
   query,
+  limit,
 } from 'firebase/firestore';
 import { getAdminDb, getAdminAuth } from '@/lib/firebase-admin';
 import admin from 'firebase-admin';
@@ -25,6 +26,58 @@ import admin from 'firebase-admin';
 // //////////////////////////////////////////////////////////////////
 // Tools
 // //////////////////////////////////////////////////////////////////
+
+const seedDatabaseTool = ai.defineTool(
+    {
+      name: 'seedDatabase',
+      description: 'Checks for and creates initial seed documents for essential Firestore collections if they are empty. This ensures collections like tenants, expertise_groups, and feedback exist.',
+      inputSchema: z.object({}),
+      outputSchema: z.object({
+        seededCollections: z.array(z.string()),
+        message: z.string(),
+      }),
+    },
+    async () => {
+        const db = getAdminDb();
+        const seededCollections: string[] = [];
+
+        try {
+            const collectionsToSeed = {
+                'tenants': { name: 'Seed Tenant', status: 'ACTIVE', createdAt: admin.firestore.FieldValue.serverTimestamp() },
+                'expertise_groups': { name: 'General Analysts (Seed)', analystUids: [], createdAt: admin.firestore.FieldValue.serverTimestamp() },
+                'feedback': { category: 'Suggestion', summary: 'Initial seed document for feedback collection.', userName: 'system', createdAt: admin.firestore.FieldValue.serverTimestamp() },
+                 'user_preferences': { dashboard: { widgets: [] } },
+                 'email_templates': { name: 'Seed Template', subject: 'Subject', body: 'Body', placeholders: [] }
+            };
+
+            for (const [collectionName, data] of Object.entries(collectionsToSeed)) {
+                const collectionRef = db.collection(collectionName);
+                const snapshot = await collectionRef.limit(1).get();
+                if (snapshot.empty) {
+                    await collectionRef.add(data);
+                    seededCollections.push(collectionName);
+                }
+            }
+
+            if (seededCollections.length > 0) {
+                return {
+                    seededCollections,
+                    message: `Successfully seeded the following collections: ${seededCollections.join(', ')}.`,
+                };
+            } else {
+                 return {
+                    seededCollections: [],
+                    message: 'All essential collections already exist. No seeding was necessary.',
+                };
+            }
+            
+        } catch (e: any) {
+            console.error('Database seeding failed:', e);
+            return { seededCollections: [], message: `Seeding failed: ${e.message}` };
+        }
+    }
+);
+
 
 const createTenantTool = ai.defineTool(
   {
@@ -191,6 +244,7 @@ const impersonateUserTool = ai.defineTool(
 const systemPrompt = `You are a helpful AI assistant for a Super Admin of the TenantCheck platform.
 Your purpose is to assist the admin with managing the application by answering questions about metrics and performing actions on their behalf.
 Use the tools provided to you to answer questions and fulfill requests.
+If the user asks to seed the database, use the seedDatabase tool.
 Be conversational and confirm when you have completed an action.
 If you are asked to do something you don't have a tool for, clearly state that you do not have that capability.
 You MUST respond in the user's language. The user's current language is: {{locale}}.
@@ -226,10 +280,12 @@ const assistantFlow = ai.defineFlow(
         }
       },
       history: history,
-      tools: [createTenantTool, createTicketTool, getPlatformMetricsTool, impersonateUserTool],
+      tools: [createTenantTool, createTicketTool, getPlatformMetricsTool, impersonateUserTool, seedDatabaseTool],
       system: systemPrompt,
     });
 
     return llmResponse.text;
   }
 );
+
+    
