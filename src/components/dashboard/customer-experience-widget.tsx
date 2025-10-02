@@ -52,7 +52,7 @@ export function CustomerExperienceWidget() {
     const ratingsQuery = query(
       collection(db, 'tickets'),
       where('rating', '<=', 3),
-      orderBy('ratingSubmittedAt', 'desc'),
+      orderBy('rating', 'asc'),
       limit(10)
     );
 
@@ -139,7 +139,7 @@ export function CustomerExperienceWidget() {
                                             <p className="font-semibold text-destructive">{ticket.subjectName}</p>
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            Rated {formatDistanceToNow(ticket.ratingSubmittedAt.toDate(), { addSuffix: true })}
+                                            Rated {ticket.ratingSubmittedAt ? formatDistanceToNow(ticket.ratingSubmittedAt.toDate(), { addSuffix: true }) : ''}
                                         </p>
                                     </div>
                                     <Button asChild size="sm" variant="secondary">
