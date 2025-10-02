@@ -70,7 +70,7 @@ export function AnalystPortalWidget({ users, onImpersonate, isImpersonating }: A
                     </DropdownMenu>
                      {isAnalyst && (
                         <Button variant="ghost" size="icon" asChild>
-                            <a href="/dashboard" target="_blank">
+                            <a href="/dashboard/tickets" target="_blank" rel="noopener noreferrer">
                                 <ExternalLink />
                             </a>
                         </Button>

@@ -89,7 +89,7 @@ export function ClientPortalWidget({ users, onImpersonate, onUserCreated, isImpe
                             New Request
                         </Button>
                         <Button variant="ghost" size="icon" asChild>
-                            <a href="/client/dashboard" target="_blank">
+                            <a href="/client/dashboard" target="_blank" rel="noopener noreferrer">
                                 <ExternalLink />
                             </a>
                         </Button>

@@ -15,13 +15,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No active impersonation session found.' }, { status: 400 });
     }
     
+    const response = NextResponse.json({ originalToken: impersonatorToken });
+
     // Clear the impersonation cookies
-    cookieStore.delete('impersonatorUid');
-    cookieStore.delete('impersonatorToken');
+    response.cookies.delete('impersonatorUid');
+    response.cookies.delete('impersonatorToken');
     
-    // The client will need to re-authenticate with the original user's ID token.
-    // For simplicity, we can return the original token to the client.
-    return NextResponse.json({ originalToken: impersonatorToken });
+    return response;
 
   } catch (error: any) {
     console.error('Error stopping impersonation:', error);

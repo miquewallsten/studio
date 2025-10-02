@@ -22,13 +22,14 @@ import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 function ImpersonationBanner() {
     const { toast } = useToast();
     const [impersonatorUid, setImpersonatorUid] = useState<string | null>(null);
+    const secureFetch = useSecureFetch();
 
     useEffect(() => {
-        // A bit of a hack to read the cookie on the client
         const cookieValue = document.cookie
             .split('; ')
             .find(row => row.startsWith('impersonatorUid='))
@@ -37,24 +38,22 @@ function ImpersonationBanner() {
     }, []);
 
     const stopImpersonating = async () => {
-        const response = await fetch('/api/auth/stop-impersonating', { method: 'POST' });
-        const data = await response.json();
-
-        if (response.ok) {
-            // Re-sign in with the original token.
-            // This is a simplified approach. In a production app, you might handle token refresh differently.
-            await auth.signOut(); // Sign out the impersonated user
+        try {
+            const data = await secureFetch('/api/auth/stop-impersonating', { method: 'POST' });
             
-            // Re-authenticating with the original token is complex from the client.
-            // A full page reload is the most reliable way to force re-authentication
-            // with the server-set cookies.
+            await auth.signOut();
+            
+            // Clear all relevant cookies before reloading
             document.cookie = 'firebaseIdToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             document.cookie = 'impersonatorUid=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-            window.location.href = '/dashboard'; // Redirect and force reload
+            document.cookie = 'impersonatorToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 
+            window.location.href = '/dashboard'; 
+            
             toast({ title: 'Impersonation stopped.' });
-        } else {
-            toast({ title: 'Error', description: data.error, variant: 'destructive' });
+
+        } catch (error: any) {
+             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         }
     };
     
@@ -86,12 +85,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
-        // Store the ID token in a cookie for server-side access
-        const token = await getIdToken(user);
-        document.cookie = `firebaseIdToken=${token}; path=/;`;
       } else {
-        // Clear the cookie on logout
-        document.cookie = 'firebaseIdToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         router.push('/');
       }
       setLoading(false);

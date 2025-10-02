@@ -27,11 +27,7 @@ export default function ClientLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // Manually set the cookie on login for the secureFetch hook to use immediately
-      const token = await getIdToken(userCredential.user);
-      document.cookie = `firebaseIdToken=${token}; path=/;`;
-      
+      await signInWithEmailAndPassword(auth, email, password);
       router.push('/client/dashboard');
     } catch (error: any) {
       toast({

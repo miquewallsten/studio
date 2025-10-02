@@ -1,19 +1,18 @@
 import { getAdminAuth } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const { targetUid } = await request.json();
-    const cookieStore = cookies();
-    const idToken = cookieStore.get('firebaseIdToken')?.value;
-
-    if (!idToken) {
-      return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ error: 'Not authenticated. No auth header.' }, { status: 401 });
     }
+    const idToken = authHeader.split('Bearer ')[1];
 
+    const { targetUid } = await request.json();
+    
     const adminAuth = getAdminAuth();
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     
@@ -29,12 +28,13 @@ export async function POST(request: NextRequest) {
     // Create a custom token for the target user
     const customToken = await adminAuth.createCustomToken(targetUid, impersonationClaims);
 
+    const response = NextResponse.json({ customToken });
+    
     // Store the original user's UID in a cookie to allow "switching back"
-    // Also store the original token to reverify admin status
-    cookieStore.set('impersonatorUid', decodedToken.uid, { httpOnly: true, path: '/', secure: process.env.NODE_ENV === 'production' });
-    cookieStore.set('impersonatorToken', idToken, { httpOnly: true, path: '/', secure: process.env.NODE_ENV === 'production' });
+    response.cookies.set('impersonatorUid', decodedToken.uid, { httpOnly: true, path: '/', secure: process.env.NODE_ENV === 'production' });
+    response.cookies.set('impersonatorToken', idToken, { httpOnly: true, path: '/', secure: process.env.NODE_ENV === 'production' });
 
-    return NextResponse.json({ customToken });
+    return response;
 
   } catch (error: any) {
     console.error('Error creating impersonation token:', error);

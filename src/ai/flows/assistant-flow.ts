@@ -43,20 +43,17 @@ const seedDatabaseTool = ai.defineTool(
 
         try {
             const collectionsToSeed = {
-                'tenants': { name: 'Seed Tenant', status: 'ACTIVE' },
-                'expertise_groups': { name: 'General Analysts (Seed)', analystUids: [] },
-                'feedback': { category: 'Suggestion', summary: 'Initial seed document for feedback collection.', userName: 'system' },
-                 'email_templates': { name: 'Seed Template', subject: 'Subject', body: 'Body', placeholders: [] }
+                'tenants': { name: 'Seed Tenant', status: 'ACTIVE', createdAt: admin.firestore.FieldValue.serverTimestamp() },
+                'expertise_groups': { name: 'General Analysts (Seed)', analystUids: [], createdAt: admin.firestore.FieldValue.serverTimestamp() },
+                'feedback': { category: 'Suggestion', summary: 'Initial seed document for feedback collection.', userName: 'system', createdAt: admin.firestore.FieldValue.serverTimestamp() },
+                 'email_templates': { name: 'Seed Template', subject: 'Subject', body: 'Body', placeholders: [], createdAt: admin.firestore.FieldValue.serverTimestamp() }
             };
 
             for (const [collectionName, data] of Object.entries(collectionsToSeed)) {
                 const collectionRef = db.collection(collectionName);
                 const snapshot = await collectionRef.limit(1).get();
                 if (snapshot.empty) {
-                    await collectionRef.add({
-                        ...data,
-                        createdAt: admin.firestore.FieldValue.serverTimestamp()
-                    });
+                    await collectionRef.add({ ...data });
                     seededCollections.push(collectionName);
                 }
             }
@@ -283,7 +280,7 @@ const assistantFlow = ai.defineFlow(
   },
   async ({ history, prompt, locale }) => {
     const llmResponse = await ai.generate({
-      model: 'googleai/gemini-pro',
+      model: 'googleai/gemini-1.5-flash-latest',
       prompt: {
         text: prompt,
         context: {
