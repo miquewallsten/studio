@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import { getIdToken } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 interface TenantInviteUserDialogProps {
   isOpen: boolean;
@@ -66,11 +67,15 @@ export function TenantInviteUserDialog({
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/users/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role, tenantId }),
-      });
+        const token = await getIdToken(auth.currentUser!);
+        const response = await fetch('/api/users/invite', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ email, role, tenantId }),
+        });
 
       const data = await response.json();
 
