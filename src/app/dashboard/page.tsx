@@ -242,10 +242,10 @@ export default function DashboardPage() {
     };
   }, [user, loading, savePreferences, locale, secureFetch]);
 
-  const onLayoutChange = (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    if (isEditMode) {
-      setLayouts(allLayouts);
-      savePreferences({ layouts: allLayouts, widgets: activeWidgets });
+  const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+    if (isEditMode && hasLoadedPrefs.current) {
+        setLayouts(allLayouts);
+        savePreferences({ layouts: allLayouts, widgets: activeWidgets });
     }
   };
 
@@ -519,7 +519,6 @@ export default function DashboardPage() {
         <ResponsiveGridLayout
             className={`layout ${!isEditMode ? 'non-interactive' : ''}`}
             layouts={layouts}
-            layout={finalLayout}
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
@@ -534,7 +533,7 @@ export default function DashboardPage() {
                         <Button 
                             variant="destructive" 
                             size="icon" 
-                            className="absolute top-2 right-2 z-20 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
+                            className="absolute top-2 right-2 z-10 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
                             onClick={() => removeWidget(widgetId)}
                         >
                             <span className="sr-only">Remove widget</span>
