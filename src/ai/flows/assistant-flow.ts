@@ -43,9 +43,9 @@ const seedDatabaseTool = ai.defineTool(
 
         try {
             const collectionsToSeed = {
-                'tenants': { name: 'Seed Tenant', status: 'ACTIVE', createdAt: admin.firestore.FieldValue.serverTimestamp() },
-                'expertise_groups': { name: 'General Analysts (Seed)', analystUids: [], createdAt: admin.firestore.FieldValue.serverTimestamp() },
-                'feedback': { category: 'Suggestion', summary: 'Initial seed document for feedback collection.', userName: 'system', createdAt: admin.firestore.FieldValue.serverTimestamp() },
+                'tenants': { name: 'Seed Tenant', status: 'ACTIVE' },
+                'expertise_groups': { name: 'General Analysts (Seed)', analystUids: [] },
+                'feedback': { category: 'Suggestion', summary: 'Initial seed document for feedback collection.', userName: 'system' },
                  'email_templates': { name: 'Seed Template', subject: 'Subject', body: 'Body', placeholders: [] }
             };
 
@@ -53,7 +53,10 @@ const seedDatabaseTool = ai.defineTool(
                 const collectionRef = db.collection(collectionName);
                 const snapshot = await collectionRef.limit(1).get();
                 if (snapshot.empty) {
-                    await collectionRef.add(data);
+                    await collectionRef.add({
+                        ...data,
+                        createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    });
                     seededCollections.push(collectionName);
                 }
             }
