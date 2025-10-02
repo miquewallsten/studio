@@ -19,9 +19,10 @@ import {
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
-import { AlertTriangle, RefreshCw, Bell } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Bell, MailWarning } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ResendInviteDialog } from '../resend-invite-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 
 type TenantInvite = {
@@ -30,32 +31,63 @@ type TenantInvite = {
   invitationSentAt: Timestamp;
 };
 
-const EXPIRATION_DAYS = 5;
+type PendingSubmission = {
+    id: string;
+    subjectName: string;
+    createdAt: Timestamp;
+}
+
+const EXPIRING_INVITE_DAYS = 5;
+const PENDING_SUBMISSION_DAYS = 2;
 
 export function NotificationsWidget() {
-  const [invites, setInvites] = useState<TenantInvite[]>([]);
+  const [expiringInvites, setExpiringInvites] = useState<TenantInvite[]>([]);
+  const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTenant, setSelectedTenant] = useState<TenantInvite | null>(null);
   const [isResendDialogOpen, setResendDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const q = query(
+    // Listener for expiring tenant invites
+    const invitesQuery = query(
       collection(db, 'tenants'),
       where('status', '==', 'INVITED')
     );
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribeInvites = onSnapshot(invitesQuery, (querySnapshot) => {
       const invitesData: TenantInvite[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        if (data.invitationSentAt) {
+        if (data.invitationSentAt && differenceInDays(new Date(), data.invitationSentAt.toDate()) >= EXPIRING_INVITE_DAYS) {
           invitesData.push({ id: doc.id, ...data } as TenantInvite);
         }
       });
-      setInvites(invitesData);
+      setExpiringInvites(invitesData);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Listener for pending end-user submissions
+    const submissionsQuery = query(
+        collection(db, 'tickets'),
+        where('status', '==', 'New')
+    );
+    const unsubscribeSubmissions = onSnapshot(submissionsQuery, (querySnapshot) => {
+        const submissionsData: PendingSubmission[] = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.createdAt && differenceInDays(new Date(), data.createdAt.toDate()) >= PENDING_SUBMISSION_DAYS) {
+                submissionsData.push({ id: doc.id, ...data } as PendingSubmission);
+            }
+        });
+        setPendingSubmissions(submissionsData);
+        setLoading(false);
+    });
+
+
+    return () => {
+        unsubscribeInvites();
+        unsubscribeSubmissions();
+    };
   }, []);
 
   const handleResendClick = (invite: TenantInvite) => {
@@ -67,11 +99,18 @@ export function NotificationsWidget() {
     setResendDialogOpen(false);
     setSelectedTenant(null);
   }
+  
+  const handleResendSubmissionLink = (submission: PendingSubmission) => {
+      // In a real implementation, this would trigger a backend flow to generate a new link and send an email.
+      // For this prototype, we'll just show a toast message.
+      toast({
+          title: "Reminder Sent (Simulated)",
+          description: `A reminder email has been sent to the subject of ticket ${submission.id.substring(0,5)}...`
+      });
+  }
+  
+  const allNotifications = [...expiringInvites, ...pendingSubmissions];
 
-  const expiringInvites = invites.filter((invite) => {
-    const sentAt = invite.invitationSentAt.toDate();
-    return differenceInDays(new Date(), sentAt) >= EXPIRATION_DAYS;
-  });
 
   return (
     <>
@@ -99,7 +138,7 @@ export function NotificationsWidget() {
           <div className="p-6 pt-0">
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading alerts...</p>
-          ) : expiringInvites.length === 0 ? (
+          ) : allNotifications.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-10">
               <p>No notifications right now.</p>
               <p className="text-xs">Your inbox is clear.</p>
@@ -114,10 +153,10 @@ export function NotificationsWidget() {
                   <div>
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="size-4 text-destructive" />
-                      <p className="font-semibold text-destructive">Expired Invite</p>
+                      <p className="font-semibold text-destructive">Expired Tenant Invite</p>
                     </div>
                     <p className="text-sm mt-1">
-                      The invite for <span className="font-medium">{invite.name}</span> was sent{' '}
+                      Invite for <span className="font-medium">{invite.name}</span> sent{' '}
                       {formatDistanceToNow(invite.invitationSentAt.toDate(), {
                         addSuffix: true,
                       })}
@@ -130,6 +169,33 @@ export function NotificationsWidget() {
                   >
                     <RefreshCw className="mr-2 size-3" />
                     Resend
+                  </Button>
+                </li>
+              ))}
+              {pendingSubmissions.map((submission) => (
+                 <li
+                  key={submission.id}
+                  className="flex items-center justify-between rounded-md border p-3"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <MailWarning className="size-4 text-orange-500" />
+                      <p className="font-semibold text-orange-600">Pending Submission</p>
+                    </div>
+                    <p className="text-sm mt-1">
+                      Form for <span className="font-medium">{submission.subjectName}</span> sent{' '}
+                      {formatDistanceToNow(submission.createdAt.toDate(), {
+                        addSuffix: true,
+                      })}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleResendSubmissionLink(submission)}
+                  >
+                    <RefreshCw className="mr-2 size-3" />
+                    Resend Link
                   </Button>
                 </li>
               ))}
