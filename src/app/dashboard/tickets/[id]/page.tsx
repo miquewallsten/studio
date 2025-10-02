@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -11,16 +10,17 @@ import {
   } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileUp, MessageSquare, Save, UserPlus } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { doc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
+import { FileUp, MessageSquare, Save, UserPlus, CheckCircle, Upload } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { doc, onSnapshot, Timestamp, updateDoc, collection, getDoc, getDocs, where, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from '@/components/ui/separator';
+import { useAuthRole } from '@/hooks/use-auth-role';
+import type { Field } from '@/app/dashboard/fields/schema';
 
 type Ticket = {
   id: string;
@@ -30,16 +30,28 @@ type Ticket = {
   createdAt: Timestamp;
   description: string;
   clientEmail: string;
-  formData?: { [key: string]: string };
+  formId?: string;
+  formData?: { [key: string]: any };
   internalNotes?: { [key: string]: string };
+  reportUrl?: string;
 };
+
+type FormField = Field & {
+    value?: any;
+}
+
 
 export default function TicketDetailPage({ params }: { params: { id: string } }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [internalNotes, setInternalNotes] = useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [formFields, setFormFields] = useState<FormField[]>([]);
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { role } = useAuthRole();
 
   useEffect(() => {
     const ticketRef = doc(db, 'tickets', params.id);
@@ -48,12 +60,44 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
         const data = docSnap.data() as Ticket;
         setTicket({ id: docSnap.id, ...data });
         setInternalNotes(data.internalNotes || {});
+
+        if (data.formId && data.formData) {
+            fetchFormFields(data.formId, data.formData);
+        }
+
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [params.id]);
+  
+  const fetchFormFields = async (formId: string, formData: {[key: string]: any}) => {
+    const formRef = doc(db, 'forms', formId);
+    const formSnap = await getDoc(formRef);
+
+    if (formSnap.exists()) {
+        const formFieldsIds = formSnap.data()?.fields || [];
+        if (formFieldsIds.length === 0) {
+            setFormFields([]);
+            return;
+        }
+
+        const fieldsQuery = query(collection(db, 'fields'), where('__name__', 'in', formFieldsIds));
+        const fieldsSnap = await getDocs(fieldsQuery);
+
+        const fieldsData = fieldsSnap.docs.map(d => ({id: d.id, ...d.data()} as Field));
+        
+        // Combine fields with their submitted values
+        const populatedFields = formFieldsIds.map((id: string) => {
+            const fieldDef = fieldsData.find(f => f.id === id);
+            const value = formData[fieldDef?.label || ''];
+            return { ...fieldDef, value };
+        }).filter(Boolean);
+
+        setFormFields(populatedFields as FormField[]);
+    }
+  }
 
   const handleNoteChange = (fieldName: string, value: string) => {
     setInternalNotes(prev => ({...prev, [fieldName]: value}));
@@ -79,6 +123,51 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
         })
     } finally {
         setIsSaving(false);
+    }
+  }
+
+  const handleCompleteTicket = async () => {
+    if (!ticket) return;
+    setIsCompleting(true);
+    try {
+        const ticketRef = doc(db, 'tickets', ticket.id);
+        await updateDoc(ticketRef, {
+            status: 'Completed',
+        });
+         toast({
+            title: 'Ticket Completed',
+            description: 'This ticket has been marked as complete and is now available to the client.',
+        });
+    } catch (error: any) {
+        toast({
+            title: 'Error',
+            description: 'Could not complete the ticket.',
+            variant: 'destructive',
+        })
+    } finally {
+        setIsCompleting(false);
+    }
+  }
+  
+  const handleUploadClick = () => {
+      fileInputRef.current?.click();
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        setReportFile(file);
+        // Simulate upload and update ticket
+        if(ticket) {
+            const ticketRef = doc(db, 'tickets', ticket.id);
+            // In a real app, upload to Firebase Storage and save the URL
+            const fakeUrl = `/reports/${ticket.id}/${file.name}`;
+            updateDoc(ticketRef, { reportUrl: fakeUrl });
+            toast({
+                title: 'Report Uploaded',
+                description: `${file.name} is now attached to the ticket.`
+            })
+        }
     }
   }
 
@@ -132,7 +221,8 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     return <div className="grid flex-1 items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">Ticket not found.</div>
   }
 
-  const hasFormData = ticket.formData && Object.keys(ticket.formData).length > 0;
+  const hasFormData = formFields.length > 0;
+  const isManager = role === 'Super Admin' || role === 'Manager';
 
   return (
     <div className="grid flex-1 items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
@@ -186,22 +276,34 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
             </CardHeader>
             <CardContent className="space-y-6">
                 {hasFormData ? (
-                    Object.entries(ticket.formData!).map(([key, value]) => (
-                        <div key={key} className="grid grid-cols-2 gap-6">
+                    formFields.map((field) => (
+                        <div key={field.id} className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-muted-foreground">{key}</Label>
+                                <Label className="text-muted-foreground">{field.label}</Label>
                                 <div className="p-3 border rounded-md min-h-[100px] bg-muted/50">
-                                    <p className="text-sm">{value}</p>
+                                    <p className="text-sm">{field.value || <span className="text-muted-foreground">Not provided</span>}</p>
                                 </div>
+                                {field.internalFields && field.internalFields.map(internalField => (
+                                    <div key={internalField.id} className="pt-2">
+                                        <Label htmlFor={`internal-note-${internalField.id}`} className="text-xs text-muted-foreground">{internalField.label}</Label>
+                                        <Textarea 
+                                            id={`internal-note-${internalField.id}`} 
+                                            placeholder={`Note for ${internalField.label}...`} 
+                                            className="min-h-[60px] text-xs"
+                                            value={internalNotes[internalField.label] || ''}
+                                            onChange={(e) => handleNoteChange(internalField.label, e.target.value)}
+                                        />
+                                    </div>
+                                ))}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor={`note-${key}`}>Internal Analyst Notes</Label>
+                                <Label htmlFor={`note-${field.id}`}>Internal Analyst Notes</Label>
                                 <Textarea 
-                                    id={`note-${key}`} 
-                                    placeholder="Add internal notes for this field..." 
+                                    id={`note-${field.id}`} 
+                                    placeholder="Add general notes for this field..." 
                                     className="min-h-[100px]"
-                                    value={internalNotes[key] || ''}
-                                    onChange={(e) => handleNoteChange(key, e.target.value)}
+                                    value={internalNotes[field.label] || ''}
+                                    onChange={(e) => handleNoteChange(field.label, e.target.value)}
                                 />
                             </div>
                         </div>
@@ -242,12 +344,18 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full" variant="outline">
-              <UserPlus className="mr-2 size-4" /> Assign Analyst
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+            <Button className="w-full" variant="outline" onClick={handleUploadClick} disabled={!!ticket.reportUrl}>
+              <Upload className="mr-2 size-4" /> 
+              {ticket.reportUrl ? 'Report Uploaded' : 'Upload Report'}
             </Button>
-            <Button className="w-full">
-              <FileUp className="mr-2 size-4" /> Upload Report
-            </Button>
+            {ticket.reportUrl && <p className="text-xs text-center text-muted-foreground truncate">File: {ticket.reportUrl}</p>}
+            {isManager && (
+                <Button className="w-full" onClick={handleCompleteTicket} disabled={isCompleting || !ticket.reportUrl}>
+                    <CheckCircle className="mr-2 size-4" />
+                    {isCompleting ? 'Closing Ticket...' : 'Complete & Close Ticket'}
+                </Button>
+            )}
           </CardContent>
           <CardFooter>
             <p className="text-xs text-muted-foreground">This section is role-restricted.</p>
@@ -257,6 +365,3 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
-
-    

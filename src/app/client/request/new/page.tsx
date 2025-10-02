@@ -21,10 +21,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { collection, getDocs, query } from 'firebase/firestore';
+
+type FormTemplate = {
+    id: string;
+    name: string;
+}
 
 export default function NewRequestPage() {
   const { toast } = useToast();
@@ -32,6 +38,20 @@ export default function NewRequestPage() {
   const [isLoading, setIsLoading] = useState(false);
   const secureFetch = useSecureFetch();
   const [user, loadingUser] = useAuthState(auth);
+  const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([]);
+
+  useEffect(() => {
+    const fetchForms = async () => {
+      const q = query(collection(db, "forms"));
+      const querySnapshot = await getDocs(q);
+      const templates: FormTemplate[] = [];
+      querySnapshot.forEach((doc) => {
+        templates.push({ id: doc.id, name: doc.data().name });
+      });
+      setFormTemplates(templates);
+    };
+    fetchForms();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,7 +59,7 @@ export default function NewRequestPage() {
     const formData = new FormData(event.currentTarget);
     const subjectName = formData.get('subject-name') as string;
     const email = formData.get('email') as string;
-    const reportType = formData.get('report-type') as string;
+    const reportType = formData.get('report-type') as string; // This is now the Form Template ID
     const description = formData.get('description') as string;
 
     if (!user) {
@@ -53,12 +73,15 @@ export default function NewRequestPage() {
     }
 
     try {
+        const selectedTemplate = formTemplates.find(t => t.id === reportType);
+        
         const response = await secureFetch('/api/client/tickets/create', {
             method: 'POST',
             body: JSON.stringify({
                 subjectName,
                 email,
-                reportType,
+                reportType: selectedTemplate?.name || 'Custom Request', // Send the name as the report type
+                formId: reportType, // Send the form ID
                 description,
             }),
         });
@@ -117,21 +140,17 @@ export default function NewRequestPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="report-type">Report Type</Label>
+                <Label htmlFor="report-type">Form Template</Label>
                 <Select name="report-type" required disabled={isLoading}>
                   <SelectTrigger id="report-type">
-                    <SelectValue placeholder="Select a report type" />
+                    <SelectValue placeholder="Select a form template" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="background-check">
-                      Background Check
-                    </SelectItem>
-                    <SelectItem value="tenant-screening">
-                      Tenant Screening
-                    </SelectItem>
-                    <SelectItem value="employment-verification">
-                      Employment Verification
-                    </SelectItem>
+                    {formTemplates.map(template => (
+                        <SelectItem key={template.id} value={template.id}>
+                            {template.name}
+                        </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -136,7 +135,6 @@ export default function ClientDashboardPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="ghost" size="icon">
-                        {/* This page does not exist yet, but is the correct logical link */}
                         <Link href={`/client/ticket/${request.id}`}>
                           <ArrowRight className="h-4 w-4" />
                         </Link>

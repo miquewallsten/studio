@@ -20,9 +20,9 @@ export async function POST(request: NextRequest) {
         const clientUid = decodedToken.uid;
         const clientEmail = decodedToken.email;
 
-        const { subjectName, email, reportType, description } = await request.json();
+        const { subjectName, email, reportType, description, formId } = await request.json();
 
-        if (!subjectName || !email || !reportType) {
+        if (!subjectName || !email || !reportType || !formId) {
             return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
         }
 
@@ -61,10 +61,12 @@ export async function POST(request: NextRequest) {
 
 
         // Step 2: Get AI-suggested compliance questions
-        const { suggestedQuestions } = await suggestComplianceQuestions({
-            reportType,
-            description,
-        });
+        // This is now redundant if we are using questions from the form, but could be used for enhancement later.
+        // For now, questions will be pulled from the form template on the client-side.
+        // const { suggestedQuestions } = await suggestComplianceQuestions({
+        //     reportType,
+        //     description,
+        // });
 
         // Step 3: Create the ticket in Firestore
         const ticketRef = adminDb.collection('tickets').doc(); 
@@ -72,8 +74,9 @@ export async function POST(request: NextRequest) {
             subjectName,
             email,
             reportType,
+            formId,
             description,
-            suggestedQuestions,
+            // suggestedQuestions,
             status: 'New',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             clientId: clientUid, 
@@ -86,10 +89,12 @@ export async function POST(request: NextRequest) {
 
         // Step 4: Generate a secure, single-use link for the user to set their password and access the form.
         // We use a password reset link which also verifies their email.
-        const actionLink = await adminAuth.generatePasswordResetLink(email, {
-             url: `${request.nextUrl.origin}/form/${ticketRef.id}`, // Redirect to form after password set
-        });
-
+        const passwordResetLink = await adminAuth.generatePasswordResetLink(email);
+        
+        // Extract oobCode and construct the final URL
+        const actionCode = new URL(passwordResetLink).searchParams.get('oobCode');
+        const actionLink = `${request.nextUrl.origin}/onboard?oobCode=${actionCode}&continueUrl=/form/${ticketRef.id}`;
+        
         // Step 5: Send the email to the end-user
         await sendEmail({
             to: email,

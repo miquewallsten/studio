@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -12,18 +11,19 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEffect, useState, useRef } from 'react';
-import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp, collection, where, query } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { conversationalForm } from '@/ai/flows/conversational-form-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, User } from 'lucide-react';
+import { Bot, Send, User, Check } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 type Ticket = {
@@ -35,6 +35,7 @@ type Ticket = {
   description: string;
   clientEmail: string;
   endUserId: string;
+  formId?: string;
   suggestedQuestions?: string[];
   formSubmittedAt?: Timestamp;
 };
@@ -56,6 +57,7 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
   const [prompt, setPrompt] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isFormComplete, setIsFormComplete] = useState(false);
+  const [isAgreed, setIsAgreed] = useState(false);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -88,12 +90,26 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
           setTicket(null);
         } else if (ticketData.status !== 'New') {
              setTicket(ticketData); 
-        }
-        else {
-          setTicket(ticketData);
-          // Kick off the conversation
+        } else {
+          // Fetch questions from the form template if formId exists
+          let questions = ticketData.suggestedQuestions || [];
+          if (ticketData.formId) {
+            const formRef = doc(db, 'forms', ticketData.formId);
+            const formSnap = await getDoc(formRef);
+            if (formSnap.exists()) {
+              const formFieldsIds = formSnap.data()?.fields || [];
+              if (formFieldsIds.length > 0) {
+                 const fieldsQuery = query(collection(db, 'fields'), where('__name__', 'in', formFieldsIds));
+                 const fieldsSnap = await getDocs(fieldsQuery);
+                 questions = fieldsSnap.docs.map(d => d.data().label);
+              }
+            }
+          }
+          const finalTicketData = { ...ticketData, suggestedQuestions: questions };
+          setTicket(finalTicketData);
+          
           if (history.length === 0) {
-            handleSend(true);
+            handleSend(true, finalTicketData);
           }
         }
       } else {
@@ -121,8 +137,8 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     }
   }, [history]);
   
-  const handleSend = async (isFirstMessage = false) => {
-    if (!ticket || (!prompt.trim() && !isFirstMessage)) return;
+  const handleSend = async (isFirstMessage = false, currentTicket = ticket) => {
+    if (!currentTicket || (!prompt.trim() && !isFirstMessage)) return;
 
     let currentHistory = history;
 
@@ -143,13 +159,13 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
 
         const response = await conversationalForm({
             history: genkitHistory,
-            questions: ticket.suggestedQuestions || [],
+            questions: currentTicket.suggestedQuestions || [],
             userName: user?.displayName || user?.email || 'user',
         });
         
         if (response.includes('FORM_COMPLETE')) {
             setIsFormComplete(true);
-            const finalMessage: Message = { role: 'model', text: "Thank you for providing all the information. Please review your answers in the chat history. If everything is correct, click the 'Submit Form' button below."};
+            const finalMessage: Message = { role: 'model', text: "Thank you for providing all the information. Please review your answers and agree to the terms below before submitting."};
             setHistory(prev => [...prev, finalMessage]);
         } else {
             const newModelMessage: Message = { role: 'model', text: response };
@@ -188,6 +204,11 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
             status: 'In Progress', 
             formData: formValues, 
             formSubmittedAt: Timestamp.now(),
+            eSignature: {
+                agreed: true,
+                timestamp: Timestamp.now(),
+                ipAddress: '0.0.0.0' // Placeholder
+            }
         });
 
         toast({
@@ -231,6 +252,9 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
         <Card className="w-full max-w-lg text-center">
             <CardHeader> <CardTitle>Information Request</CardTitle> </CardHeader>
             <CardContent> <p>There are no pending forms for this user account.</p> <p className="text-sm text-muted-foreground mt-2">Please check the link from your email or contact the requester.</p> </CardContent>
+            <CardFooter className="flex justify-center">
+                <Button variant="outline" onClick={() => router.push('/')}>Return to Login</Button>
+            </CardFooter>
         </Card>
       </RootComponent>
     );
@@ -243,9 +267,16 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
                     <CardHeader>
                         <CardTitle>Form Already Submitted</CardTitle>
                         <CardDescription>
-                            This form was submitted on {ticket.formSubmittedAt ? new Date(ticket.formSubmittedAt.toDate()).toLocaleDateString() : 'a previous date'}. No further action is needed.
+                            This form was submitted on {ticket.formSubmittedAt ? new Date(ticket.formSubmittedAt.toDate()).toLocaleDateString() : 'a previous date'}.
                         </CardDescription>
                     </CardHeader>
+                     <CardContent>
+                        <p>No further action is needed.</p>
+                     </CardContent>
+                     <CardFooter className="flex-col gap-4">
+                        <p className="text-xs text-muted-foreground">You can now close this window.</p>
+                        <Button variant="outline" onClick={() => router.push('/')}>Return to Login</Button>
+                     </CardFooter>
                 </Card>
            </RootComponent>
       )
@@ -296,9 +327,25 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
             </CardContent>
             <CardFooter className="border-t pt-4">
                 {isFormComplete ? (
-                    <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full bg-accent hover:bg-accent/90">
-                        {isSubmitting ? 'Submitting...' : 'Submit Form'}
-                    </Button>
+                    <div className="w-full space-y-4">
+                        <div className="items-top flex space-x-2">
+                            <Checkbox id="terms1" checked={isAgreed} onCheckedChange={(checked) => setIsAgreed(checked as boolean)} />
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                htmlFor="terms1"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                Electronic Signature Agreement
+                                </label>
+                                <p className="text-sm text-muted-foreground">
+                                I declare under penalty of perjury that the information provided is true and correct. I understand this constitutes a legal electronic signature.
+                                </p>
+                            </div>
+                        </div>
+                        <Button onClick={handleSubmit} disabled={isSubmitting || !isAgreed} className="w-full bg-accent hover:bg-accent/90">
+                            {isSubmitting ? 'Submitting...' : 'Sign and Submit Form'}
+                        </Button>
+                    </div>
                 ) : (
                     <div className="flex gap-2 w-full">
                         <Input
