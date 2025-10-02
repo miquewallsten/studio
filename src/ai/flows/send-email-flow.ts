@@ -6,7 +6,12 @@
  */
 
 import * as nodemailer from 'nodemailer';
-import type { SendEmailInput } from '@/ai/schemas/send-email-schema';
+
+export type SendEmailInput = {
+  to: string;
+  subject: string;
+  html: string;
+};
 
 export async function sendEmail(input: SendEmailInput): Promise<{ success: boolean; message: string }> {
   
