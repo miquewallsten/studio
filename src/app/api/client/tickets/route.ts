@@ -1,3 +1,4 @@
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -13,8 +14,15 @@ export async function GET(request: NextRequest) {
 
         const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
-        const uid = decodedToken.uid;
         
+        let uid: string;
+        // Tenant Admins query by their tenantId, their own uid is the tenantId for other users.
+        if (decodedToken.role === 'Tenant Admin') {
+            uid = decodedToken.tenantId;
+        } else {
+            uid = decodedToken.uid;
+        }
+
         const adminDb = getAdminDb();
         const ticketsQuery = adminDb.collection('tickets').where('clientId', '==', uid).orderBy('createdAt', 'desc');
         const querySnapshot = await ticketsQuery.get();

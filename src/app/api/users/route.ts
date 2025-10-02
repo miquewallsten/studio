@@ -1,8 +1,9 @@
 
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic'; // defaults to auto
+export const dynamic = 'force-dynamic';
 
 async function getTenants() {
     const adminDb = getAdminDb();
@@ -14,9 +15,13 @@ async function getTenants() {
     return tenants;
 }
 
-async function getUserProfilesAndTags() {
+async function getUserProfilesAndTags(tenantId?: string) {
     const adminDb = getAdminDb();
-    const profilesSnapshot = await adminDb.collection('users').get();
+    let query: admin.firestore.Query<admin.firestore.DocumentData> = adminDb.collection('users');
+    if (tenantId) {
+        query = query.where('tenantId', '==', tenantId);
+    }
+    const profilesSnapshot = await query.get();
     const profiles: { [key: string]: { phone?: string, tags?: string[] } } = {};
     const allTags = new Set<string>();
     profilesSnapshot.forEach(doc => {
@@ -29,9 +34,13 @@ async function getUserProfilesAndTags() {
     return { profiles, allTags: Array.from(allTags) };
 }
 
-async function getTicketCounts() {
+async function getTicketCounts(tenantId?: string) {
     const adminDb = getAdminDb();
-    const ticketsSnapshot = await adminDb.collection('tickets').get();
+    let query: admin.firestore.Query<admin.firestore.DocumentData> = adminDb.collection('tickets');
+    if (tenantId) {
+        query = query.where('clientId', '==', tenantId);
+    }
+    const ticketsSnapshot = await query.get();
     const counts: { [key: string]: number } = {};
     ticketsSnapshot.forEach(doc => {
         const clientId = doc.data().clientId;
@@ -45,15 +54,46 @@ async function getTicketCounts() {
     return counts;
 }
 
-
 export async function GET(request: NextRequest) {
   try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ error: 'Not authenticated. No auth header.' }, { status: 401 });
+    }
+    const idToken = authHeader.split('Bearer ')[1];
+    
     const adminAuth = getAdminAuth();
-    const [tenants, { profiles, allTags }, tickets] = await Promise.all([getTenants(), getUserProfilesAndTags(), getTicketCounts()]);
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
     
-    const listUsersResult = await adminAuth.listUsers();
+    // Check if the user is a Tenant Admin and get their tenantId
+    const callerRole = decodedToken.role;
+    const callerTenantId = callerRole === 'Tenant Admin' ? decodedToken.tenantId : undefined;
+
+    const [tenants, { profiles, allTags }, tickets] = await Promise.all([
+        getTenants(), 
+        getUserProfilesAndTags(callerTenantId), 
+        getTicketCounts(callerTenantId)
+    ]);
     
-    const userProcessingPromises = listUsersResult.users.map(async (userRecord) => {
+    let userRecords: admin.auth.UserRecord[];
+
+    if (callerTenantId) {
+        // If the caller is a Tenant Admin, only list users for their tenant.
+        // This is less efficient than listUsers() but necessary for security.
+        const userProfiles = Object.keys(profiles);
+        if (userProfiles.length === 0) {
+            userRecords = [];
+        } else {
+             const result = await adminAuth.getUsers(userProfiles.map(uid => ({ uid })));
+             userRecords = result.users;
+        }
+    } else {
+        // Super Admins see all users
+        const listUsersResult = await adminAuth.listUsers();
+        userRecords = listUsersResult.users;
+    }
+    
+    const userProcessingPromises = userRecords.map(async (userRecord) => {
         const tenantId = userRecord.customClaims?.tenantId;
         let role = userRecord.customClaims?.role || 'Unassigned';
         const profile = profiles[userRecord.uid];
@@ -65,10 +105,8 @@ export async function GET(request: NextRequest) {
                 await adminAuth.setCustomUserClaims(userRecord.uid, { ...userRecord.customClaims, role: 'Super Admin' });
             } catch (claimError) {
                 console.error(`Failed to set Super Admin claim for ${userRecord.email}:`, claimError);
-                // Continue with the role set in-memory for the current response
             }
         }
-
 
         return {
             uid: userRecord.uid,
@@ -79,7 +117,7 @@ export async function GET(request: NextRequest) {
             phone: profile?.phone || null,
             tags: profile?.tags || [],
             tenantId: tenantId,
-            tenantName: tenantId ? tenants[tenantId] : 'Internal Staff',
+            tenantName: tenantId ? tenants[tenantId] : (role === 'Tenant Admin' ? 'N/A' : 'Internal Staff'),
             role: role,
             createdAt: userRecord.metadata.creationTime,
             ticketsCreated: tickets[userRecord.uid] || 0,

@@ -1,7 +1,8 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
-import { UserNav } from '@/components/user-nav';
+import { UserNav } from '@/components/client-user-nav'; // Use a dedicated client nav
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { useEffect, useState } from 'react';
@@ -18,10 +19,16 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setUser(user);
-        const token = await getIdToken(user);
-        // This cookie is used by our secureFetch hook
-        document.cookie = `firebaseIdToken=${token}; path=/;`;
+        const idTokenResult = await user.getIdTokenResult();
+        const userRole = idTokenResult.claims.role;
+        // Ensure only Tenant Admins/Users can access this layout
+        if (userRole === 'Tenant Admin' || userRole === 'Tenant User') {
+          setUser(user);
+          document.cookie = `firebaseIdToken=${idTokenResult.token}; path=/;`;
+        } else {
+          // If it's an internal user, send them to the main dashboard
+          router.push('/dashboard');
+        }
       } else {
         document.cookie = 'firebaseIdToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         router.push('/client/login');
@@ -51,23 +58,26 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    return null;
+    return null; // Don't render anything while redirecting
   }
   
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card/95 px-4 backdrop-blur-sm sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
         <Link href="/client/dashboard" className="flex items-center gap-2">
             <Icons.logo className="size-6 text-accent" />
             <span className="text-lg font-semibold font-headline">
               TenantCheck
+            </span>
+             <span className="text-lg font-light text-muted-foreground font-headline">
+              | Client Portal
             </span>
         </Link>
         <div className="ml-auto">
             <UserNav />
         </div>
       </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+      <main className="flex flex-1 flex-col gap-4 p-4 sm:px-6 sm:py-6 md:gap-8">
         {children}
       </main>
     </div>
