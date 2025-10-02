@@ -14,7 +14,8 @@
         "tenants": "Tenants",
         "user_management": "User Management",
         "system_settings": "System Settings",
-        "testing": "Testing"
+        "testing": "Testing",
+        "email_templates": "Email Templates"
     },
     "dashboard": {
         "title": "Dashboard",

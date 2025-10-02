@@ -12,6 +12,7 @@ import {
   Building,
   Ticket,
   TestTube,
+  Mail,
 } from 'lucide-react';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import { cn } from '@/lib/utils';
@@ -84,6 +85,12 @@ export function DashboardNav() {
       label: t('nav.user_management'),
       requiredRole: 'Super Admin',
       show: true,
+    },
+    {
+      href: '/dashboard/admin/email-templates',
+      icon: Mail,
+      label: 'Email Templates',
+      show: isSuperAdminOrAdmin,
     },
     {
       href: '/dashboard/admin/settings',

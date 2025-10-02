@@ -14,7 +14,8 @@
         "tenants": "Clientes",
         "user_management": "Usuarios",
         "system_settings": "Ajustes del Sistema",
-        "testing": "Pruebas"
+        "testing": "Pruebas",
+        "email_templates": "Plantillas de Correo"
     },
     "dashboard": {
         "title": "Dashboard",
@@ -50,7 +51,7 @@
         "tenant_name": "Nombre del Cliente",
         "created": "Creado",
         "error": "Error",
-        "are_you_sure": "¿Estás absolutamente seguro?",
+        "are_you_sure": "¿Estás absolutely seguro?",
         "cancel": "Cancelar",
         "yes_delete": "Sí, eliminar",
         "no_results": "No se encontraron resultados."
