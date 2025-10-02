@@ -96,7 +96,7 @@ export function CustomerExperienceWidget() {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="non-draggable">
+      <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
@@ -109,14 +109,14 @@ export function CustomerExperienceWidget() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden p-0 non-draggable">
+      <CardContent className="flex-1 overflow-hidden p-0">
         <Tabs defaultValue="low-ratings" className="h-full flex flex-col">
-            <TabsList className="mx-6">
+            <TabsList className="mx-6 non-draggable">
                 <TabsTrigger value="low-ratings">Low Ratings</TabsTrigger>
                 <TabsTrigger value="feedback">Feedback</TabsTrigger>
             </TabsList>
             <TabsContent value="low-ratings" className="flex-1 overflow-hidden mt-0">
-                <ScrollArea className="h-full">
+                <ScrollArea className="h-full non-draggable">
                     <div className="p-6 pt-2">
                     {loading ? (
                         <p className="text-sm text-muted-foreground text-center py-4">Loading ratings...</p>
@@ -153,7 +153,7 @@ export function CustomerExperienceWidget() {
                 </ScrollArea>
             </TabsContent>
              <TabsContent value="feedback" className="flex-1 overflow-hidden mt-0">
-                <ScrollArea className="h-full">
+                <ScrollArea className="h-full non-draggable">
                     <div className="p-6 pt-2">
                     {loading ? (
                         <p className="text-sm text-muted-foreground text-center py-4">Loading feedback...</p>

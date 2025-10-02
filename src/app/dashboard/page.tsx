@@ -81,7 +81,7 @@ const WIDGET_DEFINITIONS: {
   },
   'customer-experience': {
     title: 'Customer Experience',
-    defaultLayout: { i: 'customer-experience', x: 0, y: 3, w: 6, h: 3, minW: 3, minH: 2 },
+    defaultLayout: { i: 'customer-experience', x: 0, y: 3, w: 6, h: 3, minW: 3, minH: 3 },
   },
   'new-tickets': {
     title: 'New Tickets',
@@ -529,22 +529,22 @@ export default function DashboardPage() {
             draggableCancel=".non-draggable"
         >
             {activeWidgets.map((widgetId) => (
-              <div key={widgetId} className="group/widget">
-                {isEditMode && (
-                    <Button 
-                        variant="destructive" 
-                        size="icon" 
-                        className="absolute top-2 right-2 z-20 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
-                        onClick={() => removeWidget(widgetId)}
-                    >
-                        <span className="sr-only">Remove widget</span>
-                        &times;
-                    </Button>
-                )}
-                <div className="h-full overflow-hidden">
-                    {getWidgetContent(widgetId)}
-                </div>
-            </div>
+                <div key={widgetId} className="group/widget relative">
+                    {isEditMode && (
+                        <Button 
+                            variant="destructive" 
+                            size="icon" 
+                            className="absolute top-2 right-2 z-20 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
+                            onClick={() => removeWidget(widgetId)}
+                        >
+                            <span className="sr-only">Remove widget</span>
+                            &times;
+                        </Button>
+                    )}
+                    <div className="h-full">
+                        {getWidgetContent(widgetId)}
+                    </div>
+              </div>
             ))}
       </ResponsiveGridLayout>
       }

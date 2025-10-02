@@ -120,7 +120,7 @@ export function NotificationsWidget() {
         tenant={selectedTenant}
       />
       <Card className="h-full flex flex-col">
-        <CardHeader className="non-draggable">
+        <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <CardTitle className="flex items-center gap-2">
@@ -133,8 +133,8 @@ export function NotificationsWidget() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden p-0 non-draggable">
-          <ScrollArea className="h-full">
+        <CardContent className="flex-1 overflow-hidden p-0">
+          <ScrollArea className="h-full non-draggable">
           <div className="p-6 pt-0">
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading alerts...</p>
