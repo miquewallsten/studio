@@ -6,7 +6,7 @@ import { UserNav } from '@/components/client-user-nav';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, getIdToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,7 +25,8 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         // Allow Tenant Admins, Tenant Users, and End Users. Deny internal staff.
         if (userRole && ['Tenant Admin', 'Tenant User', 'End User'].includes(userRole)) {
           setUser(user);
-          document.cookie = `firebaseIdToken=${idTokenResult.token}; path=/;`;
+          const token = await getIdToken(user);
+          document.cookie = `firebaseIdToken=${token}; path=/;`;
         } else {
           // If it's an internal user, send them to the main dashboard
           router.push('/dashboard');
