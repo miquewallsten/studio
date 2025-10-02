@@ -95,8 +95,8 @@ export function CustomerExperienceWidget() {
   }
 
   return (
-    <Card className="h-full flex flex-col non-draggable">
-      <CardHeader>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="non-draggable">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function CustomerExperienceWidget() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden p-0">
+      <CardContent className="flex-1 overflow-hidden p-0 non-draggable">
         <Tabs defaultValue="low-ratings" className="h-full flex flex-col">
             <TabsList className="mx-6">
                 <TabsTrigger value="low-ratings">Low Ratings</TabsTrigger>

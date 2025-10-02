@@ -81,7 +81,7 @@ const WIDGET_DEFINITIONS: {
   },
   'customer-experience': {
     title: 'Customer Experience',
-    defaultLayout: { i: 'customer-experience', x: 0, y: 3, w: 6, h: 2, minW: 3, minH: 2 },
+    defaultLayout: { i: 'customer-experience', x: 0, y: 3, w: 6, h: 3, minW: 3, minH: 2 },
   },
   'new-tickets': {
     title: 'New Tickets',
@@ -529,7 +529,7 @@ export default function DashboardPage() {
             draggableCancel=".non-draggable"
         >
             {activeWidgets.map((widgetId) => (
-            <div key={widgetId} className="relative group/widget overflow-hidden">
+              <div key={widgetId} className="group/widget">
                 {isEditMode && (
                     <Button 
                         variant="destructive" 
@@ -541,7 +541,7 @@ export default function DashboardPage() {
                         &times;
                     </Button>
                 )}
-                <div className="h-full">
+                <div className="h-full overflow-hidden">
                     {getWidgetContent(widgetId)}
                 </div>
             </div>
