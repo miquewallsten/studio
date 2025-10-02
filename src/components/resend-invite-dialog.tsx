@@ -183,4 +183,11 @@ export function ResendInviteDialog({
                     <Button type="button" onClick={handleSendEmail} className="bg-accent hover:bg-accent/90" disabled={isLoading}>
                         <Mail className="mr-2 h-4 w-4" />
                         {isLoading ? 'Sending...' : 'Resend Invitation'}
-                    </Button
+                    </Button>
+                </DialogFooter>
+            </>
+          )}
+      </DialogContent>
+    </Dialog>
+  );
+}
