@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -10,7 +11,7 @@ import {
   } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileUp, MessageSquare, Save, UserPlus, CheckCircle, Upload, Bot } from 'lucide-react';
+import { FileUp, MessageSquare, Save, UserPlus, CheckCircle, Upload, Bot, EyeOff } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { doc, onSnapshot, Timestamp, updateDoc, collection, getDoc, getDocs, where, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -21,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import type { Field } from '@/app/dashboard/fields/schema';
+import { runValidations } from '@/ai/flows/run-validations-flow';
 
 type Ticket = {
   id: string;
@@ -33,6 +35,7 @@ type Ticket = {
   formId?: string;
   formData?: { [key: string]: any };
   internalNotes?: { [key: string]: string };
+  privateManagerNote?: string;
   reportUrl?: string;
 };
 
@@ -45,11 +48,13 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [internalNotes, setInternalNotes] = useState<{ [key: string]: string }>({});
+  const [privateManagerNote, setPrivateManagerNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [reportFile, setReportFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const { toast } = useToast();
   const { role } = useAuthRole();
 
@@ -60,6 +65,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
         const data = docSnap.data() as Ticket;
         setTicket({ id: docSnap.id, ...data });
         setInternalNotes(data.internalNotes || {});
+        setPrivateManagerNote(data.privateManagerNote || '');
 
         if (data.formId && data.formData) {
             fetchFormFields(data.formId, data.formData);
@@ -88,8 +94,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
 
         const fieldsData = fieldsSnap.docs.map(d => ({id: d.id, ...d.data()} as Field));
         
-        // Combine fields with their submitted values
-        const populatedFields = formFieldsIds.map((id: string) => {
+        const orderedFields = formFieldsIds.map((id: string) => {
             const fieldDef = fieldsData.find(f => f.id === id);
             const value = formData[fieldDef?.label || ''];
             return { ...fieldDef, value };
@@ -109,7 +114,8 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     try {
         const ticketRef = doc(db, 'tickets', ticket.id);
         await updateDoc(ticketRef, {
-            internalNotes: internalNotes
+            internalNotes: internalNotes,
+            privateManagerNote: privateManagerNote
         });
         toast({
             title: 'Notes Saved',
@@ -126,12 +132,33 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     }
   }
   
-  const handleRunValidations = () => {
-      // Placeholder for the AI validation flow
+  const handleRunValidations = async () => {
+      if (!ticket) return;
+      setIsValidating(true);
       toast({
           title: "AI Validations Started",
-          description: "The AI is now running validations in the background. Notes will appear as they are completed."
-      })
+          description: "The AI is now running validations. Notes will appear as they are completed."
+      });
+      try {
+        const result = await runValidations({ ticketId: ticket.id });
+        if (result.success) {
+            toast({
+                title: "AI Validations Complete",
+                description: "The AI has finished its validation tasks. Please review the updated notes.",
+                variant: 'default'
+            });
+        } else {
+            throw new Error(result.message);
+        }
+      } catch (error: any) {
+           toast({
+                title: "AI Validation Error",
+                description: error.message,
+                variant: 'destructive'
+            });
+      } finally {
+          setIsValidating(false);
+      }
   }
 
   const handleCompleteTicket = async () => {
@@ -165,10 +192,8 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     const file = event.target.files?.[0];
     if (file) {
         setReportFile(file);
-        // Simulate upload and update ticket
         if(ticket) {
             const ticketRef = doc(db, 'tickets', ticket.id);
-            // In a real app, upload to Firebase Storage and save the URL
             const fakeUrl = `/reports/${ticket.id}/${file.name}`;
             updateDoc(ticketRef, { reportUrl: fakeUrl });
             toast({
@@ -230,7 +255,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   }
 
   const hasFormData = formFields.length > 0;
-  const isManager = role === 'Super Admin' || role === 'Manager';
+  const canViewPrivateNote = role === 'Super Admin' || role === 'Manager' || role === 'Analyst';
 
   return (
     <div className="grid flex-1 items-start gap-4 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
@@ -289,7 +314,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
                             <div className="space-y-2">
                                 <Label className="text-muted-foreground">{field.label}</Label>
                                 <div className="p-3 border rounded-md min-h-[100px] bg-muted/50">
-                                    <p className="text-sm">{field.value || <span className="text-muted-foreground">Not provided</span>}</p>
+                                    <p className="text-sm whitespace-pre-wrap">{field.value || <span className="text-muted-foreground">Not provided</span>}</p>
                                 </div>
                                 {field.internalFields && field.internalFields.map(internalField => (
                                     <div key={internalField.id} className="pt-2">
@@ -323,7 +348,21 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
                 )}
             </CardContent>
             {hasFormData && (
-                <CardFooter>
+                <CardFooter className="flex-col items-start gap-4">
+                     {canViewPrivateNote && (
+                        <div className="w-full space-y-2">
+                             <Label htmlFor="private-note" className="flex items-center gap-2">
+                                <EyeOff className="size-4 text-destructive" />
+                                Private Note for Manager
+                            </Label>
+                             <Textarea
+                                id="private-note"
+                                placeholder="This note is only visible to Managers and Super Admins."
+                                value={privateManagerNote}
+                                onChange={(e) => setPrivateManagerNote(e.target.value)}
+                            />
+                        </div>
+                     )}
                      <Button onClick={handleSaveNotes} disabled={isSaving}>
                         <Save className="mr-2" />
                         {isSaving ? 'Saving...' : 'Save All Notes'}
@@ -352,9 +391,9 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-             <Button className="w-full" variant="outline" onClick={handleRunValidations}>
-                <Bot className="mr-2" />
-                Run AI Validations
+             <Button className="w-full" variant="outline" onClick={handleRunValidations} disabled={isValidating}>
+                {isValidating ? <Bot className="mr-2 animate-spin" /> : <Bot className="mr-2" />}
+                {isValidating ? 'AI is Validating...' : 'Run AI Validations'}
             </Button>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
             <Button className="w-full" variant="outline" onClick={handleUploadClick} disabled={!!ticket.reportUrl}>
@@ -362,12 +401,12 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
               {ticket.reportUrl ? 'Report Uploaded' : 'Upload Report'}
             </Button>
             {ticket.reportUrl && <p className="text-xs text-center text-muted-foreground truncate">File: {ticket.reportUrl}</p>}
-            {isManager && (
+            {role === 'Manager' || role === 'Super Admin' ? (
                 <Button className="w-full" onClick={handleCompleteTicket} disabled={isCompleting || !ticket.reportUrl}>
                     <CheckCircle className="mr-2 size-4" />
                     {isCompleting ? 'Closing Ticket...' : 'Complete & Close Ticket'}
                 </Button>
-            )}
+            ): null}
           </CardContent>
           <CardFooter>
             <p className="text-xs text-muted-foreground">This section is role-restricted.</p>
@@ -377,3 +416,5 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
+    
