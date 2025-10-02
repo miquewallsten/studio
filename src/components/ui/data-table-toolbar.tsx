@@ -20,6 +20,7 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
 
+  // Define potential filter options
   const roles = [
       {value: "Super Admin", label: "Super Admin"},
       {value: "Admin", label: "Admin"},
@@ -66,6 +67,7 @@ export function DataTableToolbar<TData>({
     return id.includes('name') || id.includes('email') || id.includes('subjectname');
   });
 
+  // Conditionally get columns
   const roleColumn = table.getColumn('role');
   const tenantNameColumn = table.getColumn('tenantName');
   const statusColumn = table.getColumn('status');
