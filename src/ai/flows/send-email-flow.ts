@@ -5,25 +5,13 @@
  * - sendEmail - A function that sends an email.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
 import * as nodemailer from 'nodemailer';
-import { SendEmailInputSchema, type SendEmailInput } from '@/ai/schemas/send-email-schema';
+import type { SendEmailInput } from '@/ai/schemas/send-email-schema';
 
 export async function sendEmail(input: SendEmailInput): Promise<{ success: boolean; message: string }> {
-  return sendEmailFlow(input);
-}
+  
+    const { to, subject, html } = input;
 
-const sendEmailFlow = ai.defineFlow(
-  {
-    name: 'sendEmailFlow',
-    inputSchema: SendEmailInputSchema,
-    outputSchema: z.object({
-      success: z.boolean(),
-      message: z.string(),
-    }),
-  },
-  async ({ to, subject, html }) => {
     // Note: For this to work, you must configure SMTP settings in your .env file.
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -50,5 +38,4 @@ const sendEmailFlow = ai.defineFlow(
         // Avoid exposing detailed error messages to the client.
         return { success: false, message: 'Failed to send email. Please check server logs and SMTP configuration.' };
     }
-  }
-);
+}
