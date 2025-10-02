@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
         const prefs = await request.json();
 
         const adminDb = getAdminDb();
-        const userPrefsRef = adminDb.collection('user_preferences').doc(uid);
+        // Store preferences in a 'dashboard' document within a 'preferences' subcollection for the user.
+        const userPrefsRef = adminDb.collection('users').doc(uid).collection('preferences').doc('dashboard');
 
         // We use set with merge: true to create or update the document.
         await userPrefsRef.set(prefs, { merge: true });
@@ -48,7 +49,8 @@ export async function GET(request: NextRequest) {
         const uid = decodedToken.uid;
         
         const adminDb = getAdminDb();
-        const userPrefsRef = adminDb.collection('user_preferences').doc(uid);
+        // Fetch preferences from the 'dashboard' document within the 'preferences' subcollection.
+        const userPrefsRef = adminDb.collection('users').doc(uid).collection('preferences').doc('dashboard');
         const docSnap = await userPrefsRef.get();
 
         if (!docSnap.exists()) {

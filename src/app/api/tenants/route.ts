@@ -36,7 +36,6 @@ async function performDatabaseSeeding() {
         'tenants': { name: 'Seed Tenant', status: 'ACTIVE', createdAt: admin.firestore.FieldValue.serverTimestamp() },
         'expertise_groups': { name: 'General Analysts (Seed)', analystUids: [], createdAt: admin.firestore.FieldValue.serverTimestamp() },
         'feedback': { category: 'Suggestion', summary: 'Initial seed document.', userName: 'system', createdAt: admin.firestore.FieldValue.serverTimestamp() },
-        'user_preferences': { dashboard: { widgets: [] } },
         'email_templates': { name: 'Seed Template', subject: 'Subject', body: 'Body', placeholders: [] }
     };
 
