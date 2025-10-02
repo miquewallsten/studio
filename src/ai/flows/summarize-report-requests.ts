@@ -8,7 +8,7 @@
  * - SummarizeReportRequestsOutput - The return type for the summarizeReportRequests function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, DEFAULT_MODEL} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SummarizeReportRequestsInputSchema = z.object({
@@ -37,6 +37,7 @@ const prompt = ai.definePrompt({
   {{requestDetails}}
 
   Please provide a concise summary.`,  
+  model: DEFAULT_MODEL,
 });
 
 const summarizeReportRequestsFlow = ai.defineFlow(

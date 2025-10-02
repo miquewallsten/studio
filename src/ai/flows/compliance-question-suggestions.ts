@@ -8,7 +8,7 @@
  * - SuggestComplianceQuestionsOutput - The return type for the suggestComplianceQuestions function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, DEFAULT_MODEL} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SuggestComplianceQuestionsInputSchema = z.object({
@@ -39,6 +39,7 @@ const prompt = ai.definePrompt({
 
   Suggest compliance questions:
   `,
+  model: DEFAULT_MODEL,
 });
 
 const suggestComplianceQuestionsFlow = ai.defineFlow(
