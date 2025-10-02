@@ -57,7 +57,7 @@ export function DataTableToolbar<TData>({
         if (tenantName) names.add(tenantName);
     });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table]);
+  }, [table.getColumn, table.getPreFilteredRowModel]);
 
 
   // Find a generic column to filter by text, like 'name' or 'email' or 'subject'
