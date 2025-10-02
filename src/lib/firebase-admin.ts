@@ -1,4 +1,5 @@
 
+
 import { applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -12,14 +13,15 @@ const initializeAdmin = () => {
     if (getApps().length === 0) {
         try {
             // This will automatically use the file path from the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+            // In this project, that is set to './service-account.json' in the .env file.
             initializeApp({
                 credential: applicationDefault(),
             });
         } catch (error: any) {
             console.error('Firebase admin initialization error', error);
-            // Re-throw a more user-friendly error
-            if (error.message.includes('GOOGLE_APPLICATION_CREDENTIALS')) {
-                 throw new Error('Firebase Admin SDK credential error: The GOOGLE_APPLICATION_CREDENTIALS environment variable is not set or the file is not found. Please follow the setup instructions.');
+            // Re-throw a more user-friendly error to be caught by the UI
+            if (error.code === 'ENOENT') {
+                 throw new Error(`Firebase admin initialization error: Failed to read credentials from file ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Error: ${error.message}. Please follow the setup instructions.`);
             }
             throw new Error('Firebase admin initialization error: ' + error.message);
         }
