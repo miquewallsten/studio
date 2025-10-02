@@ -147,7 +147,14 @@ export async function POST(request: NextRequest) {
 
     } catch (error: any) {
         console.error('Error creating ticket from client request:', error);
+        let errorMessage = 'An unexpected error occurred.';
         if (error.code === 'auth/id-token-expired') {
-            return NextResponse.json({ error: 'Authentication token expired. Please log in again.' }, { status: 401 });
+            errorMessage = 'Authentication token expired. Please log in again.';
+        } else if (error.message?.includes('credential error')) {
+            errorMessage = error.message;
         }
         return NextResponse.json({
+            error: errorMessage,
+        }, { status: 500 });
+    }
+}

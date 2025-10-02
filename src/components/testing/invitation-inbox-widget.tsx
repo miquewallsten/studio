@@ -13,7 +13,9 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { Mail, Send } from 'lucide-react';
-import { getAdminAuth } from '@/lib/firebase-admin';
+// This import is incorrect for a client component, but we will leave it for demonstration of the runtime guard.
+// In a real app, this logic would be behind an API route.
+// import { getAdminAuth } from '@/lib/firebase-admin';
 
 type Ticket = {
   id: string;

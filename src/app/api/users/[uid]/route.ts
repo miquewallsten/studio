@@ -103,4 +103,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { uid: 
         if (error.code === 'auth/user-not-found') {
             errorMessage = 'User not found.';
         }
-        return NextResponse.json({ error: errorMessage }, {
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
+    }
+}

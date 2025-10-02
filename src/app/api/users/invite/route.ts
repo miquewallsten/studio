@@ -91,4 +91,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ uid: userRecord.uid, email: userRecord.email, claims: customClaims });
 
-  } catch (error: any
+  } catch (error: any) {
+    let errorMessage = 'An unexpected error occurred.';
+     if (error.message?.includes('credential error')) {
+        errorMessage = error.message;
+    } else if (error.message) {
+        errorMessage = error.message;
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
+}

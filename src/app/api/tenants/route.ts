@@ -1,5 +1,4 @@
 
-
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
@@ -201,9 +200,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Error listing tenants:', error);
     let errorMessage = 'An unexpected error occurred.';
-     if (error.code === 'app/invalid-credential' || error.message.includes('credential') || error.message.includes('initialization')) {
-        errorMessage = 'Firebase Admin SDK credential error. Please ensure server-side environment variables are set correctly.';
-    } else if (error.message) {
+     if (error.message?.includes('credential error')) {
         errorMessage = error.message;
     }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
