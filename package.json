@@ -5,14 +5,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
+    "genkit:dev": "echo 'Genkit removed'",
+    "genkit:watch": "echo 'Genkit removed'",
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.15.0",
     "@hello-pangea/dnd": "^16.6.0",
     "@hookform/resolvers": "^4.1.3",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -62,10 +63,7 @@
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.24.2",
-    "genkit": "1.19.3",
-    "@genkit-ai/google-genai": "1.19.3",
-    "@genkit-ai/next": "1.19.3"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.4",
