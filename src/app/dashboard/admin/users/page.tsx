@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -19,6 +18,7 @@ import { columns } from './columns';
 import type { User } from './schema';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import { useLanguage } from '@/contexts/language-context';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 
 export default function AdminUsersPage() {
@@ -30,15 +30,15 @@ export default function AdminUsersPage() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const { role, isLoading: isRoleLoading } = useAuthRole();
     const { t } = useLanguage();
+    const secureFetch = useSecureFetch();
 
 
     const fetchUsers = async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/users');
-            const data = await response.json();
-            if (!response.ok) {
+            const data = await secureFetch('/api/users');
+            if (data.error) {
                 throw new Error(data.error || 'Failed to fetch users');
             }
             setUsers(data.users);
@@ -52,10 +52,10 @@ export default function AdminUsersPage() {
     };
 
     useEffect(() => {
-        if (role === 'Super Admin') {
+        if (role === 'Super Admin' || role === 'Admin') {
             fetchUsers();
         }
-    }, [role]);
+    }, [role, secureFetch]);
     
     const handleUserInvitedOrUpdated = () => {
         fetchUsers(); // Re-fetch the user list after a new user is invited or updated
@@ -74,7 +74,7 @@ export default function AdminUsersPage() {
       return <p>{t('common.loading')}...</p>
     }
 
-    if (role !== 'Super Admin') {
+    if (role !== 'Super Admin' && role !== 'Admin') {
       return (
          <Card className="mt-8">
           <CardHeader className="items-center text-center">

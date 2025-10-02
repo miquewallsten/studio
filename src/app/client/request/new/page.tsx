@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -173,8 +174,3 @@ export default function NewRequestPage() {
                 {isLoading ? 'Creating...' : 'Create and Send Form'}
             </Button>
           </div>
-        </div>
-      </form>
-    </div>
-  );
-}

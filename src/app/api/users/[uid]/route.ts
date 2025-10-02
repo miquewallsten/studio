@@ -1,5 +1,4 @@
 
-
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -29,15 +28,21 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
 
 
         // Update Firebase Auth
+        const authUpdates: { [key: string]: any } = {};
         if (displayName !== undefined) {
-            await adminAuth.updateUser(uid, { displayName });
+            authUpdates.displayName = displayName;
+        }
+        if (Object.keys(authUpdates).length > 0) {
+           await adminAuth.updateUser(uid, authUpdates);
         }
 
         // Update Firestore user profile document
         const adminDb = getAdminDb();
         const userRef = adminDb.collection('users').doc(uid);
         const profileData: { [key: string]: any } = {};
-
+        if (displayName !== undefined) {
+            profileData.displayName = displayName;
+        }
         if (phone !== undefined) {
             profileData.phone = phone;
         }
@@ -98,6 +103,4 @@ export async function DELETE(request: NextRequest, { params }: { params: { uid: 
         if (error.code === 'auth/user-not-found') {
             errorMessage = 'User not found.';
         }
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
-    }
-}
+        return NextResponse.json({ error: errorMessage }, {

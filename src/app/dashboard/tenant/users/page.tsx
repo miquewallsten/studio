@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -49,7 +50,7 @@ export default function TenantUsersPage() {
         if (role === 'Tenant Admin') {
             fetchUsers();
         }
-    }, [role]);
+    }, [role, secureFetch]);
     
     const handleUserInvited = () => {
         fetchUsers(); 
@@ -96,11 +97,4 @@ export default function TenantUsersPage() {
             <DataTable 
                 columns={memoizedColumns} 
                 data={users}
-                tableId="tenant-users-table"
-            />
-           )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+                tableId="tenant-users-

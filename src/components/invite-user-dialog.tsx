@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import {
@@ -25,6 +24,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Separator } from './ui/separator';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 interface InviteUserDialogProps {
   isOpen: boolean;
@@ -41,6 +41,7 @@ export function InviteUserDialog({
   const [role, setRole] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   const handleInvite = async () => {
     if (!email || !role) {
@@ -53,17 +54,10 @@ export function InviteUserDialog({
     }
     setIsLoading(true);
     try {
-      const response = await fetch('/api/users/invite', {
+      await secureFetch('/api/users/invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, role }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to invite user.');
-      }
       
       toast({
         title: 'User Invited',
@@ -146,5 +140,3 @@ export function InviteUserDialog({
       </DialogContent>
     </Dialog>
   );
-}
-

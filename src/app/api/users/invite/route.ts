@@ -44,10 +44,19 @@ export async function POST(request: NextRequest) {
 
 
     // Create the user in Firebase Authentication
-    const userRecord = await adminAuth.createUser({
-      email: email,
-      emailVerified: false, // User will verify their email later
-    });
+    let userRecord;
+    try {
+        userRecord = await adminAuth.createUser({
+          email: email,
+          emailVerified: false, // User will verify their email later
+        });
+    } catch (error: any) {
+        if (error.code === 'auth/email-already-exists') {
+            userRecord = await adminAuth.getUserByEmail(email);
+        } else {
+            throw error;
+        }
+    }
     
     const adminDb = getAdminDb();
     const batch = adminDb.batch();
@@ -55,11 +64,11 @@ export async function POST(request: NextRequest) {
     const customClaims: {[key: string]: string} = {};
     const userProfile: {[key: string]: any} = {
         email: userRecord.email,
-        role: role,
     };
 
     if (role) {
         customClaims.role = role;
+        userProfile.role = role;
     }
     if (tenantId) {
         customClaims.tenantId = tenantId;
@@ -76,22 +85,10 @@ export async function POST(request: NextRequest) {
     
     // Create a user profile document
     const userRef = adminDb.collection('users').doc(userRecord.uid);
-    batch.set(userRef, userProfile);
+    batch.set(userRef, userProfile, { merge: true });
     
     await batch.commit();
 
     return NextResponse.json({ uid: userRecord.uid, email: userRecord.email, claims: customClaims });
 
-  } catch (error: any) {
-    console.error('Error creating user:', error);
-    let errorMessage = 'An unexpected error occurred.';
-    if (error.code === 'auth/email-already-exists') {
-        errorMessage = 'A user with this email address already exists.';
-    } else if (error.code === 'app/invalid-credential' || error.message.includes('credential')) {
-        errorMessage = 'Firebase Admin SDK credential error.';
-    } else if (error.message) {
-        errorMessage = error.message;
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
-}
+  } catch (error: any

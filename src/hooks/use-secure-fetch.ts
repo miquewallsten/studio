@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCallback } from 'react';
@@ -34,13 +33,20 @@ export function useSecureFetch() {
     if (!response.ok) {
         let errorData = { error: `Request failed with status ${response.status}` };
         if (contentType && contentType.includes('application/json')) {
-            errorData = await response.json();
+            try {
+                errorData = await response.json();
+            } catch(e) {
+                // The server returned an error but not valid JSON
+                const text = await response.text();
+                errorData.error = text || errorData.error;
+            }
         }
         throw new Error(errorData.error || 'An unknown server error occurred.');
     }
 
     if (contentType && contentType.includes('application/json')) {
       const text = await response.text();
+      // Handle cases where the response is empty but has a JSON content type
       return text ? JSON.parse(text) : {};
     }
     

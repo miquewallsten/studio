@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -21,8 +22,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { useAuthRole } from '@/hooks/use-auth-role';
-import { getIdToken } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 interface TenantInviteUserDialogProps {
   isOpen: boolean;
@@ -40,6 +40,7 @@ export function TenantInviteUserDialog({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user: tenantAdminUser } = useAuthRole();
+  const secureFetch = useSecureFetch();
 
   const handleInvite = async () => {
     if (!email || !role) {
@@ -67,21 +68,10 @@ export function TenantInviteUserDialog({
 
     setIsLoading(true);
     try {
-        const token = await getIdToken(auth.currentUser!);
-        const response = await fetch('/api/users/invite', {
+        await secureFetch('/api/users/invite', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({ email, role, tenantId }),
         });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to invite user.');
-      }
       
       toast({
         title: 'User Invited',
@@ -149,7 +139,4 @@ export function TenantInviteUserDialog({
             {isLoading ? 'Inviting User...' : 'Invite User'}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+      </

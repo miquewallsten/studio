@@ -44,10 +44,11 @@ const getStatusVariant = (status: string) => {
     }
   }
 
-function TenantDashboard({ secureFetch }: { secureFetch: any }) {
+function TenantDashboard() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const secureFetch = useSecureFetch();
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -94,10 +95,11 @@ function TenantDashboard({ secureFetch }: { secureFetch: any }) {
     );
 }
 
-function EndUserDashboard({ secureFetch }: { secureFetch: any }) {
+function EndUserDashboard() {
      const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const secureFetch = useSecureFetch();
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -205,7 +207,6 @@ function RequestTable({loading, error, tickets}: {loading: boolean, error: strin
 
 export default function ClientDashboardPage() {
   const { role, isLoading: isRoleLoading } = useAuthRole();
-  const secureFetch = useSecureFetch();
   
   if (isRoleLoading) {
       return (
@@ -220,11 +221,11 @@ export default function ClientDashboardPage() {
   }
 
   if (role === 'Tenant Admin' || role === 'Tenant User') {
-    return <TenantDashboard secureFetch={secureFetch} />;
+    return <TenantDashboard />;
   }
 
   if (role === 'End User') {
-    return <EndUserDashboard secureFetch={secureFetch} />;
+    return <EndUserDashboard />;
   }
 
   return (

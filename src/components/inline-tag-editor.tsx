@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -10,8 +9,7 @@ import { cn } from '@/lib/utils';
 import { X, Check, ChevronsUpDown, Tag } from 'lucide-react';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
-import { getIdToken } from 'firebase/auth';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type User = {
     uid: string;
@@ -31,6 +29,7 @@ export function InlineTagEditor({ user, allTags, onUserUpdated }: InlineTagEdito
     const { role } = useAuthRole();
     const { toast } = useToast();
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const secureFetch = useSecureFetch();
 
     React.useEffect(() => {
         setSelectedTags(user.tags || []);
@@ -39,22 +38,10 @@ export function InlineTagEditor({ user, allTags, onUserUpdated }: InlineTagEdito
 
     const saveTags = async (newTags: string[]) => {
         try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) throw new Error("Not authenticated.");
-
-            const token = await getIdToken(currentUser);
-
-            const res = await fetch(`/api/users/${user.uid}`, {
+            await secureFetch(`/api/users/${user.uid}`, {
                 method: 'PATCH',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify({ tags: newTags }),
             });
-            
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to update tags');
             
             toast({ title: 'Tags updated' });
             onUserUpdated();
@@ -105,9 +92,9 @@ export function InlineTagEditor({ user, allTags, onUserUpdated }: InlineTagEdito
 
     const showCreateOption = inputValue && !availableTags.some(tag => tag.toLowerCase() === inputValue.toLowerCase()) && !selectedTags.some(tag => tag.toLowerCase() === inputValue.toLowerCase());
 
-    const isSuperAdmin = role === 'Super Admin';
+    const isAdmin = role === 'Super Admin' || role === 'Admin';
 
-    if (!isSuperAdmin) {
+    if (!isAdmin) {
         return (
             <div className="flex flex-wrap gap-1">
                 {selectedTags.length > 0 ? selectedTags.map(tag => (

@@ -19,6 +19,7 @@ import type { Tenant } from './schema';
 import { TenantProfileDialog } from '@/components/tenant-profile-dialog';
 import { NewTenantDialog } from '@/components/new-tenant-dialog';
 import { useLanguage } from '@/contexts/language-context';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 export default function TenantsPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -27,14 +28,14 @@ export default function TenantsPage() {
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
     const [isNewTenantDialogOpen, setNewTenantDialogOpen] = useState(false);
     const { t } = useLanguage();
+    const secureFetch = useSecureFetch();
 
     const fetchTenants = async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch('/api/tenants'); 
-            const data = await response.json();
-            if (!response.ok) {
+            const data = await secureFetch('/api/tenants');
+            if (data.error) {
                 throw new Error(data.error || 'Failed to fetch tenants');
             }
             setTenants(data.tenants);
@@ -48,7 +49,7 @@ export default function TenantsPage() {
 
     useEffect(() => {
         fetchTenants();
-    }, []);
+    }, [secureFetch]);
     
     const handleDialogClose = () => {
         setSelectedTenant(null);
@@ -111,5 +112,4 @@ export default function TenantsPage() {
         </CardContent>
       </Card>
     </div>
-  );
-}
+  

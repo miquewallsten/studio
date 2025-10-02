@@ -17,14 +17,14 @@ export async function GET(request: NextRequest) {
         
         let uid: string;
         // Tenant Admins query by their tenantId, their own uid is the tenantId for other users.
-        if (decodedToken.role === 'Tenant Admin') {
-            uid = decodedToken.tenantId;
-        } else {
-            uid = decodedToken.uid;
+        const tenantId = decodedToken.tenantId;
+
+        if (!tenantId) {
+            return NextResponse.json({ error: 'User is not associated with a tenant.' }, { status: 403 });
         }
 
         const adminDb = getAdminDb();
-        const ticketsQuery = adminDb.collection('tickets').where('clientId', '==', uid).orderBy('createdAt', 'desc');
+        const ticketsQuery = adminDb.collection('tickets').where('clientId', '==', tenantId).orderBy('createdAt', 'desc');
         const querySnapshot = await ticketsQuery.get();
 
         const tickets: any[] = [];
@@ -44,6 +44,4 @@ export async function GET(request: NextRequest) {
         if (error.code === 'auth/id-token-expired') {
             return NextResponse.json({ error: 'Authentication token expired. Please log in again.' }, { status: 401 });
         }
-        return NextResponse.json({ error: error.message || 'An unexpected error occurred.' }, { status: 500 });
-    }
-}
+        return NextResponse.json({ error: error.message ||

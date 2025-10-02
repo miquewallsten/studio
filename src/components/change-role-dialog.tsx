@@ -22,6 +22,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Separator } from './ui/separator';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
+import { useAuthRole } from '@/hooks/use-auth-role';
 
 type User = {
     uid: string;
@@ -44,6 +46,8 @@ export function ChangeRoleDialog({
   const [newRole, setNewRole] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
+  const { role: currentUserRole } = useAuthRole();
 
   const handleRoleChange = async () => {
     if (!newRole || !user) {
@@ -56,17 +60,10 @@ export function ChangeRoleDialog({
     }
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/users/${user.uid}/role`, {
+      const response = await secureFetch(`/api/users/${user.uid}/role`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to change role.');
-      }
       
       toast({
         title: 'Role Updated',
@@ -102,14 +99,16 @@ export function ChangeRoleDialog({
                 <SelectValue placeholder="Select a new role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectGroup>
-                    <SelectLabel>Internal Roles</SelectLabel>
-                    <SelectItem value="Super Admin">Super Admin</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Manager">Manager</SelectItem>
-                    <SelectItem value="Analyst">Analyst</SelectItem>
-                    <SelectItem value="View Only">View Only</SelectItem>
-                </SelectGroup>
+                {currentUserRole === 'Super Admin' && (
+                  <SelectGroup>
+                      <SelectLabel>Internal Roles</SelectLabel>
+                      <SelectItem value="Super Admin">Super Admin</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Manager">Manager</SelectItem>
+                      <SelectItem value="Analyst">Analyst</SelectItem>
+                      <SelectItem value="View Only">View Only</SelectItem>
+                  </SelectGroup>
+                )}
                 <Separator />
                 <SelectGroup>
                     <SelectLabel>Client-Facing Roles</SelectLabel>
@@ -127,8 +126,4 @@ export function ChangeRoleDialog({
           <Button onClick={handleRoleChange} disabled={isLoading} className="bg-accent hover:bg-accent/90">
             {isLoading ? 'Saving...' : 'Save New Role'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        </

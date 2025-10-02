@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -17,8 +16,7 @@ import { useState } from 'react';
 import { Textarea } from './ui/textarea';
 import { Copy, Mail } from 'lucide-react';
 import { Separator } from './ui/separator';
-import { auth } from '@/lib/firebase';
-import { getIdToken } from 'firebase/auth';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { sendEmail } from '@/ai/flows/send-email-flow';
 import type { SendEmailInput } from '@/ai/schemas/send-email-schema';
 
@@ -36,6 +34,7 @@ export function NewTenantDialog({
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   const [companyName, setCompanyName] = useState('');
   const [companyUrl, setCompanyUrl] = useState('');
@@ -78,25 +77,10 @@ export function NewTenantDialog({
     setIsLoading(true);
 
     try {
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-            throw new Error("You must be logged in to create a tenant.");
-        }
-        const token = await getIdToken(currentUser);
-
-        const response = await fetch('/api/tenants', {
+        const data = await secureFetch('/api/tenants', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({ companyName, companyUrl, adminName, adminEmail }),
         });
-
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to create tenant.');
-        }
 
         toast({
             title: 'Tenant Created',

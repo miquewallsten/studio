@@ -34,11 +34,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
         // 2. Delete users from Firebase Auth
         // This has to be done separately from the Firestore batch
-        await Promise.all(userIdsToDelete.map(uid => adminAuth.deleteUser(uid).catch(err => {
-            // Log error but don't fail the whole operation if a user is already deleted
-            console.error(`Failed to delete user ${uid} from Auth:`, err);
-        })));
-
+        if (userIdsToDelete.length > 0) {
+            await Promise.all(userIdsToDelete.map(uid => adminAuth.deleteUser(uid).catch(err => {
+                // Log error but don't fail the whole operation if a user is already deleted
+                console.error(`Failed to delete user ${uid} from Auth:`, err);
+            })));
+        }
 
         // 3. Delete the tenant document
         const tenantRef = adminDb.collection('tenants').doc(tenantId);

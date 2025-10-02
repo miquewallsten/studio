@@ -16,8 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { Textarea } from './ui/textarea';
 import { Copy, Mail } from 'lucide-react';
-import { auth } from '@/lib/firebase';
-import { getIdToken } from 'firebase/auth';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { sendEmail } from '@/ai/flows/send-email-flow';
 import type { SendEmailInput } from '@/ai/schemas/send-email-schema';
 import { Skeleton } from './ui/skeleton';
@@ -43,6 +42,7 @@ export function ResendInviteDialog({
   const [step, setStep] = useState(1);
   const [onboardingLink, setOnboardingLink] = useState('');
   const [emailContent, setEmailContent] = useState<SendEmailInput>({ to: '', subject: '', html: '' });
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
     // When the dialog opens and we have a tenant, fetch the new link.
@@ -50,19 +50,9 @@ export function ResendInviteDialog({
         const getNewLink = async () => {
             setIsLoading(true);
             try {
-                const currentUser = auth.currentUser;
-                if (!currentUser) throw new Error("Not authenticated.");
-                const token = await getIdToken(currentUser);
-
-                const response = await fetch(`/api/tenants/${tenant.id}/resend-invite`, {
+                const data = await secureFetch(`/api/tenants/${tenant.id}/resend-invite`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to get new invite link.');
-                }
                 
                 const passwordResetLink = data.onboardingLink;
                 const actionCode = new URL(passwordResetLink).searchParams.get('oobCode');
@@ -97,7 +87,7 @@ export function ResendInviteDialog({
         setTimeout(() => setStep(1), 300); // Delay to allow animation
         setIsLoading(false);
     }
-  }, [isOpen, tenant, toast, onOpenChange, step]);
+  }, [isOpen, tenant, toast, onOpenChange, step, secureFetch]);
 
 
   const handleSendEmail = async () => {
@@ -193,11 +183,4 @@ export function ResendInviteDialog({
                     <Button type="button" onClick={handleSendEmail} className="bg-accent hover:bg-accent/90" disabled={isLoading}>
                         <Mail className="mr-2 h-4 w-4" />
                         {isLoading ? 'Sending...' : 'Resend Invitation'}
-                    </Button>
-                </DialogFooter>
-            </>
-          )}
-      </DialogContent>
-    </Dialog>
-  );
-}
+                    </Button

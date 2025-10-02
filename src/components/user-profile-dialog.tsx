@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -41,8 +40,7 @@ import { ChangeRoleDialog } from './change-role-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
-import { auth } from '@/lib/firebase';
-import { getIdToken } from 'firebase/auth';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { useAuthRole } from '@/hooks/use-auth-role';
 
 type User = {
@@ -74,6 +72,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     const [isEditMode, setIsEditMode] = useState(false);
     const [isChangeRoleOpen, setChangeRoleOpen] = useState(false);
     const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const secureFetch = useSecureFetch();
     
     const [formData, setFormData] = useState({
         displayName: '',
@@ -106,27 +105,11 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     const handleSaveChanges = async () => {
         if (!user) return;
         try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) {
-                throw new Error("Not authenticated. Please log in again.");
-            }
-            const token = await getIdToken(currentUser);
-            
             const payload = { ...formData };
-
-            const res = await fetch(`/api/users/${user.uid}`, {
+            await secureFetch(`/api/users/${user.uid}`, {
                 method: 'PATCH',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
                 body: JSON.stringify(payload),
             });
-            
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.error || 'Failed to update user');
-            }
 
             toast({
                 title: 'User Updated',
@@ -147,20 +130,9 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     const handleDeleteUser = async () => {
         if (!user) return;
         try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) throw new Error("Not authenticated.");
-
-            const token = await getIdToken(currentUser);
-            
-            const res = await fetch(`/api/users/${user.uid}`, {
+            await secureFetch(`/api/users/${user.uid}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
             });
-
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to delete user');
-            }
             
             toast({
                 title: 'User Deleted',
@@ -287,10 +259,12 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                 <Button variant="destructive" className="w-full justify-start">
                                     {user.disabled ? 'Enable User' : 'Disable User'}
                                 </Button>
-                                <Button variant="destructive" className="w-full justify-start" onClick={() => setDeleteDialogOpen(true)}>
-                                    <Trash2 className="mr-2 size-4" />
-                                    Delete User
-                                </Button>
+                                {currentUserRole === 'Super Admin' && (
+                                    <Button variant="destructive" className="w-full justify-start" onClick={() => setDeleteDialogOpen(true)}>
+                                        <Trash2 className="mr-2 size-4" />
+                                        Delete User
+                                    </Button>
+                                )}
                             </CardContent>
                         </Card>
                          <Card>
@@ -325,7 +299,7 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>Tags</Label>
-                                            {currentUserRole === 'Super Admin' ? (
+                                            {(currentUserRole === 'Super Admin' || currentUserRole === 'Admin') ? (
                                                 <Popover open={open} onOpenChange={setOpen}>
                                                     <PopoverTrigger asChild>
                                                         <Button
@@ -466,9 +440,3 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                         <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
                     )}
                 </DialogFooter>
-            </DialogContent>
-        </Dialog>
-        </>
-    );
-}
-

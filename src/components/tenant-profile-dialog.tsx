@@ -35,8 +35,7 @@ import { Separator } from './ui/separator';
 import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { auth } from '@/lib/firebase';
-import { getIdToken } from 'firebase/auth';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type Tenant = {
     id: string;
@@ -57,6 +56,7 @@ export function TenantProfileDialog({ tenant, isOpen, onOpenChange, onTenantUpda
     const { toast } = useToast();
     const [isEditMode, setIsEditMode] = useState(false);
     const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const secureFetch = useSecureFetch();
     
     const [formData, setFormData] = useState({
         name: '',
@@ -86,19 +86,9 @@ export function TenantProfileDialog({ tenant, isOpen, onOpenChange, onTenantUpda
     const handleDeleteTenant = async () => {
         if (!tenant) return;
         try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) throw new Error("Not authenticated.");
-            const token = await getIdToken(currentUser);
-
-            const res = await fetch(`/api/tenants/${tenant.id}`, {
+            await secureFetch(`/api/tenants/${tenant.id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
             });
-
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to delete tenant');
-            }
 
             toast({
                 title: 'Tenant Deleted',
@@ -233,10 +223,4 @@ export function TenantProfileDialog({ tenant, isOpen, onOpenChange, onTenantUpda
                         </>
                     ) : (
                         <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-                    )}
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-        </>
-    );
-}
+                    
