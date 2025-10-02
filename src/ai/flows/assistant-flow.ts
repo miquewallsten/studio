@@ -46,7 +46,6 @@ const seedDatabaseTool = ai.defineTool(
                 'tenants': { name: 'Seed Tenant', status: 'ACTIVE', createdAt: admin.firestore.FieldValue.serverTimestamp() },
                 'expertise_groups': { name: 'General Analysts (Seed)', analystUids: [], createdAt: admin.firestore.FieldValue.serverTimestamp() },
                 'feedback': { category: 'Suggestion', summary: 'Initial seed document for feedback collection.', userName: 'system', createdAt: admin.firestore.FieldValue.serverTimestamp() },
-                 'user_preferences': { dashboard: { widgets: [] } },
                  'email_templates': { name: 'Seed Template', subject: 'Subject', body: 'Body', placeholders: [] }
             };
 
@@ -59,10 +58,19 @@ const seedDatabaseTool = ai.defineTool(
                 }
             }
 
+            // Handle nested user preferences collection separately
+            const userPrefsRef = db.collection('users').doc('seed_user').collection('preferences').doc('dashboard');
+            const userPrefsSnap = await userPrefsRef.get();
+            if (!userPrefsSnap.exists) {
+                await userPrefsRef.set({ dashboard: { widgets: [] } });
+                seededCollections.push('users/seed_user/preferences');
+            }
+
+
             if (seededCollections.length > 0) {
                 return {
                     seededCollections,
-                    message: `Successfully seeded the following collections: ${seededCollections.join(', ')}.`,
+                    message: `Successfully seeded the following collections/subcollections: ${seededCollections.join(', ')}.`,
                 };
             } else {
                  return {
