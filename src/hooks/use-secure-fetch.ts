@@ -7,7 +7,7 @@ import { getIdToken } from 'firebase/auth';
 
 // A simple hook to make authenticated API requests
 export function useSecureFetch() {
-  const secureFetch = useCallback(async (url: string, options: RequestInit = {}, expectJson = true) => {
+  const secureFetch = useCallback(async (url: string, options: RequestInit = {}) => {
     const user = auth.currentUser;
     if (!user) {
       throw new Error('Not authenticated.');
@@ -20,7 +20,7 @@ export function useSecureFetch() {
 
     const headers = new Headers(options.headers);
     headers.set('Authorization', `Bearer ${token}`);
-    if (expectJson && !headers.has('Content-Type')) {
+    if (options.body && typeof options.body === 'string' && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
 
@@ -29,17 +29,22 @@ export function useSecureFetch() {
       headers,
     });
     
+    // Check if the response is JSON before trying to parse it
+    const contentType = response.headers.get('content-type');
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'An unknown server error occurred.'}));
+        let errorData = { error: `Request failed with status ${response.status}` };
+        if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json();
+        }
         throw new Error(errorData.error || 'An unknown server error occurred.');
     }
 
-    if (expectJson) {
-      // Handle cases where the response might be empty
+    if (contentType && contentType.includes('application/json')) {
       const text = await response.text();
       return text ? JSON.parse(text) : {};
     }
     
+    // Handle non-json responses, e.g. from a proxy
     return response;
   }, []);
 

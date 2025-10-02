@@ -11,3 +11,10 @@ export const ai = genkit({
   ],
 });
 export const DEFAULT_MODEL = 'googleai/gemini-1.5-flash';
+
+export async function generateText(prompt: string) {
+    return await ai.generate({
+        model: DEFAULT_MODEL,
+        prompt: prompt,
+    });
+}

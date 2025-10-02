@@ -25,6 +25,9 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         // Allow Tenant Admins, Tenant Users, and End Users. Deny internal staff.
         if (userRole && ['Tenant Admin', 'Tenant User', 'End User'].includes(userRole)) {
           setUser(user);
+          // Set cookie for server-side rendering
+          const idToken = await user.getIdToken();
+          document.cookie = `firebaseIdToken=${idToken}; path=/;`;
         } else {
           // If it's an internal user, send them to the main dashboard
           router.push('/dashboard');
