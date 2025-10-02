@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     console.error('Error listing users:', error);
     let errorMessage = 'An unexpected error occurred.';
     if (error.message?.includes('credential error')) {
-        errorMessage = error.message;
+        errorMessage = 'Firebase Admin SDK credential error: Please ensure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set correctly in your .env file.';
     } else if (error.message) {
         errorMessage = error.message;
     }

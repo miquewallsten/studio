@@ -52,7 +52,7 @@ import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { debounce } from 'lodash';
 import { QuickActionsWidget } from '@/components/dashboard/quick-actions-widget';
 import { CustomerExperienceWidget } from '@/components/dashboard/customer-experience-widget';
-import { generateText } from '@/lib/ai';
+
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
