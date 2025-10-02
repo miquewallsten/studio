@@ -42,13 +42,17 @@ export default function NewTicketPage() {
 
     try {
       // 1. Call the AI to get suggested questions
-      const prompt = `You are an AI assistant that suggests specialized compliance questions. Given the report type and description below, suggest a list of 3-5 compliance questions. Return *only* a JSON object with a "suggestedQuestions" key containing an array of strings. Do not add any other text, markdown, or explanation.\n\nReport Type: ${reportType}\nDescription: ${description}`;
+      const aiPrompt = `You are an AI assistant that suggests specialized compliance questions. Given the report type and description below, suggest a list of 3-5 compliance questions. Return *only* a JSON object with a "suggestedQuestions" key containing an array of strings. Do not add any other text, markdown, or explanation.\n\nReport Type: ${reportType}\nDescription: ${description}`;
       
       const res = await fetch('/api/ai/echo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: aiPrompt }),
       });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to fetch AI suggestions.');
+      }
       const json = await res.json();
       const aiResponse = json.text ?? '';
       
@@ -59,6 +63,7 @@ export default function NewTicketPage() {
         suggestedQuestions = parsed.suggestedQuestions || [];
       } catch (e) {
         console.error("Failed to parse AI response for compliance questions:", e);
+        // Continue without AI suggestions if parsing fails
       }
       
       // 2. Save the ticket and form data to Firestore.
@@ -82,11 +87,11 @@ export default function NewTicketPage() {
 
       router.push('/dashboard/tickets');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating ticket:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create ticket. Please try again.',
+        description: error.message || 'Failed to create ticket. Please try again.',
         variant: 'destructive',
       });
     } finally {

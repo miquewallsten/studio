@@ -50,6 +50,11 @@ export function QuickActionsWidget() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: fullPrompt }),
         });
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || 'The AI assistant failed to perform the action.');
+        }
+
         const json = await res.json();
         const response = json.text ?? '';
 

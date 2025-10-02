@@ -41,14 +41,20 @@ export function AssistantWidget() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ prompt: fullPrompt }),
             });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'The AI assistant failed to respond.');
+            }
+            
             const json = await res.json();
             const response = json.text ?? '';
 
             const newModelMessage: Message = { role: 'model', text: response };
             setHistory(prev => [...prev, newModelMessage]);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error calling AI assistant:", error);
-            const errorMessage: Message = { role: 'model', text: "Sorry, I encountered an error. Please try again." };
+            const errorMessage: Message = { role: 'model', text: error.message || "Sorry, I encountered an error. Please try again." };
             setHistory(prev => [...prev, errorMessage]);
         } finally {
             setIsLoading(false);

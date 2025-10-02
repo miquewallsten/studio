@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEffect, useState, useRef } from 'react';
-import { doc, getDoc, updateDoc, Timestamp, collection, where, query } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp, collection, where, query, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -95,7 +95,7 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
             variant: 'destructive',
           });
           setTicket(null);
-        } else if (ticketData.status !== 'New') {
+        } else if (ticketData.status !== 'New' && ticketData.status !== 'In Progress') { // Allow viewing if In Progress
              setTicket(ticketData); 
         } else {
           // Fetch questions from the form template if formId exists
@@ -306,7 +306,7 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     );
   }
 
-  if (ticket.status !== 'New') {
+  if (ticket.status !== 'New' && ticket.status !== 'In Progress') {
       return (
            <RootComponent>
                 <Card className="w-full max-w-lg text-center">
