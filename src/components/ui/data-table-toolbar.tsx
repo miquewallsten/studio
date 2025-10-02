@@ -46,12 +46,9 @@ export function DataTableToolbar<TData>({
       {value: "employment-verification", label: "Employment Verification"},
   ]
   
-  // This is the correct way to guard the lookups.
-  // We get all column IDs that exist for the current table instance.
-  const columnIds = React.useMemo(() => new Set(table.getAllColumns().map(c => c.id)), [table]);
-
   const tenantNames = React.useMemo(() => {
-    if (!columnIds.has('tenantName')) {
+    const tenantNameColumn = table.getColumn('tenantName');
+    if (!tenantNameColumn) {
         return [];
     }
     const names = new Set<string>();
@@ -60,7 +57,7 @@ export function DataTableToolbar<TData>({
         if (tenantName) names.add(tenantName);
     });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table, columnIds]);
+  }, [table]);
 
 
   // Find a generic column to filter by text, like 'name' or 'email' or 'subject'
@@ -82,28 +79,28 @@ export function DataTableToolbar<TData>({
             className="h-8 w-[150px] lg:w-[250px]"
             />
         )}
-        {columnIds.has('role') && (
+        {table.getColumn('role') && (
           <DataTableFacetedFilter
             column={table.getColumn('role')}
             title="Role"
             options={roles}
           />
         )}
-        {columnIds.has('status') && (
+        {table.getColumn('status') && (
             <DataTableFacetedFilter
                 column={table.getColumn('status')}
                 title="Status"
                 options={ticketStatuses}
             />
         )}
-        {columnIds.has('reportType') && (
+        {table.getColumn('reportType') && (
             <DataTableFacetedFilter
                 column={table.getColumn('reportType')}
                 title="Report Type"
                 options={reportTypes}
             />
         )}
-        {columnIds.has('tenantName') && tenantNames.length > 0 && (
+        {table.getColumn('tenantName') && tenantNames.length > 0 && (
             <DataTableFacetedFilter
                 column={table.getColumn('tenantName')}
                 title="Tenant"
