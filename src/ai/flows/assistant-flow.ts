@@ -285,11 +285,11 @@ const assistantFlow = ai.defineFlow(
         text: prompt,
         context: {
           locale,
-        }
+        },
+        system: systemPrompt,
+        tools: [createTenantTool, createTicketTool, getPlatformMetricsTool, impersonateUserTool, seedDatabaseTool],
       },
       history: history,
-      tools: [createTenantTool, createTicketTool, getPlatformMetricsTool, impersonateUserTool, seedDatabaseTool],
-      system: systemPrompt,
     });
 
     return llmResponse.text;

@@ -59,10 +59,10 @@ const conversationalFormFlow = ai.defineFlow(
         context: {
           questions,
           userName,
-        }
+        },
+        system: systemPrompt,
       },
       history: history.slice(0, -1), // Pass all but the last message as history
-      system: systemPrompt,
     });
 
     return llmResponse.text;

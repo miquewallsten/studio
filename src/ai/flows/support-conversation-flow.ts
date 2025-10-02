@@ -101,11 +101,11 @@ const supportConversationFlow = ai.defineFlow(
         context: {
           userName,
           userEmail,
-        }
+        },
+        system: systemPrompt,
+        tools: [extractAndSummarizeTool]
       },
       history: history.slice(0, -1),
-      system: systemPrompt,
-      tools: [extractAndSummarizeTool]
     });
 
     const toolResponse = llmResponse.toolRequest();
