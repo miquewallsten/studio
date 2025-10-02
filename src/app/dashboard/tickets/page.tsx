@@ -179,7 +179,7 @@ export default function TicketsPage() {
   }), [t, columnsData]);
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100vh_-_100px)]">
+    <div className="flex flex-col gap-4 h-full">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">{t('nav.tickets')}</h1>
         <Button asChild className="bg-accent hover:bg-accent/90">
@@ -202,24 +202,14 @@ export default function TicketsPage() {
             </TabsTrigger>
         </TabsList>
         
-
-        <TabsContent value="list" className="flex-1 overflow-hidden">
-          <Card className="h-full flex flex-col">
-            <CardHeader>
-              <CardTitle>{t('tickets.table_title')}</CardTitle>
-              <CardDescription>
-                {t('tickets.table_desc')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-                {loading ? (
-                    <p>{t('common.loading')}...</p>
-                ) : (
-                    <DataTable columns={memoizedColumns} data={allTickets} />
-                )}
-            </CardContent>
-          </Card>
+        <TabsContent value="list" className="flex-1 overflow-auto">
+            {loading ? (
+                <p>{t('common.loading')}...</p>
+            ) : (
+                <DataTable columns={memoizedColumns} data={allTickets} />
+            )}
         </TabsContent>
+
         <TabsContent value="kanban" className="flex-1 overflow-hidden">
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 h-full">

@@ -17,8 +17,6 @@ import {
   useReactTable,
   Row,
   FilterFn,
-  ColumnSizingState,
-  ColumnOrderState,
 } from "@tanstack/react-table"
 import { rankItem } from '@tanstack/match-sorter-utils'
 
@@ -53,8 +51,6 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   return itemRank.passed
 }
 
-const tableStateLocalStorageKey = "data-table-state";
-
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -66,20 +62,18 @@ export function DataTable<TData, TValue>({
     []
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({});
-  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>(
-    columns.map(c => c.id!)
-  );
 
   // Load state from local storage on initial render
   React.useEffect(() => {
-    const savedState = localStorage.getItem(tableStateLocalStorageKey);
-    if (savedState) {
-        const { columnVisibility, sorting, columnSizing, columnOrder } = JSON.parse(savedState);
-        if (columnVisibility) setColumnVisibility(columnVisibility);
-        if (sorting) setSorting(sorting);
-        if (columnSizing) setColumnSizing(columnSizing);
-        if (columnOrder) setColumnOrder(columnOrder);
+    const savedStateJSON = localStorage.getItem("data-table-state");
+    if (savedStateJSON) {
+      try {
+        const savedState = JSON.parse(savedStateJSON);
+        if (savedState.columnVisibility) setColumnVisibility(savedState.columnVisibility);
+        if (savedState.sorting) setSorting(savedState.sorting);
+      } catch (e) {
+        console.error("Failed to parse table state from localStorage", e);
+      }
     }
   }, []);
 
@@ -88,11 +82,9 @@ export function DataTable<TData, TValue>({
     const stateToSave = {
         columnVisibility,
         sorting,
-        columnSizing,
-        columnOrder
     };
-    localStorage.setItem(tableStateLocalStorageKey, JSON.stringify(stateToSave));
-  }, [columnVisibility, sorting, columnSizing, columnOrder]);
+    localStorage.setItem("data-table-state", JSON.stringify(stateToSave));
+  }, [columnVisibility, sorting]);
 
 
   const table = useReactTable({
@@ -105,15 +97,10 @@ export function DataTable<TData, TValue>({
       sorting,
       columnVisibility,
       columnFilters,
-      columnSizing,
-      columnOrder,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onColumnSizingChange: setColumnSizing,
-    onColumnOrderChange: setColumnOrder,
-    columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -124,34 +111,21 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col">
       <DataTableToolbar table={table} />
-      <div className="rounded-md border">
-        <Table style={{ width: table.getCenterTotalSize() }}>
-          <TableHeader>
+      <div className="rounded-md border relative flex-1 overflow-auto">
+        <Table>
+          <TableHeader className="sticky top-0 bg-card z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead 
-                        key={header.id} 
-                        colSpan={header.colSpan}
-                        style={{ width: header.getSize() }}
-                    >
+                    <TableHead key={header.id} colSpan={header.colSpan}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
                             header.getContext()
-                          )}
-                          {header.column.getCanResize() && (
-                            <div
-                                onMouseDown={header.getResizeHandler()}
-                                onTouchStart={header.getResizeHandler()}
-                                className={`resizer ${
-                                    header.column.getIsResizing() ? 'isResizing' : ''
-                                }`}
-                            ></div>
                           )}
                     </TableHead>
                   )
@@ -169,11 +143,7 @@ export function DataTable<TData, TValue>({
                   className={onRowClick ? "cursor-pointer" : ""}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell 
-                        key={cell.id} 
-                        className="py-1 px-4"
-                        style={{ width: cell.column.getSize() }}
-                    >
+                    <TableCell key={cell.id} className="py-2 px-4">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
