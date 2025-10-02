@@ -2,11 +2,11 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { UserNav } from '@/components/client-user-nav'; // Use a dedicated client nav
+import { UserNav } from '@/components/client-user-nav';
 import Link from 'next/link';
 import { Icons } from '@/components/icons';
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, User, getIdToken } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,8 +21,8 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
       if (user) {
         const idTokenResult = await user.getIdTokenResult();
         const userRole = idTokenResult.claims.role;
-        // Ensure only Tenant Admins/Users can access this layout
-        if (userRole === 'Tenant Admin' || userRole === 'Tenant User') {
+        // Allow Tenant Admins, Tenant Users, and End Users. Deny internal staff.
+        if (userRole && ['Tenant Admin', 'Tenant User', 'End User'].includes(userRole)) {
           setUser(user);
           document.cookie = `firebaseIdToken=${idTokenResult.token}; path=/;`;
         } else {
@@ -70,7 +70,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
               TenantCheck
             </span>
              <span className="text-lg font-light text-muted-foreground font-headline">
-              | Client Portal
+              | Portal
             </span>
         </Link>
         <div className="ml-auto">

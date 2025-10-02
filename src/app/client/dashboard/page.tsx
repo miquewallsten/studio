@@ -24,8 +24,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import type { Timestamp } from 'firebase/firestore';
+import { useAuthRole } from '@/hooks/use-auth-role';
+import { Skeleton } from '@/components/ui/skeleton';
 
-type Request = {
+type Ticket = {
   id: string;
   subjectName: string;
   reportType: string;
@@ -33,120 +35,210 @@ type Request = {
   createdAt: string; // Will be an ISO string
 };
 
-export default function ClientDashboardPage() {
-  const [user, loadingUser] = useAuthState(auth);
-  const [requests, setRequests] = useState<Request[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const secureFetch = useSecureFetch();
-
-  useEffect(() => {
-    if (user) {
-      const fetchRequests = async () => {
-        try {
-          setLoading(true);
-          const data = await secureFetch('/api/client/tickets');
-          if (data.error) {
-            throw new Error(data.error);
-          }
-          setRequests(data.tickets);
-        } catch (err: any) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchRequests();
-    } else if (!loadingUser) {
-        setLoading(false);
+const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'New': return 'destructive';
+      case 'In Progress': return 'secondary';
+      case 'Completed': return 'default';
+      default: return 'outline';
     }
-  }, [user, loadingUser, secureFetch]);
+  }
 
-  return (
-    <div className="flex-1 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold font-headline">Client Portal</h1>
-        <Button asChild className="bg-accent hover:bg-accent/90">
-          <Link href="/client/request/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New Request
-          </Link>
-        </Button>
-      </div>
+function TenantDashboard({ secureFetch }: { secureFetch: any }) {
+    const [tickets, setTickets] = useState<Ticket[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-      <Card>
-        <CardHeader>
-          <CardTitle>My Requests</CardTitle>
-          <CardDescription>
-            Here is a list of your recent background check requests.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
+    useEffect(() => {
+        const fetchRequests = async () => {
+            try {
+            setLoading(true);
+            const data = await secureFetch('/api/client/tickets');
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            setTickets(data.tickets);
+            } catch (err: any) {
+            setError(err.message);
+            } finally {
+            setLoading(false);
+            }
+        };
+
+        fetchRequests();
+    }, [secureFetch]);
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold font-headline">Client Dashboard</h1>
+                <Button asChild className="bg-accent hover:bg-accent/90">
+                <Link href="/client/request/new">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    New Request
+                </Link>
+                </Button>
+            </div>
+             <Card>
+                <CardHeader>
+                <CardTitle>My Organization's Requests</CardTitle>
+                <CardDescription>
+                    Here is a list of recent background check requests from your organization.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <RequestTable loading={loading} error={error} tickets={tickets} />
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+function EndUserDashboard({ secureFetch }: { secureFetch: any }) {
+     const [tickets, setTickets] = useState<Ticket[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchRequests = async () => {
+            try {
+            setLoading(true);
+            const data = await secureFetch('/api/end-user/tickets');
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            setTickets(data.tickets);
+            } catch (err: any) {
+            setError(err.message);
+            } finally {
+            setLoading(false);
+            }
+        };
+
+        fetchRequests();
+    }, [secureFetch]);
+
+    return (
+        <div className="space-y-4">
+            <h1 className="text-3xl font-bold font-headline">My Portal</h1>
+             <Card>
+                <CardHeader>
+                <CardTitle>My History</CardTitle>
+                <CardDescription>
+                    Here is a list of background checks where you are the subject.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <RequestTable loading={loading} error={error} tickets={tickets} />
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+
+function RequestTable({loading, error, tickets}: {loading: boolean, error: string | null, tickets: Ticket[]}) {
+    return (
+        <Table>
             <TableHeader>
-              <TableRow>
+                <TableRow>
                 <TableHead>Subject</TableHead>
                 <TableHead>Report Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead>
-                  <span className="sr-only">Actions</span>
+                    <span className="sr-only">Actions</span>
                 </TableHead>
-              </TableRow>
+                </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+                {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                     Loading requests...
-                  </TableCell>
+                    </TableCell>
                 </TableRow>
-               ) : error ? (
-                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-destructive">
-                    Error: {error}
-                  </TableCell>
-                </TableRow>
-              ) : requests.length === 0 ? (
+                ) : error ? (
+                    <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center text-destructive">
+                        Error: {error}
+                    </TableCell>
+                    </TableRow>
+                ) : tickets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    You have no active requests.
-                  </TableCell>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                    No requests found.
+                    </TableCell>
                 </TableRow>
-              ) : (
-                requests.map((request) => (
-                  <TableRow key={request.id}>
+                ) : (
+                tickets.map((request) => (
+                    <TableRow key={request.id}>
                     <TableCell className="font-medium">
-                      {request.subjectName}
+                        {request.subjectName}
                     </TableCell>
                     <TableCell>{request.reportType}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          request.status === 'New' ? 'destructive' : 'secondary'
-                        }
-                      >
+                        <Badge
+                        variant={getStatusVariant(request.status)}
+                        >
                         {request.status}
-                      </Badge>
+                        </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(request.createdAt).toLocaleDateString()}
+                        {new Date(request.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="icon">
+                        <Button asChild variant="ghost" size="icon">
                         <Link href={`/client/ticket/${request.id}`}>
-                          <ArrowRight className="h-4 w-4" />
+                            <ArrowRight className="h-4 w-4" />
                         </Link>
-                      </Button>
+                        </Button>
                     </TableCell>
-                  </TableRow>
+                    </TableRow>
                 ))
-              )}
+                )}
             </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        </Table>
+    )
+}
+
+
+export default function ClientDashboardPage() {
+  const { role, isLoading: isRoleLoading } = useAuthRole();
+  const secureFetch = useSecureFetch();
+  
+  if (isRoleLoading) {
+      return (
+          <div className="space-y-4">
+              <Skeleton className="h-9 w-1/4" />
+              <Card>
+                  <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+                  <CardContent><Skeleton className="h-40 w-full" /></CardContent>
+              </Card>
+          </div>
+      )
+  }
+
+  if (role === 'Tenant Admin' || role === 'Tenant User') {
+    return <TenantDashboard secureFetch={secureFetch} />;
+  }
+
+  if (role === 'End User') {
+    return <EndUserDashboard secureFetch={secureFetch} />;
+  }
+
+  return (
+      <div className="space-y-4">
+            <h1 className="text-3xl font-bold font-headline">Client Portal</h1>
+             <Card>
+                <CardHeader>
+                <CardTitle>Welcome</CardTitle>
+                <CardDescription>
+                   There is no portal content for your assigned role.
+                </CardDescription>
+                </CardHeader>
+            </Card>
+      </div>
+  )
+
 }

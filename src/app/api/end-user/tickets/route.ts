@@ -1,0 +1,47 @@
+
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+// This new endpoint is specifically for End Users to fetch tickets where they are the subject.
+export async function GET(request: NextRequest) {
+    try {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json({ error: 'Not authenticated. No auth header.' }, { status: 401 });
+        }
+        const idToken = authHeader.split('Bearer ')[1];
+
+        const adminAuth = getAdminAuth();
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        
+        // The user's own UID is what we use to find their tickets.
+        const endUserId = decodedToken.uid;
+
+        const adminDb = getAdminDb();
+        // Query the 'tickets' collection where the 'endUserId' field matches the user's UID.
+        const ticketsQuery = adminDb.collection('tickets').where('endUserId', '==', endUserId).orderBy('createdAt', 'desc');
+        const querySnapshot = await ticketsQuery.get();
+
+        const tickets: any[] = [];
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            tickets.push({ 
+                id: doc.id,
+                ...data,
+                // Convert Firestore Timestamp to ISO string for JSON serialization
+                createdAt: data.createdAt?.toDate().toISOString(),
+            });
+        });
+
+        return NextResponse.json({ tickets });
+
+    } catch (error: any) {
+        console.error('Error fetching end-user tickets:', error);
+        if (error.code === 'auth/id-token-expired') {
+            return NextResponse.json({ error: 'Authentication token expired. Please log in again.' }, { status: 401 });
+        }
+        return NextResponse.json({ error: error.message || 'An unexpected error occurred.' }, { status: 500 });
+    }
+}
