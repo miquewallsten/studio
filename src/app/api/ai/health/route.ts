@@ -1,6 +1,7 @@
+
 import 'server-only';
 import { NextResponse } from 'next/server';
-import { ai, DEFAULT_MODEL, generateText } from '@/ai/genkit';
+import { generateText, DEFAULT_MODEL } from '@/ai/genkit';
 
 export const runtime = 'nodejs';
 
