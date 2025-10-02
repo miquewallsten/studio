@@ -20,6 +20,8 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
 
+  const allColumnIds = React.useMemo(() => new Set(table.getAllColumns().map(c => c.id)), [table]);
+
   // Define potential filter options
   const roles = [
       {value: "Super Admin", label: "Super Admin"},
@@ -47,8 +49,7 @@ export function DataTableToolbar<TData>({
   ]
   
   const tenantNames = React.useMemo(() => {
-    const tenantNameColumn = table.getColumn('tenantName');
-    if (!tenantNameColumn) {
+    if (!allColumnIds.has('tenantName')) {
         return [];
     }
     const names = new Set<string>();
@@ -57,7 +58,7 @@ export function DataTableToolbar<TData>({
         if (tenantName) names.add(tenantName);
     });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table]);
+  }, [table, allColumnIds]);
 
 
   // Find a generic column to filter by text, like 'name' or 'email' or 'subject'
@@ -79,28 +80,28 @@ export function DataTableToolbar<TData>({
             className="h-8 w-[150px] lg:w-[250px]"
             />
         )}
-        {table.getColumn('role') && (
+        {allColumnIds.has('role') && (
           <DataTableFacetedFilter
             column={table.getColumn('role')}
             title="Role"
             options={roles}
           />
         )}
-        {table.getColumn('status') && (
+        {allColumnIds.has('status') && (
             <DataTableFacetedFilter
                 column={table.getColumn('status')}
                 title="Status"
                 options={ticketStatuses}
             />
         )}
-        {table.getColumn('reportType') && (
+        {allColumnIds.has('reportType') && (
             <DataTableFacetedFilter
                 column={table.getColumn('reportType')}
                 title="Report Type"
                 options={reportTypes}
             />
         )}
-        {table.getColumn('tenantName') && tenantNames.length > 0 && (
+        {allColumnIds.has('tenantName') && tenantNames.length > 0 && (
             <DataTableFacetedFilter
                 column={table.getColumn('tenantName')}
                 title="Tenant"
