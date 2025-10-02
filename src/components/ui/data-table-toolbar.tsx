@@ -45,20 +45,22 @@ export function DataTableToolbar<TData>({
       {value: "tenant-screening", label: "Tenant Screening"},
       {value: "employment-verification", label: "Employment Verification"},
   ]
+  
+  // This is the correct way to guard the lookups.
+  // We get all column IDs that exist for the current table instance.
+  const columnIds = React.useMemo(() => new Set(table.getAllColumns().map(c => c.id)), [table]);
 
   const tenantNames = React.useMemo(() => {
-    const tenantNameColumn = table.getColumn('tenantName');
-    if (!tenantNameColumn) {
+    if (!columnIds.has('tenantName')) {
         return [];
     }
     const names = new Set<string>();
-    // Use getPreFilteredRowModel to get all rows before filtering
     table.getPreFilteredRowModel().rows.forEach(row => {
         const tenantName = (row.original as any).tenantName;
         if (tenantName) names.add(tenantName);
     });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table]);
+  }, [table, columnIds]);
 
 
   // Find a generic column to filter by text, like 'name' or 'email' or 'subject'
@@ -66,12 +68,6 @@ export function DataTableToolbar<TData>({
     const id = c.id.toLowerCase();
     return id.includes('name') || id.includes('email') || id.includes('subjectname');
   });
-
-  // Conditionally get columns
-  const roleColumn = table.getColumn('role');
-  const tenantNameColumn = table.getColumn('tenantName');
-  const statusColumn = table.getColumn('status');
-  const reportTypeColumn = table.getColumn('reportType');
 
   return (
     <div className="flex items-center justify-between">
@@ -86,30 +82,30 @@ export function DataTableToolbar<TData>({
             className="h-8 w-[150px] lg:w-[250px]"
             />
         )}
-        {roleColumn && (
+        {columnIds.has('role') && (
           <DataTableFacetedFilter
-            column={roleColumn}
+            column={table.getColumn('role')}
             title="Role"
             options={roles}
           />
         )}
-        {statusColumn && (
+        {columnIds.has('status') && (
             <DataTableFacetedFilter
-                column={statusColumn}
+                column={table.getColumn('status')}
                 title="Status"
                 options={ticketStatuses}
             />
         )}
-        {reportTypeColumn && (
+        {columnIds.has('reportType') && (
             <DataTableFacetedFilter
-                column={reportTypeColumn}
+                column={table.getColumn('reportType')}
                 title="Report Type"
                 options={reportTypes}
             />
         )}
-        {tenantNameColumn && tenantNames.length > 0 && (
+        {columnIds.has('tenantName') && tenantNames.length > 0 && (
             <DataTableFacetedFilter
-                column={tenantNameColumn}
+                column={table.getColumn('tenantName')}
                 title="Tenant"
                 options={tenantNames}
             />
