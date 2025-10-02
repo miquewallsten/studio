@@ -1,6 +1,8 @@
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { suggestComplianceQuestions } from '@/ai/flows/compliance-question-suggestions';
+import { sendEmail } from '@/ai/flows/send-email-flow';
 import admin from 'firebase-admin';
 
 export const dynamic = 'force-dynamic';
@@ -32,7 +34,8 @@ export async function POST(request: NextRequest) {
         try {
             endUserRecord = await adminAuth.createUser({
                 email: email,
-                emailVerified: false,
+                emailVerified: false, // Will be verified by password reset link
+                displayName: subjectName,
             });
         } catch (error: any) {
             if (error.code === 'auth/email-already-exists') {
@@ -48,11 +51,10 @@ export async function POST(request: NextRequest) {
             tenantId: clientUid 
         });
         
-        // Also create a user profile doc for the new end user for easier querying if needed
         const userProfileRef = adminDb.collection('users').doc(endUserRecord.uid);
         batch.set(userProfileRef, {
             email: endUserRecord.email,
-            displayName: subjectName, // Use subject name as initial display name
+            displayName: subjectName,
             role: 'End User',
             tenantId: clientUid,
         }, { merge: true });
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Step 3: Create the ticket in Firestore
-        const ticketRef = adminDb.collection('tickets').doc(); // Create a new doc reference
+        const ticketRef = adminDb.collection('tickets').doc(); 
         batch.set(ticketRef, {
             subjectName,
             email,
@@ -74,18 +76,39 @@ export async function POST(request: NextRequest) {
             suggestedQuestions,
             status: 'New',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            clientId: clientUid, // The ID of the client company/user who made the request
+            clientId: clientUid, 
             clientEmail: clientEmail,
-            endUserId: endUserRecord.uid, // The ID of the newly created end-user who will fill the form
+            endUserId: endUserRecord.uid,
         });
 
-        // Commit all Firestore operations in a single batch
+        // Commit Firestore operations
         await batch.commit();
+
+        // Step 4: Generate a secure, single-use link for the user to set their password and access the form.
+        // We use a password reset link which also verifies their email.
+        const actionLink = await adminAuth.generatePasswordResetLink(email, {
+             url: `${request.nextUrl.origin}/form/${ticketRef.id}`, // Redirect to form after password set
+        });
+
+        // Step 5: Send the email to the end-user
+        await sendEmail({
+            to: email,
+            subject: `Information Request for ${reportType}`,
+            html: `
+                <p>Hello ${subjectName},</p>
+                <p>${decodedToken.name || clientEmail} has requested that you complete a form for a ${reportType}.</p>
+                <p>Please use the secure link below to set up your account and fill out the required information:</p>
+                <p><a href="${actionLink}">Complete Your Form</a></p>
+                <p>This link is for single use only.</p>
+                <p>Thank you,<br/>The TenantCheck Team</p>
+            `.replace(/\n/g, '<br>')
+        });
+
 
         return NextResponse.json({
             success: true,
             ticketId: ticketRef.id,
-            message: 'Successfully created ticket and end-user.',
+            message: `Successfully created ticket and sent secure form link to ${email}.`,
         }, { status: 201 });
 
 

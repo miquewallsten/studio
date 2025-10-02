@@ -34,12 +34,12 @@ type Ticket = {
   clientEmail: string;
   endUserId: string;
   suggestedQuestions?: string[];
+  formSubmittedAt?: Timestamp;
 };
 
 export default function FormPage({ params }: { params: { ticketId: string }}) {
-  const [user, loadingAuth] = useAuthState(auth);
+  const [user, loadingAuth, authError] = useAuthState(auth);
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [actualTicketId, setActualTicketId] = useState(params.ticketId);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -69,80 +69,53 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
 
   useEffect(() => {
     if (loadingAuth) return;
+
+    if (!user) {
+        // If there's no user, it's likely they just set their password.
+        // The auth state might not have updated yet. We don't want to redirect immediately.
+        // A better UX would be to show a loading/spinner state until auth resolves.
+        // If authError is present, then we can redirect.
+        if (authError) {
+             router.push('/client/login');
+        }
+        setLoading(false);
+        return;
+    }
     
     const getTicketData = async () => {
       setLoading(true);
-
-      let ticketIdToFetch = actualTicketId;
-      let ticketRef;
-
-      // Special case for widget view where we don't have the real ticket ID
-      if (ticketIdToFetch === 'some-ticket-id') {
-        if (!user) {
-           setLoading(false);
-           setTicket(null);
-           return;
-        }
-        // Find the first available form for the current user
-        const q = query(
-            collection(db, 'tickets'), 
-            where('endUserId', '==', user.uid), 
-            where('status', '==', 'New'),
-            limit(1)
-        );
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            const doc = querySnapshot.docs[0];
-            ticketIdToFetch = doc.id;
-            setActualTicketId(doc.id); // Update state with real ID
-            ticketRef = doc.ref;
-        } else {
-             setLoading(false);
-             setTicket(null); // No forms for this user
-             return;
-        }
-      } else {
-          ticketRef = doc(db, 'tickets', ticketIdToFetch);
-      }
-
-
+      const ticketRef = doc(db, 'tickets', params.ticketId);
       const ticketSnap = await getDoc(ticketRef);
 
       if (ticketSnap.exists()) {
         const ticketData = { id: ticketSnap.id, ...ticketSnap.data() } as Ticket;
 
-        // Security Check: is the current user the intended recipient?
-        if (user && ticketData.endUserId !== user.uid) {
+        if (ticketData.endUserId !== user.uid) {
           toast({
             title: 'Access Denied',
             description: 'You do not have permission to view this form.',
             variant: 'destructive',
           });
           setTicket(null);
-        } else if (!user) {
-            // Unauthenticated users should be redirected from the standalone page
-            router.push('/client/login');
-            return;
+        } else if (ticketData.status !== 'New') {
+             setTicket(ticketData); // Still show the ticket, but it will be read-only
         }
         else {
           setTicket(ticketData);
         }
       } else {
-        // Only show toast if it's not the placeholder ID
-        if (actualTicketId !== 'some-ticket-id') {
-            toast({
-              title: 'Not Found',
-              description: 'This form could not be found.',
-              variant: 'destructive',
-            });
-        }
+        toast({
+          title: 'Not Found',
+          description: 'This form could not be found or has already been submitted.',
+          variant: 'destructive',
+        });
         setTicket(null);
       }
       setLoading(false);
     };
 
     getTicketData();
-  }, [user, loadingAuth, params.ticketId, router, toast, actualTicketId]);
+  }, [user, loadingAuth, authError, params.ticketId, router, toast]);
 
   const handleCaptureSelfie = () => {
     if (videoRef.current) {
@@ -177,9 +150,9 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     try {
         const ticketRef = doc(db, 'tickets', ticket.id);
         await updateDoc(ticketRef, {
-            status: 'In Progress', // Update status
-            formData: formValues, // Save the collected data
-            formSubmittedAt: Timestamp.now(), // Track submission time
+            status: 'In Progress', 
+            formData: formValues, 
+            formSubmittedAt: Timestamp.now(),
         });
 
         toast({
@@ -187,10 +160,7 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
             description: 'Thank you for providing your information.',
         });
         
-        // This causes the component to unmount and the parent can show a "submitted" message
-        // In the iframe context, it effectively goes back to the initial state
-        setTicket(null);
-        setActualTicketId('some-ticket-id'); // Reset for next impersonation
+        router.push('/form/submitted');
 
     } catch (error: any) {
         console.error('Error submitting form:', error);
@@ -238,7 +208,7 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     );
   }
 
-  if (!ticket) {
+  if (!ticket || !user) {
     return (
       <RootComponent>
         <Card className="w-full max-w-lg text-center">
@@ -247,11 +217,26 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
             </CardHeader>
             <CardContent>
                 <p>There are no pending forms for this user account.</p>
-                <p className="text-sm text-muted-foreground mt-2">If you were just assigned a form, it may take a moment to appear.</p>
+                <p className="text-sm text-muted-foreground mt-2">Please check the link from your email or contact the requester.</p>
             </CardContent>
         </Card>
       </RootComponent>
     );
+  }
+
+  if (ticket.status !== 'New') {
+      return (
+           <RootComponent>
+                <Card className="w-full max-w-lg text-center">
+                    <CardHeader>
+                        <CardTitle>Form Already Submitted</CardTitle>
+                        <CardDescription>
+                            This form was submitted on {ticket.formSubmittedAt ? new Date(ticket.formSubmittedAt.toDate()).toLocaleDateString() : 'a previous date'}. No further action is needed.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
+           </RootComponent>
+      )
   }
   
   const hasSelfieQuestion = ticket.suggestedQuestions?.some(q => q.toLowerCase().includes('selfie'));
