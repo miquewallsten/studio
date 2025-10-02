@@ -22,7 +22,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import type { Field } from '@/app/dashboard/fields/schema';
-import { generateText } from '@/lib/ai';
 
 type Ticket = {
   id: string;
@@ -198,7 +197,14 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     `;
 
     try {
-        const result = await generateText(prompt);
+        const res = await fetch('/api/ai/echo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt }),
+        });
+        const json = await res.json();
+        const result = json.text ?? '';
+        
         setReportSections(prev => prev.map((s, i) => 
             i === sectionIndex ? {...s, content: result, isGenerating: false } : s
         ));

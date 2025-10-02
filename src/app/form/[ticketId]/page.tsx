@@ -25,7 +25,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { generateText } from '@/lib/ai';
 
 
 type Ticket = {
@@ -202,7 +201,13 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
         const historyText = currentHistory.map(h => `${h.role}: ${h.text}`).join('\n');
         const fullPrompt = `${systemPrompt}\n\nConversation History:\n${historyText}\nmodel:`;
         
-        const response = await generateText(fullPrompt);
+        const res = await fetch('/api/ai/echo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: fullPrompt }),
+        });
+        const json = await res.json();
+        const response = json.text ?? '';
         
         if (response.includes('FORM_COMPLETE')) {
             setIsFormComplete(true);

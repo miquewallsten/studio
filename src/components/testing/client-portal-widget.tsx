@@ -21,7 +21,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '../ui/dropdown-menu';
-import { generateText } from '@/lib/ai';
 
 type User = {
     uid: string;
@@ -153,7 +152,14 @@ function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: {
 
         const prompt = `You are an AI assistant that suggests specialized compliance questions. Given the report type and description below, suggest a list of 3-5 compliance questions. Return *only* a JSON object with a "suggestedQuestions" key containing an array of strings. Do not add any other text, markdown, or explanation.\n\nReport Type: ${reportType}\nDescription: ${description}`;
       
-        const aiResponse = await generateText(prompt);
+        const res = await fetch('/api/ai/echo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt }),
+        });
+        const json = await res.json();
+        const aiResponse = json.text ?? '';
+        
         let suggestedQuestions: string[] = [];
         try {
           const jsonResponse = aiResponse.replace(/```json|```/g, '').trim();

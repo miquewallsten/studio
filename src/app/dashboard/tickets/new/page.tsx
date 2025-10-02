@@ -25,7 +25,6 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
-import { generateText } from '@/lib/ai';
 
 export default function NewTicketPage() {
   const { toast } = useToast();
@@ -45,7 +44,14 @@ export default function NewTicketPage() {
       // 1. Call the AI to get suggested questions
       const prompt = `You are an AI assistant that suggests specialized compliance questions. Given the report type and description below, suggest a list of 3-5 compliance questions. Return *only* a JSON object with a "suggestedQuestions" key containing an array of strings. Do not add any other text, markdown, or explanation.\n\nReport Type: ${reportType}\nDescription: ${description}`;
       
-      const aiResponse = await generateText(prompt);
+      const res = await fetch('/api/ai/echo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const json = await res.json();
+      const aiResponse = json.text ?? '';
+      
       let suggestedQuestions: string[] = [];
       try {
         const jsonResponse = aiResponse.replace(/```json|```/g, '').trim();

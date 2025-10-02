@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Send, User } from 'lucide-react';
 import { useLanguage } from '@/contexts/language-context';
-import { generateText } from '@/lib/ai';
 
 interface Message {
     role: 'user' | 'model';
@@ -37,7 +36,14 @@ export function AssistantWidget() {
             const historyText = history.map(h => `${h.role}: ${h.text}`).join('\n');
             const fullPrompt = `${systemPrompt}\n\n${historyText}\nuser: ${currentPrompt}\nmodel:`;
             
-            const response = await generateText(fullPrompt);
+            const res = await fetch('/api/ai/echo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: fullPrompt }),
+            });
+            const json = await res.json();
+            const response = json.text ?? '';
+
             const newModelMessage: Message = { role: 'model', text: response };
             setHistory(prev => [...prev, newModelMessage]);
         } catch (error) {

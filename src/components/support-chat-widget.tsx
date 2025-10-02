@@ -23,7 +23,6 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { generateText } from '@/lib/ai';
 import { sendEmail } from '@/ai/flows/send-email-flow';
 
 interface Message {
@@ -87,7 +86,13 @@ export function SupportChatWidget() {
         const historyText = currentHistory.map(h => `${h.role}: ${h.text}`).join('\n');
         const fullPrompt = `${systemPrompt}\n\nConversation History:\n${historyText}\nmodel:`;
         
-        const response = await generateText(fullPrompt);
+        const res = await fetch('/api/ai/echo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: fullPrompt }),
+        });
+        const json = await res.json();
+        const response = json.text ?? '';
 
         if (response.includes('SAVE_AND_CLOSE')) {
              const finalMessage: Message = { role: 'model', text: "Thank you. Your feedback has been received and a summary has been sent to our executive team. We will be in touch if more information is needed."};

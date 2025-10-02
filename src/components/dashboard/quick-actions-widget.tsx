@@ -12,7 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Building, Ticket, Bot, Zap, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/language-context';
-import { generateText } from '@/lib/ai';
 
 type Action = 'createTenant' | 'createTicket' | null;
 
@@ -45,7 +44,14 @@ export function QuickActionsWidget() {
     try {
         const systemPrompt = `You are a helpful AI assistant for a Super Admin. Your purpose is to assist the admin by performing actions on their behalf. You MUST respond in the user's language. The user's current language is: ${locale}.`;
         const fullPrompt = `${systemPrompt}\n\nuser: ${prompt}\nmodel:`;
-        const response = await generateText(fullPrompt);
+        
+        const res = await fetch('/api/ai/echo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: fullPrompt }),
+        });
+        const json = await res.json();
+        const response = json.text ?? '';
 
       setResult(response);
       toast({
