@@ -11,7 +11,7 @@ import {
   } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileUp, MessageSquare, Save, UserPlus, CheckCircle, Upload, Bot, EyeOff } from 'lucide-react';
+import { FileUp, MessageSquare, Save, UserPlus, CheckCircle, Upload, Bot, EyeOff, Sparkles } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { doc, onSnapshot, Timestamp, updateDoc, collection, getDoc, getDocs, where, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import type { Field } from '@/app/dashboard/fields/schema';
 import { runValidations } from '@/ai/flows/run-validations-flow';
+import { summarizeReportRequests } from '@/ai/flows/summarize-report-requests';
 
 type Ticket = {
   id: string;
@@ -43,6 +44,12 @@ type FormField = Field & {
     value?: any;
 }
 
+type ReportSection = {
+    title: string;
+    content: string;
+    isGenerating?: boolean;
+}
+
 
 export default function TicketDetailPage({ params }: { params: { id: string } }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -57,6 +64,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   const [isValidating, setIsValidating] = useState(false);
   const { toast } = useToast();
   const { role } = useAuthRole();
+  const [reportSections, setReportSections] = useState<ReportSection[]>([]);
 
   useEffect(() => {
     const ticketRef = doc(db, 'tickets', params.id);
@@ -98,9 +106,16 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
             const fieldDef = fieldsData.find(f => f.id === id);
             const value = formData[fieldDef?.label || ''];
             return { ...fieldDef, value };
-        }).filter(Boolean);
+        }).filter(Boolean) as FormField[];
 
-        setFormFields(populatedFields as FormField[]);
+        setFormFields(orderedFields);
+        
+        // Initialize report sections based on fields
+        const sections = orderedFields.map(field => ({
+            title: field.label,
+            content: '',
+        }));
+        setReportSections(sections);
     }
   }
 
@@ -159,6 +174,37 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
       } finally {
           setIsValidating(false);
       }
+  }
+  
+  const handleGenerateSection = async (sectionIndex: number) => {
+    if (!ticket) return;
+    
+    setReportSections(prev => prev.map((s, i) => i === sectionIndex ? {...s, isGenerating: true} : s));
+
+    const section = reportSections[sectionIndex];
+    const field = formFields[sectionIndex];
+    const relevantNote = internalNotes[field.label] || '';
+    const relevantValue = field.value || '';
+    const requestDetails = `
+        Section to summarize: "${section.title}"
+        User-provided data for this section: ${relevantValue}
+        Analyst notes for this section: ${relevantNote}
+    `;
+
+    try {
+        const result = await summarizeReportRequests({ requestDetails });
+        setReportSections(prev => prev.map((s, i) => 
+            i === sectionIndex ? {...s, content: result.summary, isGenerating: false } : s
+        ));
+
+    } catch (error: any) {
+        toast({ title: "AI Error", description: error.message, variant: "destructive" });
+        setReportSections(prev => prev.map((s, i) => i === sectionIndex ? {...s, isGenerating: false} : s));
+    }
+  }
+  
+  const handleSectionContentChange = (index: number, content: string) => {
+      setReportSections(prev => prev.map((s, i) => i === index ? {...s, content} : s));
   }
 
   const handleCompleteTicket = async () => {
@@ -352,7 +398,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
                      {canViewPrivateNote && (
                         <div className="w-full space-y-2">
                              <Label htmlFor="private-note" className="flex items-center gap-2">
-                                <EyeOff className="size-4 text-destructive" />
+                                <EyeOff className="mr-2 size-4 text-destructive" />
                                 Private Note for Manager
                             </Label>
                              <Textarea
@@ -370,6 +416,36 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
                 </CardFooter>
             )}
         </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Report Workbench</CardTitle>
+                <CardDescription>
+                    Generate section summaries with AI and edit them to build the final report.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {reportSections.map((section, index) => (
+                    <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                             <Label htmlFor={`report-section-${index}`} className="text-lg font-semibold">{section.title}</Label>
+                             <Button size="sm" variant="ghost" onClick={() => handleGenerateSection(index)} disabled={section.isGenerating}>
+                                 {section.isGenerating ? <Sparkles className="mr-2 size-4 animate-pulse" /> : <Sparkles className="mr-2 size-4" />}
+                                 {section.isGenerating ? 'Generating...' : 'Generate with AI'}
+                             </Button>
+                        </div>
+                        <Textarea 
+                            id={`report-section-${index}`}
+                            value={section.content}
+                            onChange={(e) => handleSectionContentChange(index, e.target.value)}
+                            placeholder={`Summary for ${section.title}...`}
+                            className="min-h-32"
+                        />
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+
 
         <Card>
           <CardHeader>
@@ -416,5 +492,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
+    
 
     
