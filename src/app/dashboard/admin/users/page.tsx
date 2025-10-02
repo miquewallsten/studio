@@ -127,20 +127,28 @@ export default function AdminUsersPage() {
                     <AlertDescription>
                         {error}
                         {isCredentialError && (
-                            <div className="mt-4 bg-gray-900 text-white p-4 rounded-md">
-                                <p className="font-semibold">Action Required:</p>
-                                <p className="mt-2 text-sm">To fetch the user list, you must provide server-side credentials.</p>
-                                <ul className="list-disc list-inside text-xs mt-2 space-y-1">
-                                    <li>Go to your Firebase Project Settings -&gt; Service accounts.</li>
-                                    <li>Click "Generate new private key" to download a JSON file.</li>
-                                    <li>Open the `.env` file in the project root.</li>
-                                    <li>Copy the `project_id`, `client_email`, and `private_key` from the JSON file into your `.env` file.</li>
-                                </ul>
-                                <pre className="mt-3 text-xs bg-gray-800 p-2 rounded">
+                            <div className="mt-4 bg-gray-900 text-white p-4 rounded-md text-sm">
+                                <p className="font-semibold">Action Required: Set Server Credentials</p>
+                                <p className="mt-2">To use server-side features like user management, you must provide a Firebase Service Account key.</p>
+                                <ol className="list-decimal list-inside space-y-2 mt-3">
+                                    <li>
+                                        Go to your Firebase project, click the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Gear icon</span> next to "Project Overview", then select <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Project settings</span>.
+                                    </li>
+                                    <li>
+                                        Go to the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Service accounts</span> tab.
+                                    </li>
+                                    <li>
+                                        Click the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Generate new private key</span> button to download a JSON file.
+                                    </li>
+                                     <li>Open the `.env` file in the file explorer to your left.</li>
+                                    <li>Copy the `project_id`, `client_email`, and `private_key` from the JSON file and paste them into your `.env` file.</li>
+                                </ol>
+                                <pre className="mt-3 text-xs bg-gray-800 p-2 rounded whitespace-pre-wrap">
 {`FIREBASE_PROJECT_ID="..."
 FIREBASE_CLIENT_EMAIL="..."
 FIREBASE_PRIVATE_KEY="..."`}
                                 </pre>
+                                <p className="mt-3">The application will automatically restart and pick up these new values.</p>
                             </div>
                         )}
                     </AlertDescription>
