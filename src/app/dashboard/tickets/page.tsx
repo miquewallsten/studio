@@ -179,7 +179,7 @@ export default function TicketsPage() {
   }), [t, columnsData]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-[calc(100vh_-_100px)]">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold font-headline">{t('nav.tickets')}</h1>
         <Button asChild className="bg-accent hover:bg-accent/90">
@@ -190,7 +190,7 @@ export default function TicketsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
+      <Tabs defaultValue="list" className="w-full flex-1 flex flex-col">
         <TabsList>
             <TabsTrigger value="list">
               <List className="mr-2 h-4 w-4" />
@@ -203,15 +203,15 @@ export default function TicketsPage() {
         </TabsList>
         
 
-        <TabsContent value="list">
-          <Card>
+        <TabsContent value="list" className="flex-1 overflow-hidden">
+          <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle>{t('tickets.table_title')}</CardTitle>
               <CardDescription>
                 {t('tickets.table_desc')}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-auto">
                 {loading ? (
                     <p>{t('common.loading')}...</p>
                 ) : (
@@ -220,9 +220,9 @@ export default function TicketsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="kanban">
+        <TabsContent value="kanban" className="flex-1 overflow-hidden">
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 h-full">
               {loading ? (
                 Object.values(initialColumns).map((column, index) => (
                   <Card key={index} className="bg-muted/50">
@@ -245,7 +245,7 @@ export default function TicketsPage() {
                       <Card
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`transition-colors ${
+                        className={`transition-colors flex flex-col ${
                           snapshot.isDraggingOver ? 'bg-muted' : 'bg-muted/50'
                         }`}
                       >
@@ -257,7 +257,7 @@ export default function TicketsPage() {
                             </Badge>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="min-h-[400px] space-y-2">
+                        <CardContent className="flex-1 overflow-y-auto space-y-2">
                           {column.items.map((item, index) => (
                             <Draggable
                               key={item.id}
