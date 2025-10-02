@@ -22,7 +22,7 @@ import {
 import { PlusCircle, Search, Mail } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, setDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
   Panel,
@@ -70,16 +70,24 @@ export default function EmailTemplatesPage() {
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
       if (querySnapshot.empty) {
         // Firestore is empty, so seed it with default templates
-        const batch = getDocs(collection(db, 'email_templates')).then(async snapshot => {
-            const batch = doc(db, 'email_templates', 'placeholder').firestore.batch();
+        try {
+            const batch = writeBatch(db);
             for (const template of DEFAULT_TEMPLATES) {
                 const docId = template.name.toLowerCase().replace(/\s+/g, '-');
                 const docRef = doc(db, 'email_templates', docId);
                 batch.set(docRef, template);
             }
             await batch.commit();
-        });
-        return; // The snapshot listener will fire again with the new data
+            // The onSnapshot listener will be called again automatically with the new data.
+        } catch (seedError) {
+            console.error("Failed to seed email templates:", seedError);
+            toast({
+                title: "Error",
+                description: "Could not automatically create default email templates.",
+                variant: "destructive"
+            });
+        }
+        return;
       }
 
       const templatesData: Template[] = [];
@@ -94,8 +102,10 @@ export default function EmailTemplatesPage() {
         });
       });
       setTemplates(templatesData);
-      if (selectedTemplate) {
-        setSelectedTemplate(prev => templatesData.find(t => t.id === prev?.id) || null);
+      if (!selectedTemplate && templatesData.length > 0) {
+        setSelectedTemplate(templatesData[0]);
+      } else if (selectedTemplate) {
+        setSelectedTemplate(prev => templatesData.find(t => t.id === prev?.id) || templatesData[0] || null);
       }
       setLoading(false);
     }, (error) => {
@@ -109,7 +119,7 @@ export default function EmailTemplatesPage() {
     });
 
     return () => unsubscribe();
-  }, [toast, selectedTemplate]);
+  }, [toast]);
   
   const filteredTemplates = useMemo(() => {
     if (!searchQuery) return templates;
@@ -184,7 +194,7 @@ export default function EmailTemplatesPage() {
             ) : (
                     <Card className="h-full flex items-center justify-center">
                         <div className="text-center text-muted-foreground">
-                            <p>Select a template to begin editing.</p>
+                            {loading ? <p>Loading...</p> : <p>Select a template to begin editing.</p>}
                         </div>
                     </Card>
             )}
