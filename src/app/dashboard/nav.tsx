@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -13,6 +12,7 @@ import {
   Ticket,
   TestTube,
   Mail,
+  Users2,
 } from 'lucide-react';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import { cn } from '@/lib/utils';
@@ -85,6 +85,12 @@ export function DashboardNav() {
       label: t('nav.user_management'),
       requiredRole: 'Super Admin',
       show: true,
+    },
+    {
+      href: '/dashboard/admin/teams',
+      icon: Users2,
+      label: 'Teams',
+      show: isSuperAdminOrAdmin,
     },
     {
       href: '/dashboard/admin/email-templates',

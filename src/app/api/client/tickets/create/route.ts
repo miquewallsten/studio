@@ -1,9 +1,32 @@
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
-import { suggestComplianceQuestions } from '@/ai/flows/compliance-question-suggestions';
 import { sendEmail } from '@/ai/flows/send-email-flow';
 import admin from 'firebase-admin';
+
+async function getLeastBusyAnalyst(groupId: string): Promise<string | null> {
+    const adminDb = getAdminDb();
+    const groupRef = adminDb.collection('expertise_groups').doc(groupId);
+    const groupSnap = await groupRef.get();
+
+    if (!groupSnap.exists) {
+        console.warn(`Expertise group ${groupId} not found.`);
+        return null;
+    }
+
+    const analystUids = groupSnap.data()?.analystUids;
+
+    if (!analystUids || analystUids.length === 0) {
+        console.warn(`No analysts found in group ${groupId}.`);
+        return null;
+    }
+
+    // In a real application, you would query the 'tickets' collection to find
+    // the analyst with the fewest 'In Progress' tickets.
+    // For this prototype, we'll randomly assign.
+    const randomIndex = Math.floor(Math.random() * analystUids.length);
+    return analystUids[randomIndex];
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -60,13 +83,20 @@ export async function POST(request: NextRequest) {
         }, { merge: true });
 
 
-        // Step 2: Get AI-suggested compliance questions
-        // This is now redundant if we are using questions from the form, but could be used for enhancement later.
-        // For now, questions will be pulled from the form template on the client-side.
-        // const { suggestedQuestions } = await suggestComplianceQuestions({
-        //     reportType,
-        //     description,
-        // });
+        // Step 2: Auto-assignment logic
+        const formRef = adminDb.collection('forms').doc(formId);
+        const formSnap = await formRef.get();
+        const expertiseGroupId = formSnap.data()?.expertiseGroupId;
+        
+        let assignedAnalystId = null;
+        let ticketStatus = 'New';
+
+        if (expertiseGroupId) {
+            assignedAnalystId = await getLeastBusyAnalyst(expertiseGroupId);
+            if (assignedAnalystId) {
+                ticketStatus = 'In Progress';
+            }
+        }
 
         // Step 3: Create the ticket in Firestore
         const ticketRef = adminDb.collection('tickets').doc(); 
@@ -76,8 +106,8 @@ export async function POST(request: NextRequest) {
             reportType,
             formId,
             description,
-            // suggestedQuestions,
-            status: 'New',
+            status: ticketStatus,
+            assignedAnalystId: assignedAnalystId,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             clientId: clientUid, 
             clientEmail: clientEmail,
@@ -88,10 +118,8 @@ export async function POST(request: NextRequest) {
         await batch.commit();
 
         // Step 4: Generate a secure, single-use link for the user to set their password and access the form.
-        // We use a password reset link which also verifies their email.
         const passwordResetLink = await adminAuth.generatePasswordResetLink(email);
         
-        // Extract oobCode and construct the final URL
         const actionCode = new URL(passwordResetLink).searchParams.get('oobCode');
         const actionLink = `${request.nextUrl.origin}/onboard?oobCode=${actionCode}&continueUrl=/form/${ticketRef.id}`;
         

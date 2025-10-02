@@ -44,6 +44,7 @@ export type Form = {
   description: string;
   createdAt: Timestamp;
   fields?: string[];
+  expertiseGroupId?: string;
 };
 
 export default function FormsPage() {
@@ -68,7 +69,8 @@ export default function FormsPage() {
           name: data.name,
           description: data.description,
           createdAt: data.createdAt,
-          fields: data.fields || []
+          fields: data.fields || [],
+          expertiseGroupId: data.expertiseGroupId,
         });
       });
       setForms(formsData);
@@ -100,7 +102,7 @@ export default function FormsPage() {
         setSelectedForm(updatedSelectedForm);
       }
     }
-  }, [forms]);
+  }, [forms, selectedForm]);
 
   const filteredForms = useMemo(() => {
     if (!searchQuery) return forms;

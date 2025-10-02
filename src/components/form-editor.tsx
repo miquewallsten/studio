@@ -11,7 +11,7 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import { useEffect, useState, useMemo } from 'react';
-import { doc, updateDoc, getDocs, collection, where, query, documentId } from 'firebase/firestore';
+import { doc, updateDoc, getDocs, collection, where, query, documentId, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +24,7 @@ import { Draggable, Droppable } from '@hello-pangea/dnd';
 import { Badge } from './ui/badge';
 import type { Field } from '@/app/dashboard/fields/schema';
 import { cn } from '@/lib/utils';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 
 interface FormEditorProps {
     form: FormType;
@@ -31,15 +32,31 @@ interface FormEditorProps {
     onDeleteForm: () => void;
 }
 
+type ExpertiseGroup = {
+    id: string;
+    name: string;
+}
+
 export function FormEditor({ form: initialForm, onFormUpdated, onDeleteForm }: FormEditorProps) {
   const [form, setForm] = useState<FormType>(initialForm);
   const [isSaving, setIsSaving] = useState(false);
   const [formFields, setFormFields] = useState<Field[]>([]);
+  const [expertiseGroups, setExpertiseGroups] = useState<ExpertiseGroup[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     setForm(initialForm);
   }, [initialForm]);
+
+  useEffect(() => {
+    // Fetch expertise groups
+    const q = query(collection(db, 'expertise_groups'), orderBy('name'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const groups = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+        setExpertiseGroups(groups);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (form.fields && form.fields.length > 0) {
@@ -71,6 +88,7 @@ export function FormEditor({ form: initialForm, onFormUpdated, onDeleteForm }: F
         await updateDoc(formRef, {
             name: form.name,
             description: form.description,
+            expertiseGroupId: form.expertiseGroupId,
         });
         toast({
             title: 'Form Saved',
@@ -103,7 +121,7 @@ export function FormEditor({ form: initialForm, onFormUpdated, onDeleteForm }: F
                             Edit Form
                         </CardTitle>
                         <CardDescription>
-                            Modify the name and description for this form template.
+                            Modify the name, description, and settings for this form template.
                         </CardDescription>
                     </div>
                     <Button variant="destructive" size="icon" onClick={onDeleteForm}>
@@ -130,6 +148,27 @@ export function FormEditor({ form: initialForm, onFormUpdated, onDeleteForm }: F
                         onChange={(e) => setForm(f => ({...f, description: e.target.value}))}
                         className="min-h-24"
                     />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="expertise-group">Auto-Assignment Group</Label>
+                     <Select
+                        name="expertise-group"
+                        value={form.expertiseGroupId}
+                        onValueChange={(value) => setForm(f => ({...f, expertiseGroupId: value}))}
+                        >
+                        <SelectTrigger id="expertise-group">
+                            <SelectValue placeholder="Select a group to auto-assign to" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="">None</SelectItem>
+                            {expertiseGroups.map(group => (
+                                <SelectItem key={group.id} value={group.id}>
+                                    {group.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">When a ticket uses this form, it will be automatically assigned to an analyst from this group.</p>
                 </div>
             </CardContent>
         </Card>
