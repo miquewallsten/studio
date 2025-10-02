@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A conversational AI agent for filling out forms.
@@ -52,7 +53,7 @@ const conversationalFormFlow = ai.defineFlow(
   },
   async ({ history, questions, userName }) => {
     const llmResponse = await ai.generate({
-      model: 'googleai/gemini-2.5-flash-lite',
+      model: 'googleai/gemini-1.5-flash-latest',
       prompt: {
         text: history.length > 0 ? history[history.length -1].content[0].text : "Let's begin.",
         context: {
