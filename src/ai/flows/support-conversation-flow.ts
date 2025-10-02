@@ -8,7 +8,7 @@
  * - SupportConversationOutput - The return type for the flow.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, DEFAULT_MODEL } from '@/ai/genkit';
 import { z } from 'genkit';
 import { sendEmail } from './send-email-flow';
 import { getAdminDb } from '@/lib/firebase-admin';
@@ -95,7 +95,7 @@ const supportConversationFlow = ai.defineFlow(
   },
   async ({ history, userName, userEmail }) => {
     const llmResponse = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
+      model: DEFAULT_MODEL,
       prompt: {
         text: history[history.length -1].content[0].text,
         context: {

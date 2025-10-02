@@ -8,7 +8,7 @@
  * - ConversationalFormOutput - The return type for the flow.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, DEFAULT_MODEL } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const MessageSchema = z.object({
@@ -53,7 +53,7 @@ const conversationalFormFlow = ai.defineFlow(
   },
   async ({ history, questions, userName }) => {
     const llmResponse = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
+      model: DEFAULT_MODEL,
       prompt: {
         text: history.length > 0 ? history[history.length -1].content[0].text : "Let's begin.",
         context: {
