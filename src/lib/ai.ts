@@ -1,7 +1,10 @@
 import 'server-only';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY!;
+// This is NOT a recommended practice for production.
+// We are hardcoding the key to debug the "API_KEY_INVALID" issue.
+const API_KEY = "AIzaSyDBhw_Qx2UcHkrA610MWzpu_mgqquMN0B8";
+
 if (!API_KEY) throw new Error('Missing GOOGLE_GENERATIVE_AI_API_KEY');
 
 const genAI = new GoogleGenerativeAI(API_KEY);
