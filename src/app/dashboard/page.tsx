@@ -34,6 +34,9 @@ import {
   orderBy,
   limit,
   Timestamp,
+  doc,
+  writeBatch,
+  getDocs,
 } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -134,6 +137,7 @@ export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
   
   const hasLoadedPrefs = useRef(false);
+  const hasSeeded = useRef(false);
 
   // Debounced save function
   const savePreferences = useCallback(debounce(async (prefs: { layouts?: any, widgets?: any }) => {
@@ -154,8 +158,39 @@ export default function DashboardPage() {
     setIsClient(true);
     let isMounted = true;
 
+    // One-time check to seed the database if necessary
+    const seedDatabase = async () => {
+        if (hasSeeded.current) return;
+        hasSeeded.current = true; // Prevent re-running
+
+        try {
+            const batch = writeBatch(db);
+            const collectionsToSeed = {
+                'tenants': { name: 'Test Tenant', status: 'ACTIVE', createdAt: Timestamp.now() },
+                'expertise_groups': { name: 'General Analysts', analystUids: [], createdAt: Timestamp.now() },
+                'feedback': { category: 'Suggestion', summary: 'Initial seed document', userName: 'system', createdAt: Timestamp.now() },
+                'user_preferences': { dashboard: { widgets: DEFAULT_WIDGETS } }
+            };
+
+            for (const [collectionName, data] of Object.entries(collectionsToSeed)) {
+                const collectionRef = collection(db, collectionName);
+                const snapshot = await getDocs(query(collectionRef, limit(1)));
+                if (snapshot.empty) {
+                    const docRef = doc(collectionRef, `seed_${Date.now()}`);
+                    batch.set(docRef, data);
+                    console.log(`Seeding '${collectionName}' collection...`);
+                }
+            }
+            await batch.commit();
+        } catch (error) {
+            console.error("Database seeding failed:", error);
+        }
+    };
+    
+
     // Fetch user preferences
     if (user) {
+      seedDatabase();
       const fetchPrefs = async () => {
         try {
           const data = await secureFetch('/api/user/preferences');

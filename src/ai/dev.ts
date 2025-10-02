@@ -7,3 +7,4 @@ import '@/ai/flows/assistant-flow.ts';
 import '@/ai/flows/send-email-flow.ts';
 import '@/ai/flows/conversational-form-flow.ts';
 import '@/ai/flows/support-conversation-flow.ts';
+import '@/ai/flows/run-validations-flow.ts';
