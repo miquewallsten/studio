@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     const text = await generateText('ping');
-    if (!text.includes('pong')) {
+    if (!text.toLowerCase().includes('pong')) {
         throw new Error('AI health check failed: "pong" not found in response.');
     }
     logger.info('AI health check successful');

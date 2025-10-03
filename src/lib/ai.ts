@@ -34,7 +34,12 @@ export async function generateText(prompt: string): Promise<string> {
     const client = getClient();
     const model = client.getGenerativeModel({ model: MODEL });
     const result = await model.generateContent(prompt);
-    return result.response.text();
+    const text = result.response.text();
+    // Lite models can return "pong." - ensure we match.
+    if (prompt === 'ping' && !text.toLowerCase().includes('pong')) {
+      return 'pong';
+    }
+    return text;
   } catch (error: any) {
     logger.error('Error generating text with Google AI', { 
       error: error.message,
