@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
 import { requireAuth } from '@/lib/authApi';
+import { requireRole } from '@/lib/rbac';
 
 async function getTenantData() {
     const adminDb = getAdminDb();
@@ -46,9 +47,8 @@ export async function POST(request: NextRequest) {
     const adminDb = getAdminDb();
     return apiSafe(async () => {
         const decodedToken = await requireAuth(request);
-        if (decodedToken.role !== 'Super Admin') {
-            throw new Error('Forbidden. Only Super Admins can create tenants.');
-        }
+        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
+        requireRole(decodedToken.role, 'Super Admin');
 
         const { companyName, companyUrl, adminName, adminEmail } = await request.json();
 

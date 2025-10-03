@@ -2,6 +2,7 @@
 import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/authApi';
+import { requireRole } from '@/lib/rbac';
 
 // Predefined roles
 const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 'Tenant Admin', 'Tenant User', 'End User'];
@@ -19,18 +20,14 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
             return NextResponse.json({ error: 'Invalid role specified.' }, { status: 400 });
         }
 
-        // --- Security Check: Ensure caller is an admin ---
         const decodedToken = await requireAuth(request);
-        const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'Super Admin';
+        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
+        requireRole(decodedToken.role, 'Admin');
 
-        if (!isAdmin) {
-            return NextResponse.json({ error: 'Forbidden. You do not have permission to change user roles.' }, { status: 403 });
-        }
          // Prevent a regular Admin from creating a Super Admin
         if (role === 'Super Admin' && decodedToken.role !== 'Super Admin') {
             return NextResponse.json({ error: 'Forbidden. Only Super Admins can assign the Super Admin role.' }, { status: 403 });
         }
-        // --- End Security Check ---
 
         const targetUser = await adminAuth.getUser(uid);
         const existingClaims = targetUser.customClaims || {};

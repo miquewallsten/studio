@@ -3,6 +3,7 @@ import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getIdToken } from 'firebase/auth';
 import { requireAuth } from '@/lib/authApi';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,12 +12,15 @@ export async function POST(request: NextRequest) {
     const adminAuth = getAdminAuth();
     const decodedToken = await requireAuth(request);
     
+    // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
+    requireRole(decodedToken.role, 'Super Admin');
+
     const { targetUid } = await request.json();
     
-    // IMPORTANT: Only allow Super Admins to impersonate
-    if (decodedToken.role !== 'Super Admin') {
-      return NextResponse.json({ error: 'Forbidden. Only Super Admins can impersonate users.' }, { status: 403 });
-    }
+    // IMPORTANT: Only allow Super Admins to impersonate - This is now handled by requireRole
+    // if (decodedToken.role !== 'Super Admin') {
+    //   return NextResponse.json({ error: 'Forbidden. Only Super Admins can impersonate users.' }, { status: 403 });
+    // }
 
     // Get the user we want to impersonate to retrieve their custom claims
     const targetUser = await adminAuth.getUser(targetUid);

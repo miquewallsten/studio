@@ -3,6 +3,7 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { requireAuth } from '@/lib/authApi';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +13,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     try {
         const { id: tenantId } = params;
 
-        // Security Check: Only Super Admins can resend invites
         const decodedToken = await requireAuth(request);
-        if (decodedToken.role !== 'Super Admin') {
-            return NextResponse.json({ error: 'Forbidden. Only Super Admins can resend invitations.' }, { status: 403 });
-        }
+        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
+        requireRole(decodedToken.role, 'Super Admin');
 
         // Find the Tenant Admin user associated with this tenant
         const usersQuerySnapshot = await adminDb.collection('users').where('tenantId', '==', tenantId).where('role', '==', 'Tenant Admin').limit(1).get();

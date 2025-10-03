@@ -2,6 +2,7 @@
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/authApi';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,14 +14,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         const body = await request.json();
         const { displayName, phone, tags } = body;
 
-        // --- Security Check: Ensure caller is an admin ---
         const decodedToken = await requireAuth(request);
-        const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'Super Admin';
-
-        if (!isAdmin) {
-            return NextResponse.json({ error: 'Forbidden. You do not have permission to edit users.' }, { status: 403 });
-        }
-        // --- End Security Check ---
+        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
+        requireRole(decodedToken.role, 'Admin');
 
 
         // Update Firebase Auth
@@ -71,10 +67,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { uid: 
         const { uid } = params;
 
         const decodedToken = await requireAuth(request);
-        
-        if (decodedToken.role !== 'Super Admin') {
-            return NextResponse.json({ error: 'Forbidden. Only Super Admins can delete users.' }, { status: 403 });
-        }
+        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
+        requireRole(decodedToken.role, 'Super Admin');
 
         await adminAuth.deleteUser(uid);
         

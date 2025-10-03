@@ -2,6 +2,7 @@
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/authApi';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +12,9 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     try {
         const { id: tenantId } = params;
 
-        // Security Check: Only Super Admins can delete tenants
         const decodedToken = await requireAuth(request);
-        if (decodedToken.role !== 'Super Admin') {
-            return NextResponse.json({ error: 'Forbidden. Only Super Admins can delete tenants.' }, { status: 403 });
-        }
+        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
+        requireRole(decodedToken.role, 'Super Admin');
 
         const batch = adminDb.batch();
 
