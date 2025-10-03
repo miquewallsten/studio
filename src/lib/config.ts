@@ -3,7 +3,7 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Explicitly load .env file from the project root
+// Explicitly load .env file from the project root. This must be at the very top.
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const EnvSchema = z.object({
