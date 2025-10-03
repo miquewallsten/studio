@@ -1,11 +1,9 @@
-
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
 
 async function getTenants() {
-    const adminDb = getAdminDb();
     const tenantsSnapshot = await adminDb.collection('tenants').get();
     const tenants: { [key: string]: string } = {};
     tenantsSnapshot.forEach(doc => {
@@ -15,7 +13,6 @@ async function getTenants() {
 }
 
 async function getUserProfilesAndTags(tenantId?: string) {
-    const adminDb = getAdminDb();
     let query: admin.firestore.Query<admin.firestore.DocumentData> = adminDb.collection('users');
     if (tenantId) {
         query = query.where('tenantId', '==', tenantId);
@@ -34,7 +31,6 @@ async function getUserProfilesAndTags(tenantId?: string) {
 }
 
 async function getTicketCounts(tenantId?: string) {
-    const adminDb = getAdminDb();
     let query: admin.firestore.Query<admin.firestore.DocumentData> = adminDb.collection('tickets');
     if (tenantId) {
         query = query.where('clientId', '==', tenantId);
@@ -61,7 +57,6 @@ export async function GET(request: NextRequest) {
     }
     const idToken = authHeader.split('Bearer ')[1];
     
-    const adminAuth = getAdminAuth();
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     
     const callerRole = decodedToken.role;

@@ -1,5 +1,4 @@
-
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -13,13 +12,11 @@ export async function GET(request: NextRequest) {
         }
         const idToken = authHeader.split('Bearer ')[1];
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         
         // The user's own UID is what we use to find their tickets.
         const endUserId = decodedToken.uid;
 
-        const adminDb = getAdminDb();
         // Query the 'tickets' collection where the 'endUserId' field matches the user's UID.
         const ticketsQuery = adminDb.collection('tickets').where('endUserId', '==', endUserId).orderBy('createdAt', 'desc');
         const querySnapshot = await ticketsQuery.get();

@@ -1,11 +1,9 @@
-
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '@/ai/flows/send-email-flow';
 import admin from 'firebase-admin';
 
 async function getLeastBusyAnalyst(groupId: string): Promise<string | null> {
-    const adminDb = getAdminDb();
     const groupRef = adminDb.collection('expertise_groups').doc(groupId);
     const groupSnap = await groupRef.get();
 
@@ -38,7 +36,6 @@ export async function POST(request: NextRequest) {
         }
         const idToken = authHeader.split('Bearer ')[1];
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const clientUid = decodedToken.uid;
         const clientEmail = decodedToken.email;
@@ -49,7 +46,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
         }
 
-        const adminDb = getAdminDb();
         const batch = adminDb.batch();
 
         // Step 1: Create or get the end-user in Firebase Auth and associate with the client (tenant)

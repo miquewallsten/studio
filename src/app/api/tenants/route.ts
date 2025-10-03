@@ -1,11 +1,9 @@
-
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
 
 async function getTenantData() {
-    const adminDb = getAdminDb();
     const tenantsSnapshot = await adminDb.collection('tenants').orderBy('createdAt', 'desc').get();
     const tenants: any[] = [];
     tenantsSnapshot.forEach(doc => {
@@ -15,7 +13,6 @@ async function getTenantData() {
 }
 
 async function getUserCountsByTenant() {
-    const adminAuth = getAdminAuth();
     const userRecords = await adminAuth.listUsers();
     const counts: { [key: string]: number } = {};
     userRecords.users.forEach(user => {
@@ -28,7 +25,6 @@ async function getUserCountsByTenant() {
 }
 
 async function getTicketCountsByTenant() {
-    const adminDb = getAdminDb();
     const ticketsSnapshot = await adminDb.collection('tickets').get();
     const counts: { [key: string]: number } = {};
     ticketsSnapshot.forEach(doc => {
@@ -48,7 +44,6 @@ export async function POST(request: NextRequest) {
         }
         const idToken = authHeader.split('Bearer ')[1];
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         if (decodedToken.role !== 'Super Admin') {
             throw new Error('Forbidden. Only Super Admins can create tenants.');
@@ -60,8 +55,6 @@ export async function POST(request: NextRequest) {
             throw new Error('Company Name and Admin Email are required.');
         }
         
-        const adminDb = getAdminDb();
-
         let adminUserRecord;
         try {
             adminUserRecord = await adminAuth.createUser({

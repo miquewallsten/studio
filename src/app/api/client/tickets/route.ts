@@ -1,5 +1,4 @@
-
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +11,6 @@ export async function GET(request: NextRequest) {
         }
         const idToken = authHeader.split('Bearer ')[1];
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         
         let uid: string;
@@ -23,7 +21,6 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'User is not associated with a tenant.' }, { status: 403 });
         }
 
-        const adminDb = getAdminDb();
         const ticketsQuery = adminDb.collection('tickets').where('clientId', '==', tenantId).orderBy('createdAt', 'desc');
         const querySnapshot = await ticketsQuery.get();
 

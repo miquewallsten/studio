@@ -1,5 +1,4 @@
-
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -12,13 +11,11 @@ export async function POST(request: NextRequest) {
         }
         const idToken = authHeader.split('Bearer ')[1];
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const uid = decodedToken.uid;
 
         const prefs = await request.json();
 
-        const adminDb = getAdminDb();
         // Store preferences in a 'dashboard' document within a 'preferences' subcollection for the user.
         const userPrefsRef = adminDb.collection('users').doc(uid).collection('preferences').doc('dashboard');
 
@@ -47,11 +44,9 @@ export async function GET(request: NextRequest) {
         }
         const idToken = authHeader.split('Bearer ')[1];
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const uid = decodedToken.uid;
         
-        const adminDb = getAdminDb();
         // Fetch preferences from the 'dashboard' document within the 'preferences' subcollection.
         const userPrefsRef = adminDb.collection('users').doc(uid).collection('preferences').doc('dashboard');
         const docSnap = await userPrefsRef.get();

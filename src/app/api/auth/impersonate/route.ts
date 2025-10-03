@@ -1,4 +1,4 @@
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getIdToken } from 'firebase/auth';
 
@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
 
     const { targetUid } = await request.json();
     
-    const adminAuth = getAdminAuth();
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     
     // IMPORTANT: Only allow Super Admins to impersonate

@@ -1,5 +1,4 @@
-
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +16,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         }
         const idToken = authHeader.split('Bearer ')[1];
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'Super Admin';
 
@@ -37,7 +35,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         }
 
         // Update Firestore user profile document
-        const adminDb = getAdminDb();
         const userRef = adminDb.collection('users').doc(uid);
         const profileData: { [key: string]: any } = {};
         if (displayName !== undefined) {
@@ -79,7 +76,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { uid: 
         }
         const idToken = authHeader.split('Bearer ')[1];
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         
         if (decodedToken.role !== 'Super Admin') {
@@ -89,7 +85,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { uid: 
         await adminAuth.deleteUser(uid);
         
         // Optionally, delete user data from Firestore as well
-        const adminDb = getAdminDb();
         await adminDb.collection('users').doc(uid).delete().catch(err => {
             // Log error but don't fail the whole operation if Firestore deletion fails
             console.error(`Failed to delete Firestore user profile for UID ${uid}:`, err);

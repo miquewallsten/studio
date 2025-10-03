@@ -1,5 +1,4 @@
-
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Predefined roles
@@ -25,7 +24,6 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
         const idToken = authHeader.split('Bearer ')[1];
         
 
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'Super Admin';
 

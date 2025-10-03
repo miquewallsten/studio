@@ -1,4 +1,4 @@
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 
@@ -15,14 +15,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         }
         const idToken = authHeader.split('Bearer ')[1];
         
-        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         if (decodedToken.role !== 'Super Admin') {
             return NextResponse.json({ error: 'Forbidden. Only Super Admins can resend invitations.' }, { status: 403 });
         }
 
-        const adminDb = getAdminDb();
-        
         // Find the Tenant Admin user associated with this tenant
         const usersQuerySnapshot = await adminDb.collection('users').where('tenantId', '==', tenantId).where('role', '==', 'Tenant Admin').limit(1).get();
 

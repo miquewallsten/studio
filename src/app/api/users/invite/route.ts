@@ -1,5 +1,4 @@
-
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiSafe } from '@/lib/api-safe';
 
@@ -14,7 +13,6 @@ export async function POST(request: NextRequest) {
     }
     const idToken = authHeader.split('Bearer ')[1];
     
-    const adminAuth = getAdminAuth();
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     
     const { email, role, tenantId } = await request.json();
@@ -52,7 +50,6 @@ export async function POST(request: NextRequest) {
         }
     }
     
-    const adminDb = getAdminDb();
     const batch = adminDb.batch();
 
     const customClaims: {[key: string]: string} = {};
