@@ -17,16 +17,13 @@ if (Object.values(firebaseConfig).some(v => !v)) {
 }
 
 let firebaseApp: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-
-if (getApps().length > 0) {
-  firebaseApp = getApp();
-} else {
+if (getApps().length === 0) {
   firebaseApp = initializeApp(firebaseConfig);
+} else {
+  firebaseApp = getApp();
 }
 
-auth = getAuth(firebaseApp);
-db = getFirestore(firebaseApp);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
 
 export { firebaseApp, auth, db };

@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getApps } from 'firebase-admin/app';
 import { MODEL, getAiClient } from '@/lib/ai';
-import { ENV, config } from '@/lib/config';
+import { config } from '@/lib/config';
 import { getAdminAuth } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';

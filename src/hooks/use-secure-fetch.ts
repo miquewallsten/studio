@@ -31,7 +31,14 @@ export function useSecureFetch() {
 
     if (!res.ok) {
       let details = '';
-      try { details = await res.clone().text(); } catch {}
+      try {
+        const json = await res.clone().json();
+        details = json.error || JSON.stringify(json);
+      } catch {
+        try {
+          details = await res.clone().text();
+        } catch {}
+      }
       const err = new Error(`HTTP ${res.status} ${res.statusText} – ${details}`);
       (err as any).status = res.status;
       throw err;
