@@ -1,17 +1,16 @@
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
-
-export const dynamic = 'force-dynamic';
+import { apiSafe } from '@/lib/api-safe';
 
 // Predefined roles
 const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 'Tenant Admin', 'Tenant User', 'End User'];
 
 export async function POST(request: NextRequest) {
-  try {
+  return apiSafe(async () => {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+        throw new Error('Not authenticated: missing Bearer token');
     }
     const idToken = authHeader.split('Bearer ')[1];
     
@@ -21,34 +20,29 @@ export async function POST(request: NextRequest) {
     const { email, role, tenantId } = await request.json();
 
     if (!email) {
-      return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
+      throw new Error('Email is required.');
     }
     if (!role && !tenantId) {
-        return NextResponse.json({ error: 'Either a role or a tenantId must be provided.' }, { status: 400 });
+        throw new Error('Either a role or a tenantId must be provided.');
     }
 
     if (role && !VALID_ROLES.includes(role)) {
-      return NextResponse.json({ error: 'Invalid role specified.' }, { status: 400 });
+      throw new Error('Invalid role specified.');
     }
     
-    // Security check: Only Super Admins can create internal roles.
-    // Tenant Admins can only create roles within their own tenant.
     if (decodedToken.role !== 'Super Admin' && !tenantId) {
-        return NextResponse.json({ error: 'Forbidden. You can only invite users to a tenant.' }, { status: 403 });
+        throw new Error('Forbidden. You can only invite users to a tenant.');
     }
     
-    // Security check: If tenantId is provided, ensure the caller is an admin of that tenant.
     if (tenantId && decodedToken.tenantId !== tenantId && decodedToken.role !== 'Super Admin') {
-        return NextResponse.json({ error: 'Forbidden. You cannot invite users to this tenant.' }, { status: 403 });
+        throw new Error('Forbidden. You cannot invite users to this tenant.');
     }
 
-
-    // Create the user in Firebase Authentication
     let userRecord;
     try {
         userRecord = await adminAuth.createUser({
           email: email,
-          emailVerified: false, // User will verify their email later
+          emailVerified: false,
         });
     } catch (error: any) {
         if (error.code === 'auth/email-already-exists') {
@@ -73,31 +67,19 @@ export async function POST(request: NextRequest) {
     if (tenantId) {
         customClaims.tenantId = tenantId;
         userProfile.tenantId = tenantId;
-        // If a tenantId is provided and no specific tenant role is assigned, default to Tenant User
         if (!role || (role !== 'Tenant Admin' && role !== 'End User')) {
             customClaims.role = 'End User';
             userProfile.role = 'End User';
         }
     }
 
-    // Set custom claims for the role/tenant
     await adminAuth.setCustomUserClaims(userRecord.uid, customClaims);
     
-    // Create a user profile document
     const userRef = adminDb.collection('users').doc(userRecord.uid);
     batch.set(userRef, userProfile, { merge: true });
     
     await batch.commit();
 
-    return NextResponse.json({ uid: userRecord.uid, email: userRecord.email, claims: customClaims });
-
-  } catch (error: any) {
-    let errorMessage = 'An unexpected error occurred.';
-     if (error.message?.includes('credential error')) {
-        errorMessage = error.message;
-    } else if (error.message) {
-        errorMessage = error.message;
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+    return { uid: userRecord.uid, email: userRecord.email, claims: customClaims };
+  });
 }

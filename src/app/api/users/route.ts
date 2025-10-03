@@ -2,8 +2,7 @@
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
-
-export const dynamic = 'force-dynamic';
+import { apiSafe } from '@/lib/api-safe';
 
 async function getTenants() {
     const adminDb = getAdminDb();
@@ -55,10 +54,10 @@ async function getTicketCounts(tenantId?: string) {
 }
 
 export async function GET(request: NextRequest) {
-  try {
+  return apiSafe(async () => {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return NextResponse.json({ error: 'Not authenticated. No auth header.' }, { status: 401 });
+        throw new Error('Not authenticated: missing Bearer token');
     }
     const idToken = authHeader.split('Bearer ')[1];
     
@@ -121,15 +120,6 @@ export async function GET(request: NextRequest) {
 
     const users = await Promise.all(userProcessingPromises);
 
-    return NextResponse.json({ users, allTags });
-  } catch (error: any) {
-    console.error('Error listing users:', error);
-    let errorMessage = 'An unexpected error occurred.';
-    if (error.message?.includes('credential error')) {
-        errorMessage = 'Firebase Admin SDK credential error: Please ensure your service account credentials are set correctly.';
-    } else if (error.message) {
-        errorMessage = error.message;
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+    return { users, allTags };
+  });
 }

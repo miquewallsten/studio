@@ -28,22 +28,21 @@ export function useSecureFetch() {
       headers,
     });
     
-    // Check if the response is JSON before trying to parse it
-    const contentType = response.headers.get('content-type');
     if (!response.ok) {
-        let errorData = { error: `Request failed with status ${response.status}` };
-        if (contentType && contentType.includes('application/json')) {
-            try {
-                errorData = await response.json();
-            } catch(e) {
-                // The server returned an error but not valid JSON
-                const text = await response.text();
-                errorData.error = text || errorData.error;
-            }
+        let body: any;
+        try { 
+            body = await response.json(); 
+        } catch { 
+            const text = await response.text();
+            body = { error: text || `Request failed with status ${response.status}` };
         }
-        throw new Error(errorData.error || 'An unknown server error occurred.');
+        const error = new Error(body.error || 'An unknown server error occurred.');
+        (error as any).data = body;
+        throw error;
     }
 
+    // Check if the response is JSON before trying to parse it
+    const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       const text = await response.text();
       // Handle cases where the response is empty but has a JSON content type
