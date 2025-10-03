@@ -84,21 +84,21 @@ export function DataTableToolbar<TData>({
             className="h-8 w-[150px] lg:w-[250px]"
             />
         )}
-        {roleCol && (
+        {roleCol && roles && (
           <DataTableFacetedFilter
             column={roleCol}
             title="Role"
             options={roles}
           />
         )}
-        {statusCol && (
+        {statusCol && ticketStatuses && (
             <DataTableFacetedFilter
                 column={statusCol}
                 title="Status"
                 options={ticketStatuses}
             />
         )}
-        {reportTypeCol && (
+        {reportTypeCol && reportTypes && (
             <DataTableFacetedFilter
                 column={reportTypeCol}
                 title="Report Type"
