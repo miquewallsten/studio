@@ -6,6 +6,6 @@ export async function GET() {
     const text = await generateText('ping');
     return NextResponse.json({ ok: true, model: MODEL, text });
   } catch (e:any) {
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+    return NextResponse.json({ ok:false, error:String(e?.message||e) }, { status:500 });
   }
 }
