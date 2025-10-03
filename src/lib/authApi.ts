@@ -1,7 +1,6 @@
 
 import 'server-only';
 import { getAdminAuth } from '@/lib/firebaseAdmin';
-import { getENV } from './config';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import type { Role } from './rbac';
 
@@ -16,12 +15,9 @@ export function getBearer(req: Request): string | null {
 }
 
 export async function requireAuth(req: Request): Promise<AppDecodedIdToken> {
-  const ENV = getENV();
   const token = getBearer(req);
   
-  if (ENV.ADMIN_FAKE === '1') {
-      // In fake mode, we can cycle through roles for testing if needed,
-      // but for now, Super Admin is most useful.
+  if (process.env.ADMIN_FAKE === '1') {
       return { uid: 'fake-super-admin', role: 'Super Admin', tenantId: 'fake-tenant-id' } as AppDecodedIdToken;
   }
   

@@ -2,15 +2,20 @@
 import { NextResponse } from "next/server";
 import { MODEL, getAiClient } from "@/lib/ai";
 import { getAdminAuth } from "@/lib/firebaseAdmin";
-import { getApps } from "firebase-admin/app";
-import { config, getENV } from "@/lib/config";
+import admin from "firebase-admin";
 
 export const runtime = 'nodejs';
 
+function getCredentialSource() {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_B64) return 'b64';
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) return 'file';
+    return 'adc_or_missing';
+}
+
+
 export async function GET() {
-  const ENV = getENV();
   let adminApps = 0;
-  try { getAdminAuth(); adminApps = getApps().length; } catch { adminApps = 0; }
+  try { getAdminAuth(); adminApps = admin.apps.length; } catch { adminApps = 0; }
   
   const aiClient = getAiClient();
   const aiModel = aiClient ? MODEL : 'disabled';
@@ -18,7 +23,7 @@ export async function GET() {
   return NextResponse.json({ 
       ok: true, 
       adminApps, 
-      credentialSource: config.credentialSource, 
+      credentialSource: getCredentialSource(), 
       aiModel 
   });
 }

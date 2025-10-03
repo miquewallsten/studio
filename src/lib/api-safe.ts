@@ -1,10 +1,8 @@
 
 import { NextResponse } from 'next/server';
 import { logger } from './logger';
-import { getENV } from './config';
 
 export async function apiSafe<T>(fn: () => Promise<T>): Promise<NextResponse> {
-  const ENV = getENV();
   try {
     const data = await fn();
     // Ensure we always return a JSON response, even if data is null/undefined
@@ -13,7 +11,7 @@ export async function apiSafe<T>(fn: () => Promise<T>): Promise<NextResponse> {
     logger.error('API Error in apiSafe', {
         message: e.message,
         code: e.code,
-        stack: ENV.NODE_ENV !== 'production' ? e.stack : undefined,
+        stack: process.env.NODE_ENV !== 'production' ? e.stack : undefined,
     });
     
     // Determine status code from error if possible, otherwise default to 500
