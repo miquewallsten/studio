@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { requireAuth } from '@/lib/authApi';
+import { ENV } from '@/lib/config';
 
 export const runtime = 'nodejs';
 

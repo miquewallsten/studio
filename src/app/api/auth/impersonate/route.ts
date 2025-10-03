@@ -5,6 +5,7 @@ import { getIdToken } from 'firebase/auth';
 import { requireAuth } from '@/lib/authApi';
 import { requireRole } from '@/lib/rbac';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { ENV } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,8 +39,8 @@ export async function POST(request: NextRequest) {
     const idToken = authHeader ? authHeader.split('Bearer ')[1] : '';
 
     // Store the original user's UID in a cookie to allow "switching back"
-    response.cookies.set('impersonatorUid', decodedToken.uid, { httpOnly: true, path: '/', secure: process.env.NODE_ENV === 'production' });
-    response.cookies.set('impersonatorToken', idToken, { httpOnly: true, path: '/', secure: process.env.NODE_ENV === 'production' });
+    response.cookies.set('impersonatorUid', decodedToken.uid, { httpOnly: true, path: '/', secure: ENV.NODE_ENV === 'production' });
+    response.cookies.set('impersonatorToken', idToken, { httpOnly: true, path: '/', secure: ENV.NODE_ENV === 'production' });
 
     return response;
 
