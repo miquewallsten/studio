@@ -1,4 +1,3 @@
-import 'server-only';
 import { NextResponse } from 'next/server';
 import { generateText, MODEL } from '@/lib/ai';
 export const runtime = 'nodejs';
