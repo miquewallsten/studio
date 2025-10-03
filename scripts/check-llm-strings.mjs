@@ -1,59 +1,16 @@
 
-import * as fs from 'fs';
-import * as path from 'path';
-
-const FORBIDDEN_STRINGS = [
-  'v1beta',
-  '-latest',
-  'gemini-pro',
-  'gemini-1.5-',
-];
-
-const DIRS_TO_CHECK = ['src', 'app'];
-const EXCLUDED_FILES = ['check-llm-strings.mjs'];
-
-let errorFound = false;
-
-function checkFile(filePath) {
-  if (EXCLUDED_FILES.includes(path.basename(filePath))) {
-    return;
-  }
-
-  const content = fs.readFileSync(filePath, 'utf-8');
-  FORBIDDEN_STRINGS.forEach((str) => {
-    if (content.includes(str)) {
-      console.error(
-        `❌ Error: Found forbidden string "${str}" in file: ${filePath}`
-      );
-      errorFound = true;
-    }
-  });
+import fs from 'node:fs';
+import { execSync } from 'node:child_process';
+const BAD = ['v1beta','-latest','gemini-pro','gemini-1.5-','@genkit-ai','from \\'genkit\\''];
+const files = execSync("git ls-files '*.ts' '*.tsx' '*.js' '*.jsx'").toString().trim().split('\n');
+let badHits = [];
+for (const f of files) {
+  const s = fs.readFileSync(f,'utf8');
+  for (const b of BAD) if (s.includes(b)) badHits.push({file:f, b});
 }
-
-function traverseDir(dir) {
-  fs.readdirSync(dir).forEach((file) => {
-    const fullPath = path.join(dir, file);
-    if (fs.lstatSync(fullPath).isDirectory()) {
-      traverseDir(fullPath);
-    } else {
-      checkFile(fullPath);
-    }
-  });
-}
-
-console.log('🔍 Checking for forbidden LLM strings...');
-
-DIRS_TO_CHECK.forEach((dir) => {
-    if (fs.existsSync(dir)) {
-        traverseDir(dir);
-    }
-});
-
-
-if (errorFound) {
-  console.error('\n🚨 Failing build due to forbidden strings in the codebase.');
+if (badHits.length) {
+  console.error('Forbidden strings found:');
+  for (const h of badHits) console.error(` - ${h.b} in ${h.file}`);
   process.exit(1);
-} else {
-  console.log('✅ All checks passed. No forbidden strings found.');
-  process.exit(0);
 }
+console.log('OK: no forbidden strings');
