@@ -1,9 +1,11 @@
+
 import { NextResponse } from 'next/server';
 import { getAdminAuth } from '@/lib/firebaseAdmin';
-import { ENV } from '@/lib/config';
+import { getENV } from '@/lib/config';
 import { assertSingleInstance } from '@/lib/instanceGuard';
 export const runtime = 'nodejs';
 export async function GET() {
+  const ENV = getENV();
   try {
     assertSingleInstance();
     const adminAuth = getAdminAuth();

@@ -1,8 +1,10 @@
 
 import { NextResponse } from 'next/server';
 import { logger } from './logger';
+import { getENV } from './config';
 
 export async function apiSafe<T>(fn: () => Promise<T>): Promise<NextResponse> {
+  const ENV = getENV();
   try {
     const data = await fn();
     // Ensure we always return a JSON response, even if data is null/undefined
