@@ -1,5 +1,5 @@
-
 import { NextResponse } from 'next/server';
+import { getApps } from 'firebase-admin/app';
 import { MODEL } from '@/lib/ai';
 import { ENV } from '@/lib/config';
 
@@ -14,9 +14,9 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    nodeEnv: ENV.NODE_ENV,
-    adminFake: ENV.ADMIN_FAKE === '1',
+    adminApps: getApps().length,
     credentialSource: source,
+    adminFake: ENV.ADMIN_FAKE === '1',
     aiModel: MODEL,
   });
 }

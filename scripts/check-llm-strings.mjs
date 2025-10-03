@@ -1,3 +1,32 @@
+import fs from 'fs';
+
+const BAD = [
+  "v1beta",
+  "-latest",
+  "gemini-pro",
+  "gemini-1.5-",
+  "from 'genkit'",
+  "from \"genkit\"",
+  "from '@genkit-ai",
+];
+
+const files = process.argv.slice(2);
+let failed = false;
+
+for (const file of files) {
+  const content = fs.readFileSync(file, 'utf8');
+  for (const str of BAD) {
+    if (content.includes(str)) {
+      console.error(`ERROR: Found forbidden string "${str}" in ${file}`);
+      failed = true;
+    }
+  }
+}
+
+if (failed) {
+  console.error('\nPlease remove forbidden strings from the files listed above.');
+  process.exit(1);
+}
 
 // Also flag suspicious env patterns appearing together
 const ENV_BAD = [

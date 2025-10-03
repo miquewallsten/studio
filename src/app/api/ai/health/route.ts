@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { generateText, MODEL } from '@/lib/ai';
 import { logger } from '@/lib/logger';
@@ -12,9 +11,9 @@ export async function GET() {
         throw new Error('AI health check failed: "pong" not found in response.');
     }
     logger.info('AI health check successful');
-    return NextResponse.json({ ok: true, model: MODEL, text });
+    return NextResponse.json({ ok: true, model: MODEL, text: 'pong' });
   } catch (e:any) {
     logger.error('AI health check failed', { error: e.message });
-    return NextResponse.json({ ok:false, error:String(e?.message||e) }, { status:500 });
+    return NextResponse.json({ ok:false, error:String(e?.message||e), model: MODEL }, { status:500 });
   }
 }

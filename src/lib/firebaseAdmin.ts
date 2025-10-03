@@ -1,4 +1,3 @@
-
 // Server-only; never import from "use client".
 if (typeof window !== 'undefined') throw new Error('firebaseAdmin is server-only');
 
@@ -35,6 +34,13 @@ function getServiceAccount() {
     }
   }
 
+  // File path is mostly for local dev
+  if (ENV.GOOGLE_APPLICATION_CREDENTIALS) {
+    logger.debug('Trying to load Firebase credentials from GOOGLE_APPLICATION_CREDENTIALS');
+    // The `cert` function will handle reading this file path.
+    return ENV.GOOGLE_APPLICATION_CREDENTIALS;
+  }
+  
   // Triplet is a fallback
   if (ENV.FIREBASE_PROJECT_ID && ENV.FIREBASE_CLIENT_EMAIL && ENV.FIREBASE_PRIVATE_KEY) {
      logger.debug('Loaded Firebase credentials from triplet env vars');
@@ -45,13 +51,6 @@ function getServiceAccount() {
     };
   }
 
-  // File path is mostly for local dev
-  if (ENV.GOOGLE_APPLICATION_CREDENTIALS) {
-    logger.debug('Trying to load Firebase credentials from GOOGLE_APPLICATION_CREDENTIALS');
-    // The `cert` function will handle reading this file path.
-    return ENV.GOOGLE_APPLICATION_CREDENTIALS;
-  }
-  
   logger.warn('No explicit Firebase credentials found, falling back to Application Default Credentials (ADC)');
   return null;
 }
