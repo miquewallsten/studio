@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, PlusCircle, ShieldOff } from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
 import { UserProfileDialog } from '@/components/user-profile-dialog';
@@ -34,14 +34,14 @@ export default function AdminUsersPage() {
     const secureFetch = useSecureFetch();
 
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
             const res = await secureFetch('/api/users');
             const data = await res.json();
             if (data.error) {
-                throw new Error(data.error || 'Failed to fetch users');
+                throw new Error(data.error);
             }
             setUsers(data.users);
             setAllTags(data.allTags || []);
@@ -51,13 +51,13 @@ export default function AdminUsersPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [secureFetch]);
 
     useEffect(() => {
         if (role === 'Super Admin' || role === 'Admin') {
             fetchUsers();
         }
-    }, [role]);
+    }, [role, fetchUsers]);
     
     const handleUserInvitedOrUpdated = () => {
         fetchUsers(); // Re-fetch the user list after a new user is invited or updated
@@ -66,8 +66,6 @@ export default function AdminUsersPage() {
     const handleDialogClose = () => {
         setSelectedUser(null);
     }
-
-    const isCredentialFileNotFoundError = error && error.includes('ENOENT');
 
     const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, t]);
 
@@ -124,31 +122,30 @@ export default function AdminUsersPage() {
             {error && (
                  <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{isCredentialFileNotFoundError ? 'Configuration Required: Service Account Key Missing' : 'Error Fetching Data'}</AlertTitle>
+                    <AlertTitle>{error.includes('credential') || error.includes('parse') ? 'Configuration Required: Service Account Key Invalid' : 'Error Fetching Data'}</AlertTitle>
                     <AlertDescription>
-                        <p>{error}</p>
-                        {isCredentialFileNotFoundError && (
-                            <div className="mt-4 bg-gray-900 text-white p-4 rounded-md text-sm">
+                        <p className="font-mono text-xs bg-muted p-2 rounded">{error}</p>
+                        {(error.includes('credential') || error.includes('parse')) && (
+                            <div className="mt-4 text-sm">
                                 <p className="font-semibold">Action Required: Add Firebase Admin Credentials</p>
-                                <p className="mt-2">To use server-side features like user management, you must provide a Firebase Service Account key. The application is correctly configured to look for this file, but it was not found.</p>
+                                <p className="mt-2">To use server-side features like user management, you must provide a valid, base64-encoded Firebase Service Account key in your <code className="font-mono text-xs bg-muted p-1 rounded">.env</code> file under the variable <code className="font-mono text-xs bg-muted p-1 rounded">FIREBASE_SERVICE_ACCOUNT_B64</code>.</p>
                                 <ol className="list-decimal list-inside space-y-2 mt-3">
                                     <li>
-                                        In the Firebase Console, go to your project, click the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Gear icon</span> next to "Project Overview", then select <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Project settings</span>.
+                                        In the Firebase Console, go to your project, click the <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Gear icon</span> next to "Project Overview", then select <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Project settings</span>.
                                     </li>
                                     <li>
-                                        Go to the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Service accounts</span> tab.
+                                        Go to the <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Service accounts</span> tab.
                                     </li>
                                     <li>
-                                        Click the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Generate new private key</span> button to download a JSON file.
+                                        Click the <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Generate new private key</span> button to download a JSON file.
                                     </li>
-                                     <li>In the file explorer to your left, create a new folder named `secrets` in the root of your project.</li>
-                                     <li>Drag and drop the downloaded JSON file into the new `secrets` folder.</li>
-                                     <li>Rename the downloaded file to exactly `firebase-admin.json`.</li>
-                                    <li>
-                                        The application will automatically use this file. You may need to restart the development server.
+                                     <li>
+                                        Base64-encode the entire content of that JSON file into a single-line string.
+                                     </li>
+                                     <li>
+                                        Paste the resulting string as the value for <code className="font-mono text-xs bg-muted p-1 rounded">FIREBASE_SERVICE_ACCOUNT_B64</code> in your <code className="font-mono text-xs bg-muted p-1 rounded">.env</code> file.
                                     </li>
                                 </ol>
-                                <p className="mt-3 text-yellow-300 text-xs">Note: Your `.env` file is already correctly configured to point to `secrets/firebase-admin.json`.</p>
                             </div>
                         )}
                     </AlertDescription>
