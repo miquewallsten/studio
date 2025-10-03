@@ -1,5 +1,7 @@
+
 import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/authApi';
 
 // Predefined roles
 const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 'Tenant Admin', 'Tenant User', 'End User'];
@@ -18,14 +20,7 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
         }
 
         // --- Security Check: Ensure caller is an admin ---
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-        
-
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await requireAuth(request);
         const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'Super Admin';
 
         if (!isAdmin) {

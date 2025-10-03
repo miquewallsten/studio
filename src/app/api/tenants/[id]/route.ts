@@ -1,5 +1,7 @@
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/authApi';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,13 +12,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         const { id: tenantId } = params;
 
         // Security Check: Only Super Admins can delete tenants
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-        
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await requireAuth(request);
         if (decodedToken.role !== 'Super Admin') {
             return NextResponse.json({ error: 'Forbidden. Only Super Admins can delete tenants.' }, { status: 403 });
         }

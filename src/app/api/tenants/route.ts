@@ -1,7 +1,9 @@
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
+import { requireAuth } from '@/lib/authApi';
 
 async function getTenantData() {
     const adminDb = getAdminDb();
@@ -43,13 +45,7 @@ export async function POST(request: NextRequest) {
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     return apiSafe(async () => {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            throw new Error('Not authenticated: missing Bearer token');
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await requireAuth(request);
         if (decodedToken.role !== 'Super Admin') {
             throw new Error('Forbidden. Only Super Admins can create tenants.');
         }

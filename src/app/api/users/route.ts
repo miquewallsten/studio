@@ -1,7 +1,9 @@
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
+import { requireAuth } from '@/lib/authApi';
 
 async function getTenants() {
     const adminDb = getAdminDb();
@@ -55,13 +57,7 @@ async function getTicketCounts(tenantId?: string) {
 export async function GET(request: NextRequest) {
   const adminAuth = getAdminAuth();
   return apiSafe(async () => {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('Not authenticated: missing Bearer token');
-    }
-    const idToken = authHeader.split('Bearer ')[1];
-    
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const decodedToken = await requireAuth(request);
     
     const callerRole = decodedToken.role;
     const callerTenantId = callerRole === 'Tenant Admin' ? decodedToken.tenantId : undefined;

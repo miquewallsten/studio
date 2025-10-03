@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { getAdminAuth } from '@/lib/firebaseAdmin';
+import { requireAuth } from '@/lib/authApi';
 
 export const runtime = 'nodejs';
 
@@ -11,18 +12,9 @@ const validateEmailInput = (input: { to?: string; subject?: string; html?: strin
 };
 
 export async function POST(req: Request) {
-  const adminAuth = getAdminAuth();
   try {
     // 1. Authenticate the request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ ok: false, error: 'Not authenticated. No auth header.' }, { status: 401 });
-    }
-    const idToken = authHeader.split('Bearer ')[1];
-    
-    // Verify the token to ensure it's a valid user making the request
-    // You could add more granular checks here (e.g., specific roles) if needed.
-    await adminAuth.verifyIdToken(idToken);
+    await requireAuth(req);
 
     // 2. Parse and validate the request body
     const { to, subject, html } = await req.json();
@@ -62,4 +54,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Failed to send email.', message: error.message }, { status: 500 });
   }
 }
-

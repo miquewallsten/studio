@@ -2,6 +2,7 @@
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
+import { requireAuth } from '@/lib/authApi';
 
 async function getLeastBusyAnalyst(groupId: string): Promise<string | null> {
     const adminDb = getAdminDb();
@@ -33,13 +34,7 @@ export async function POST(request: NextRequest) {
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Not authenticated. No auth header.' }, { status: 401 });
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await requireAuth(request);
         const clientUid = decodedToken.uid;
         const clientEmail = decodedToken.email;
 
@@ -130,6 +125,10 @@ export async function POST(request: NextRequest) {
             <p>This link is for single use only.</p>
             <p>Thank you,<br/>The TenantCheck Team</p>
         `.replace(/\n/g, '<br>');
+
+        // We need the original token to pass to the email API
+        const authHeader = request.headers.get('Authorization');
+        const idToken = authHeader ? authHeader.split('Bearer ')[1] : '';
 
         // Step 5: Send the email to the end-user via our own API route
         const emailRes = await fetch(`${request.nextUrl.origin}/api/send-email`, {

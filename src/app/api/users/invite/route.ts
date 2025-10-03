@@ -1,6 +1,8 @@
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiSafe } from '@/lib/api-safe';
+import { requireAuth } from '@/lib/authApi';
 
 // Predefined roles
 const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 'Tenant Admin', 'Tenant User', 'End User'];
@@ -9,13 +11,7 @@ export async function POST(request: NextRequest) {
   const adminAuth = getAdminAuth();
   const adminDb = getAdminDb();
   return apiSafe(async () => {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('Not authenticated: missing Bearer token');
-    }
-    const idToken = authHeader.split('Bearer ')[1];
-    
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const decodedToken = await requireAuth(request);
     
     const { email, role, tenantId } = await request.json();
 

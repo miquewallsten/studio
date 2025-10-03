@@ -1,19 +1,14 @@
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/authApi';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-    const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Not authenticated. No auth header.' }, { status: 401 });
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await requireAuth(request);
         const uid = decodedToken.uid;
 
         const prefs = await request.json();
@@ -39,16 +34,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-    const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     try {
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Not authenticated. No auth header.' }, { status: 401 });
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await requireAuth(request);
         const uid = decodedToken.uid;
         
         // Fetch preferences from the 'dashboard' document within the 'preferences' subcollection.

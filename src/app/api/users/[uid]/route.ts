@@ -1,5 +1,7 @@
+
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/authApi';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,13 +14,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         const { displayName, phone, tags } = body;
 
         // --- Security Check: Ensure caller is an admin ---
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await requireAuth(request);
         const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'Super Admin';
 
         if (!isAdmin) {
@@ -74,13 +70,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { uid: 
     try {
         const { uid } = params;
 
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await requireAuth(request);
         
         if (decodedToken.role !== 'Super Admin') {
             return NextResponse.json({ error: 'Forbidden. Only Super Admins can delete users.' }, { status: 403 });

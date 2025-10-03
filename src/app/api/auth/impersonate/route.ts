@@ -1,21 +1,17 @@
+
 import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getIdToken } from 'firebase/auth';
+import { requireAuth } from '@/lib/authApi';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
     const adminAuth = getAdminAuth();
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return NextResponse.json({ error: 'Not authenticated. No auth header.' }, { status: 401 });
-    }
-    const idToken = authHeader.split('Bearer ')[1];
-
-    const { targetUid } = await request.json();
+    const decodedToken = await requireAuth(request);
     
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const { targetUid } = await request.json();
     
     // IMPORTANT: Only allow Super Admins to impersonate
     if (decodedToken.role !== 'Super Admin') {
@@ -31,6 +27,10 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ customToken });
     
+    // We need the original token to switch back, so we have to get it from the header here.
+    const authHeader = request.headers.get('Authorization');
+    const idToken = authHeader ? authHeader.split('Bearer ')[1] : '';
+
     // Store the original user's UID in a cookie to allow "switching back"
     response.cookies.set('impersonatorUid', decodedToken.uid, { httpOnly: true, path: '/', secure: process.env.NODE_ENV === 'production' });
     response.cookies.set('impersonatorToken', idToken, { httpOnly: true, path: '/', secure: process.env.NODE_ENV === 'production' });
