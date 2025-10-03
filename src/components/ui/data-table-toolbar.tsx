@@ -20,8 +20,6 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
 
-  const allColumnIds = React.useMemo(() => new Set(table.getAllColumns().map(c => c.id)), [table]);
-
   // Define potential filter options
   const roles = [
       {value: "Super Admin", label: "Super Admin"},
@@ -48,8 +46,9 @@ export function DataTableToolbar<TData>({
       {value: "employment-verification", label: "Employment Verification"},
   ]
   
+  const tenantNameCol = table.getColumn('tenantName');
   const tenantNames = React.useMemo(() => {
-    if (!allColumnIds.has('tenantName')) {
+    if (!tenantNameCol) {
         return [];
     }
     const names = new Set<string>();
@@ -58,7 +57,7 @@ export function DataTableToolbar<TData>({
         if (tenantName) names.add(tenantName);
     });
     return Array.from(names).map(name => ({ value: name, label: name }));
-  }, [table, allColumnIds]);
+  }, [table, tenantNameCol]);
 
 
   // Find a generic column to filter by text, like 'name' or 'email' or 'subject'
@@ -70,7 +69,6 @@ export function DataTableToolbar<TData>({
   const roleCol = table.getColumn('role');
   const statusCol = table.getColumn('status');
   const reportTypeCol = table.getColumn('reportType');
-  const tenantNameCol = table.getColumn('tenantName');
 
 
   return (
