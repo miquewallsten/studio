@@ -66,7 +66,7 @@ export default function AdminUsersPage() {
         setSelectedUser(null);
     }
 
-    const isCredentialError = error && error.includes('Firebase admin initialization error');
+    const isCredentialError = error && (error.includes('credential') || error.includes('service-account.json'));
 
     const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, t]);
 
