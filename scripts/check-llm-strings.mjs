@@ -1,32 +1,67 @@
-import fs from 'fs';
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
 
-const BAD = [
-  "v1beta",
-  "-latest",
-  "gemini-pro",
-  "gemini-1.5-",
+const forbidden = [
+  'v1beta',
+  '-latest',
+  'gemini-pro',
+  'gemini-1.5-',
   "from 'genkit'",
-  "from \"genkit\"",
+  'from "genkit"',
   "from '@genkit-ai",
 ];
 
-const files = process.argv.slice(2);
-let failed = false;
+const projectRoot = path.resolve(process.cwd());
+const srcDir = path.join(projectRoot, 'src');
 
-for (const file of files) {
-  const content = fs.readFileSync(file, 'utf8');
-  for (const str of BAD) {
-    if (content.includes(str)) {
-      console.error(`ERROR: Found forbidden string "${str}" in ${file}`);
-      failed = true;
+let violations = [];
+
+function checkFile(filePath) {
+  if (filePath.includes('node_modules') || filePath.endsWith('check-llm-strings.mjs')) {
+    return;
+  }
+  const content = fs.readFileSync(filePath, 'utf8');
+
+  // Stricter rule for "gemini-"
+  if (content.includes('gemini-') && !filePath.endsWith('src/lib/ai.ts')) {
+     const lines = content.split('\n');
+     for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('gemini-')) {
+            violations.push(`${filePath}:${i+1}: Found hard-coded 'gemini-' string. Please import 'MODEL' from '@/lib/ai' instead.`);
+        }
+     }
+  }
+
+
+  for (const f of forbidden) {
+    if (content.includes(f)) {
+       const lines = content.split('\n');
+       for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes(f)) {
+            violations.push(`${filePath}:${i+1}: Found forbidden string "${f}"`);
+        }
+       }
     }
   }
 }
 
-if (failed) {
-  console.error('\nPlease remove forbidden strings from the files listed above.');
-  process.exit(1);
+function traverseDir(dir) {
+  const files = fs.readdirSync(dir);
+  for (const file of files) {
+    const fullPath = path.join(dir, file);
+    const stat = fs.statSync(fullPath);
+    if (stat.isDirectory()) {
+      traverseDir(fullPath);
+    } else if (/\.(ts|tsx|js|jsx|mjs)$/.test(fullPath)) {
+      checkFile(fullPath);
+    }
+  }
 }
+
+console.log('Running LLM/GenAI string check...');
+traverseDir(srcDir);
+
 
 // Also flag suspicious env patterns appearing together
 const ENV_BAD = [
@@ -34,14 +69,22 @@ const ENV_BAD = [
   'FIREBASE_SERVICE_ACCOUNT_B64=',
   'FIREBASE_PROJECT_ID=',
 ];
-const envFile = '.env.local';
+const envFile = '.env';
 if (fs.existsSync(envFile)) {
   const e = fs.readFileSync(envFile,'utf8');
-  const has = (s)=>e.includes(s);
+  const has = (s)=>e.includes(s) && !e.match(new RegExp(`^\\s*#\\s*${s}`));
   const file = has(ENV_BAD[0]), b64 = has(ENV_BAD[1]), trip = has(ENV_BAD[2]);
   const n = [file,b64,trip].filter(Boolean).length;
   if (n > 1) {
-    console.error('Single-instance guard: .env.local appears to define multiple Firebase credential sources. Keep exactly ONE.');
-    process.exit(1);
+    violations.push(`${envFile}: Single-instance guard: .env appears to define multiple Firebase credential sources. Keep exactly ONE.`);
   }
 }
+
+
+if (violations.length > 0) {
+  console.error('❌ FAILED: Found forbidden strings in the codebase:');
+  violations.forEach(v => console.error(`   - ${v}`));
+  process.exit(1);
+}
+
+console.log('✅ PASSED: No forbidden LLM/GenAI strings found.');
