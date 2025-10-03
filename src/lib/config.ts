@@ -16,6 +16,10 @@ const EnvSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
 
+  // Rate Limiting (optional)
+  RATE_WINDOW_MS: z.coerce.number().default(60000),
+  RATE_MAX: z.coerce.number().default(60),
+
   // Flag to use mocked admin instances for UI development without a backend
   ADMIN_FAKE: z.string().optional(),
 })
