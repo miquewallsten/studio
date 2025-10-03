@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,27 +19,15 @@ import {
 import { CreditCard, LogOut, Settings, User, Languages } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/language-context';
+import { useAuthRole } from '@/hooks/use-auth-role';
 
 export function UserNav() {
   const router = useRouter();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { user } = useAuthRole();
   const { setLocale, t } = useLanguage();
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserEmail(user.email);
-      } else {
-        setUserEmail(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
     try {
@@ -54,7 +43,8 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarFallback>{userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+             <AvatarImage src={user?.photoURL ?? undefined} />
+            <AvatarFallback>{user?.email ? user.email.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
@@ -62,9 +52,9 @@ export function UserNav() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{t('nav.account')}</p>
-            {userEmail && (
+            {user?.email && (
               <p className="text-xs leading-none text-muted-foreground">
-                {userEmail}
+                {user.email}
               </p>
             )}
           </div>
