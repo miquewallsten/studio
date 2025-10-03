@@ -32,7 +32,8 @@ const app = getApps().length
       credential: cert({
         projectId: sa.project_id,
         clientEmail: sa.client_email,
-        privateKey: sa.private_key, // already full PEM from JSON, no \\n replace needed
+        // IMPORTANT: Replace literal "\\n" with actual newline characters
+        privateKey: sa.private_key.replace(/\\n/g, '\n'),
       }),
     });
 
