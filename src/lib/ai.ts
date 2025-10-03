@@ -1,4 +1,3 @@
-
 // Server-only; do not import in client components.
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ENV } from './config';
