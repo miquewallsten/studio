@@ -87,7 +87,7 @@ export const columns: ColumnDef<Ticket>[] = [
       <DataTableColumnHeader column={column} title={"Created"} />
     ),
     cell: ({ row }) => {
-      const date = row.original.createdAt.toDate()
+      const date = new Date(row.original.createdAt)
       const formattedDate = format(date, "PPP")
       return <div>{formattedDate}</div>
     },
