@@ -1,10 +1,16 @@
+
 import { NextResponse } from 'next/server';
 import { generateText, MODEL } from '@/lib/ai';
 import { logger } from '@/lib/logger';
+import { ENV } from '@/lib/config';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
+  if (!ENV.AI_ENABLED) {
+    return NextResponse.json({ ok: true, model: 'disabled', text: 'pong' });
+  }
+
   try {
     const text = await generateText('ping');
     if (!text.toLowerCase().includes('pong')) {

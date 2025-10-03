@@ -22,14 +22,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 export default function NewTicketPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const secureFetch = useSecureFetch();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,44 +41,22 @@ export default function NewTicketPage() {
     const description = formData.get('description') as string;
 
     try {
-      // 1. Call the AI to get suggested questions
-      const aiPrompt = `You are an AI assistant that suggests specialized compliance questions. Given the report type and description below, suggest a list of 3-5 compliance questions. Return *only* a JSON object with a "suggestedQuestions" key containing an array of strings. Do not add any other text, markdown, or explanation.\n\nReport Type: ${reportType}\nDescription: ${description}`;
-      
-      const res = await fetch('/api/ai/echo', {
+      // The API endpoint will handle the AI logic and ticket creation.
+      const res = await secureFetch('/api/tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to fetch AI suggestions.');
-      }
-      const json = await res.json();
-      const aiResponse = json.text ?? '';
-      
-      let suggestedQuestions: string[] = [];
-      try {
-        const jsonResponse = aiResponse.replace(/```json|```/g, '').trim();
-        const parsed = JSON.parse(jsonResponse);
-        suggestedQuestions = parsed.suggestedQuestions || [];
-      } catch (e) {
-        console.error("Failed to parse AI response for compliance questions:", e);
-        // Continue without AI suggestions if parsing fails
-      }
-      
-      // 2. Save the ticket and form data to Firestore.
-      await addDoc(collection(db, 'tickets'), {
-        subjectName,
-        email,
-        reportType,
-        description,
-        suggestedQuestions,
-        status: 'New',
-        createdAt: serverTimestamp(),
+        body: JSON.stringify({
+          subjectName,
+          email,
+          reportType,
+          description,
+        }),
       });
 
-      // 3. In a real app, you would trigger an email to the subject.
-      // For now, we just show a success toast.
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to create ticket.');
+      }
+      
       toast({
         title: 'Ticket Created',
         description: `A new form has been dispatched to ${email}.`,

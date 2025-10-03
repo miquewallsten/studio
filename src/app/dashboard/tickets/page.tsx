@@ -3,14 +3,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import {
   Card,
   CardContent,
   CardHeader,
@@ -24,28 +16,31 @@ import { DataTable } from '@/components/ui/data-table';
 import { useLanguage } from '@/contexts/language-context';
 import { columns } from './columns';
 import type { Ticket } from './schema';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 export default function TicketsPage() {
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string|null>(null);
   const { t } = useLanguage();
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
-    const q = query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const ticketsData: Ticket[] = [];
-      querySnapshot.forEach((doc) => {
-        ticketsData.push({ id: doc.id, ...doc.data() } as Ticket);
-      });
-      setAllTickets(ticketsData);
-      setLoading(false);
-    }, (error) => {
-        console.error("Error fetching tickets: ", error);
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+    const fetchTickets = async () => {
+        try {
+            setLoading(true);
+            const res = await secureFetch('/api/tickets');
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            setAllTickets(data.tickets);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+    fetchTickets();
+  }, [secureFetch]);
   
   const memoizedColumns = useMemo(() => columns, []);
 
@@ -70,6 +65,8 @@ export default function TicketsPage() {
         <CardContent className="flex-1 overflow-auto">
            {loading ? (
              <p>{t('common.loading')}...</p>
+           ) : error ? (
+            <p className='text-destructive'>{error}</p>
            ) : (
             <DataTable 
                 columns={memoizedColumns} 

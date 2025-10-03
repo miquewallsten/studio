@@ -24,9 +24,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
-import { collection, getDocs, query } from 'firebase/firestore';
 
 type FormTemplate = {
     id: string;
@@ -38,21 +35,21 @@ export default function NewRequestPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const secureFetch = useSecureFetch();
-  const [user, loadingUser] = useAuthState(auth);
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([]);
 
   useEffect(() => {
     const fetchForms = async () => {
-      const q = query(collection(db, "forms"));
-      const querySnapshot = await getDocs(q);
-      const templates: FormTemplate[] = [];
-      querySnapshot.forEach((doc) => {
-        templates.push({ id: doc.id, name: doc.data().name });
-      });
-      setFormTemplates(templates);
+      try {
+        const res = await secureFetch('/api/forms');
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setFormTemplates(data.forms);
+      } catch (error: any) {
+        toast({ title: 'Error', description: `Could not load form templates: ${error.message}`, variant: 'destructive' });
+      }
     };
     fetchForms();
-  }, []);
+  }, [secureFetch, toast]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,16 +59,6 @@ export default function NewRequestPage() {
     const email = formData.get('email') as string;
     const reportType = formData.get('report-type') as string; // This is now the Form Template ID
     const description = formData.get('description') as string;
-
-    if (!user) {
-        toast({
-            title: 'Error',
-            description: 'You must be logged in to create a request.',
-            variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-    }
 
     try {
         const selectedTemplate = formTemplates.find(t => t.id === reportType);

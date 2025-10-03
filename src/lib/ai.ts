@@ -1,3 +1,4 @@
+
 // Server-only; do not import in client components.
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ENV } from './config';
@@ -13,9 +14,13 @@ declare global { var __GENAI_CLIENT__: GoogleGenerativeAI | undefined; }
 
 export const MODEL = 'gemini-2.5-flash-lite';
 
-function getClient(): GoogleGenerativeAI {
+function getClient(): GoogleGenerativeAI | null {
+  if (!ENV.AI_ENABLED) {
+    return null;
+  }
   if (!ENV.GOOGLE_API_KEY) {
-    throw new Error('Missing GOOGLE_API_KEY environment variable.');
+    logger.error('AI is enabled but GOOGLE_API_KEY is missing.');
+    return null;
   }
 
   if (global.__GENAI_CLIENT__) {
@@ -29,8 +34,14 @@ function getClient(): GoogleGenerativeAI {
 }
 
 export async function generateText(prompt: string): Promise<string> {
+  const client = getClient();
+  if (!client) {
+    logger.warn('AI text generation skipped because AI is disabled.');
+    // Return a predictable but inert response
+    return "AI is disabled.";
+  }
+
   try {
-    const client = getClient();
     const model = client.getGenerativeModel({ model: MODEL });
     const result = await model.generateContent(prompt);
     const text = result.response.text();

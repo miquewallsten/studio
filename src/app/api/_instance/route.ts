@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getApps } from 'firebase-admin/app';
 import { MODEL } from '@/lib/ai';
@@ -17,6 +18,6 @@ export async function GET() {
     adminApps: getApps().length,
     credentialSource: source,
     adminFake: ENV.ADMIN_FAKE === '1',
-    aiModel: MODEL,
+    aiModel: ENV.AI_ENABLED ? MODEL : 'disabled',
   });
 }
