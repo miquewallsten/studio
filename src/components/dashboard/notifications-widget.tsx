@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { db } from '@/lib/firebase';
 import {
   collection,
   onSnapshot,
@@ -23,18 +22,19 @@ import { AlertTriangle, RefreshCw, Bell, MailWarning } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ResendInviteDialog } from '../resend-invite-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 
 type TenantInvite = {
   id: string;
   name: string;
-  invitationSentAt: Timestamp;
+  invitationSentAt: string;
 };
 
 type PendingSubmission = {
     id: string;
     subjectName: string;
-    createdAt: Timestamp;
+    createdAt: string;
 }
 
 const EXPIRING_INVITE_DAYS = 5;
@@ -47,48 +47,51 @@ export function NotificationsWidget() {
   const [selectedTenant, setSelectedTenant] = useState<TenantInvite | null>(null);
   const [isResendDialogOpen, setResendDialogOpen] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
-    // Listener for expiring tenant invites
-    const invitesQuery = query(
-      collection(db, 'tenants'),
-      where('status', '==', 'INVITED')
-    );
-    const unsubscribeInvites = onSnapshot(invitesQuery, (querySnapshot) => {
-      const invitesData: TenantInvite[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.invitationSentAt && differenceInDays(new Date(), data.invitationSentAt.toDate()) >= EXPIRING_INVITE_DAYS) {
-          invitesData.push({ id: doc.id, ...data } as TenantInvite);
+    const fetchNotifications = async () => {
+        setLoading(true);
+        try {
+            const [tenantsRes, ticketsRes] = await Promise.all([
+                secureFetch('/api/tenants'),
+                secureFetch('/api/tickets')
+            ]);
+            
+            const tenantsData = await tenantsRes.json();
+            const ticketsData = await ticketsRes.json();
+
+            if (tenantsData.error) throw new Error(`Tenants: ${tenantsData.error}`);
+            if (ticketsData.error) throw new Error(`Tickets: ${ticketsData.error}`);
+
+            const invites = (tenantsData.tenants || []).filter((t: any) => 
+                t.status === 'INVITED' && 
+                t.invitationSentAt && 
+                differenceInDays(new Date(), new Date(t.invitationSentAt)) >= EXPIRING_INVITE_DAYS
+            );
+            
+            const submissions = (ticketsData.tickets || []).filter((t: any) => 
+                t.status === 'New' && 
+                t.createdAt && 
+                differenceInDays(new Date(), new Date(t.createdAt)) >= PENDING_SUBMISSION_DAYS
+            );
+
+            setExpiringInvites(invites);
+            setPendingSubmissions(submissions);
+
+        } catch (err: any) {
+            console.error("Error fetching notifications:", err.message);
+            // Don't show a toast for this, just log it.
+        } finally {
+            setLoading(false);
         }
-      });
-      setExpiringInvites(invitesData);
-      setLoading(false);
-    });
+    }
 
-    // Listener for pending end-user submissions
-    const submissionsQuery = query(
-        collection(db, 'tickets'),
-        where('status', '==', 'New')
-    );
-    const unsubscribeSubmissions = onSnapshot(submissionsQuery, (querySnapshot) => {
-        const submissionsData: PendingSubmission[] = [];
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            if (data.createdAt && differenceInDays(new Date(), data.createdAt.toDate()) >= PENDING_SUBMISSION_DAYS) {
-                submissionsData.push({ id: doc.id, ...data } as PendingSubmission);
-            }
-        });
-        setPendingSubmissions(submissionsData);
-        setLoading(false);
-    });
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // Re-fetch every minute
 
-
-    return () => {
-        unsubscribeInvites();
-        unsubscribeSubmissions();
-    };
-  }, []);
+    return () => clearInterval(interval);
+  }, [secureFetch]);
 
   const handleResendClick = (invite: TenantInvite) => {
     setSelectedTenant(invite);
@@ -157,7 +160,7 @@ export function NotificationsWidget() {
                     </div>
                     <p className="text-sm mt-1">
                       Invite for <span className="font-medium">{invite.name}</span> sent{' '}
-                      {formatDistanceToNow(invite.invitationSentAt.toDate(), {
+                      {formatDistanceToNow(new Date(invite.invitationSentAt), {
                         addSuffix: true,
                       })}
                     </p>
@@ -184,7 +187,7 @@ export function NotificationsWidget() {
                     </div>
                     <p className="text-sm mt-1">
                       Form for <span className="font-medium">{submission.subjectName}</span> sent{' '}
-                      {formatDistanceToNow(submission.createdAt.toDate(), {
+                      {formatDistanceToNow(new Date(submission.createdAt), {
                         addSuffix: true,
                       })}
                     </p>
