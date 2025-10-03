@@ -1,20 +1,19 @@
+
 // Server-only; never import from "use client".
 if (typeof window !== 'undefined') throw new Error('firebaseAdmin is server-only');
 
-import fs from 'node:fs';
-import path from 'node:path';
 import { getApps, initializeApp, applicationDefault, cert, getApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-
-const ADMIN_FAKE = process.env.ADMIN_FAKE === '1';
+import { ENV } from './config';
+import { logger } from './logger';
 
 // @ts-ignore augment global to keep a single instance across hot reload
 declare global { var __ADMIN_APP__: ReturnType<typeof initializeApp> | undefined }
 
-function normalizePem(pemRaw: string) {
+function normalizePem(pemRaw: string): string {
   let pk = String(pemRaw || '');
-  pk = pk.replace(/\\n/g, '\n').replace(/\r/g, '').trim();
+  pk = pk.replace(/\\n/g, '\n').trim();
   if (!pk.startsWith('-----BEGIN PRIVATE KEY-----')) pk = '-----BEGIN PRIVATE KEY-----\n' + pk;
   if (!pk.endsWith('-----END PRIVATE KEY-----')) pk = pk + '\n-----END PRIVATE KEY-----';
   if (!pk.endsWith('\n')) pk += '\n';
@@ -22,56 +21,118 @@ function normalizePem(pemRaw: string) {
 }
 
 function getServiceAccount() {
-  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (credPath) {
-    const abs = path.isAbsolute(credPath) ? credPath : path.resolve(process.cwd(), credPath);
-    if (!fs.existsSync(abs)) throw new Error(`Credential file not found at ${abs}`);
-    const json = fs.readFileSync(abs, 'utf8').trim().replace(/^\uFEFF/, '');
-    const sa = JSON.parse(json);
-    return { project_id: sa.project_id, client_email: sa.client_email, private_key: normalizePem(sa.private_key) };
+  // B64 is the preferred method for Vercel/serverless
+  if (ENV.FIREBASE_SERVICE_ACCOUNT_B64) {
+    try {
+      const json = Buffer.from(ENV.FIREBASE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8');
+      const sa = JSON.parse(json);
+      sa.private_key = normalizePem(sa.private_key);
+      logger.debug('Loaded Firebase credentials from FIREBASE_SERVICE_ACCOUNT_B64');
+      return sa;
+    } catch (e) {
+      logger.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_B64', { error: (e as Error).message });
+      return null;
+    }
   }
-  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
-  if (b64) {
-    const json = Buffer.from(b64.trim(), 'base64').toString('utf8').trim().replace(/^\uFEFF/, '');
-    const unwrapped = (json.startsWith('"') && json.endsWith('"')) ? json.slice(1, -1) : json;
-    const sa = JSON.parse(unwrapped);
-    return { project_id: sa.project_id, client_email: sa.client_email, private_key: normalizePem(sa.private_key) };
+
+  // Triplet is a fallback
+  if (ENV.FIREBASE_PROJECT_ID && ENV.FIREBASE_CLIENT_EMAIL && ENV.FIREBASE_PRIVATE_KEY) {
+     logger.debug('Loaded Firebase credentials from triplet env vars');
+    return {
+      project_id: ENV.FIREBASE_PROJECT_ID,
+      client_email: ENV.FIREBASE_CLIENT_EMAIL,
+      private_key: normalizePem(ENV.FIREBASE_PRIVATE_KEY),
+    };
   }
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const rawKey = process.env.FIREBASE_PRIVATE_KEY;
-  if (projectId && clientEmail && rawKey) {
-    return { project_id: projectId, client_email: clientEmail, private_key: normalizePem(rawKey) };
+
+  // File path is mostly for local dev
+  if (ENV.GOOGLE_APPLICATION_CREDENTIALS) {
+    logger.debug('Trying to load Firebase credentials from GOOGLE_APPLICATION_CREDENTIALS');
+    // The `cert` function will handle reading this file path.
+    return ENV.GOOGLE_APPLICATION_CREDENTIALS;
   }
+  
+  logger.warn('No explicit Firebase credentials found, falling back to Application Default Credentials (ADC)');
   return null;
 }
 
 function ensureSingleApp() {
-  if (ADMIN_FAKE) return;
-  if (global.__ADMIN_APP__) return; // cached
-  if (getApps().length) { global.__ADMIN_APP__ = getApp(); return; }
+  if (ENV.ADMIN_FAKE === '1') return;
+  if (global.__ADMIN_APP__) return global.__ADMIN_APP__;
+  if (getApps().length) { 
+    global.__ADMIN_APP__ = getApp(); 
+    return global.__ADMIN_APP__;
+  }
 
-  const sa = getServiceAccount();
-  if (sa) {
-    global.__ADMIN_APP__ = initializeApp({ credential: cert({
-      projectId: sa.project_id, clientEmail: sa.client_email, privateKey: sa.private_key,
-    })});
+  const credentialSource = getServiceAccount();
+
+  if (credentialSource) {
+    global.__ADMIN_APP__ = initializeApp({ credential: cert(credentialSource) });
   } else {
+    // If no explicit credentials, try ADC. This is useful for some cloud environments.
     global.__ADMIN_APP__ = initializeApp({ credential: applicationDefault() });
   }
+  return global.__ADMIN_APP__;
 }
 
 export function getAdminAuth() {
-  if (ADMIN_FAKE) {
-    return { async listUsers(){return{users:[]}}, async verifyIdToken(){return{uid:'fake-user'}} } as any;
+  if (ENV.ADMIN_FAKE === '1') {
+    logger.warn('Using fake Firebase Admin Auth instance');
+    return { 
+      listUsers: async () => ({ users: [] }), 
+      verifyIdToken: async () => ({ uid: 'fake-super-admin', role: 'Super Admin' }),
+      getUser: async (uid: string) => ({ uid, customClaims: { role: 'Super Admin'} }),
+      createCustomToken: async (uid: string) => `fake-token-for-${uid}`,
+      setCustomUserClaims: async () => {},
+      createUser: async (props: any) => ({ uid: `fake-${props.email}`}),
+      getUserByEmail: async (email: string) => ({ uid: `fake-${email}` }),
+      generatePasswordResetLink: async (email: string) => `http://localhost:9002/onboard?oobCode=fake-code-for-${email}`,
+      deleteUser: async () => {},
+     } as any;
   }
   ensureSingleApp();
   return getAuth();
 }
 
 export function getAdminDb() {
-  if (ADMIN_FAKE) {
-    return { collection: () => ({ doc: () => ({ get: async()=>({exists:false}), set: async()=>{}, update: async()=>{} }), get: async()=>({ forEach:()=>{} }) }) } as any;
+  if (ENV.ADMIN_FAKE === '1') {
+    logger.warn('Using fake Firebase Admin Firestore instance');
+    return { 
+        collection: () => ({ 
+            doc: () => ({ 
+                get: async () => ({ exists: false, data: () => null }), 
+                set: async () => {}, 
+                update: async () => {},
+                delete: async () => {},
+                collection: () => ({
+                    doc: () => ({
+                         get: async () => ({ exists: false, data: () => null }), 
+                         set: async () => {}, 
+                    })
+                })
+            }), 
+            add: async () => ({ id: 'fake-id' }),
+            where: () => ({ 
+                get: async () => ({ empty: true, docs: [], forEach: () => {} }),
+                limit: () => ({
+                     get: async () => ({ empty: true, docs: [], forEach: () => {} }),
+                })
+             }),
+            get: async () => ({ empty: true, docs: [], forEach: () => {} }),
+            orderBy: () => ({ 
+                get: async () => ({ empty: true, docs: [], forEach: () => {} }),
+                limit: () => ({
+                     get: async () => ({ empty: true, docs: [], forEach: () => {} }),
+                })
+            })
+        }),
+        batch: () => ({
+            set: () => {},
+            update: () => {},
+            delete: () => {},
+            commit: async () => {},
+        })
+    } as any;
   }
   ensureSingleApp();
   return getFirestore();

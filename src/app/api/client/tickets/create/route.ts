@@ -3,7 +3,9 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { requireAuth } from '@/lib/authApi';
+import { requireRole } from '@/lib/rbac';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
 
 async function getLeastBusyAnalyst(groupId: string): Promise<string | null> {
     const adminDb = getAdminDb();
@@ -11,14 +13,14 @@ async function getLeastBusyAnalyst(groupId: string): Promise<string | null> {
     const groupSnap = await groupRef.get();
 
     if (!groupSnap.exists) {
-        console.warn(`Expertise group ${groupId} not found.`);
+        logger.warn(`Expertise group ${groupId} not found.`);
         return null;
     }
 
     const analystUids = groupSnap.data()?.analystUids;
 
     if (!analystUids || analystUids.length === 0) {
-        console.warn(`No analysts found in group ${groupId}.`);
+        logger.warn(`No analysts found in group ${groupId}.`);
         return null;
     }
 
@@ -37,8 +39,15 @@ export async function POST(request: NextRequest) {
         const adminAuth = getAdminAuth();
         const adminDb = getAdminDb();
         const decodedToken = await requireAuth(request);
-        const clientUid = decodedToken.uid;
+
+        requireRole(decodedToken.role, 'Tenant Admin');
+        
+        const clientUid = decodedToken.tenantId;
         const clientEmail = decodedToken.email;
+
+        if (!clientUid) {
+            return NextResponse.json({ error: 'Client is not associated with a tenant.' }, { status: 403 });
+        }
 
         const { subjectName, email, reportType, description, formId } = await request.json();
 
@@ -148,10 +157,11 @@ export async function POST(request: NextRequest) {
 
         if (!emailRes.ok) {
             const errorData = await emailRes.json();
-            console.warn('Failed to send email:', errorData.error);
+            logger.warn('Failed to send email:', errorData.error);
             // Don't fail the whole request, but maybe log it
         }
 
+        logger.info('Ticket created successfully', { ticketId: ticketRef.id, clientId: clientUid });
 
         return NextResponse.json({
             success: true,
@@ -161,15 +171,7 @@ export async function POST(request: NextRequest) {
 
 
     } catch (error: any) {
-        console.error('Error creating ticket from client request:', error);
-        let errorMessage = 'An unexpected error occurred.';
-        if (error.code === 'auth/id-token-expired') {
-            errorMessage = 'Authentication token expired. Please log in again.';
-        } else if (error.message?.includes('credential error')) {
-            errorMessage = error.message;
-        }
-        return NextResponse.json({
-            error: errorMessage,
-        }, { status: 500 });
+        logger.error('Error creating ticket from client request:', { error: error.message, code: error.code });
+        return NextResponse.json({ error: error.message }, { status: error.status || 500 });
     }
 }

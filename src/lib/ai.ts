@@ -1,24 +1,47 @@
+
 // Server-only; do not import in client components.
-if (typeof window !== 'undefined') throw new Error('ai.ts is server-only');
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ENV } from './config';
+import { logger } from './logger';
+
+if (typeof window !== 'undefined') {
+  throw new Error('ai.ts is a server-only module and should not be imported in client components.');
+}
+
 
 // @ts-ignore keep one client across hot reloads
-declare global { var __GENAI__: GoogleGenerativeAI | undefined; var __GENAI_MODEL__: string | undefined; }
+declare global { var __GENAI_CLIENT__: GoogleGenerativeAI | undefined; }
 
 export const MODEL = 'gemini-1.5-flash-lite';
 
-function getClient() {
-  const key = ENV.GOOGLE_API_KEY;
-  if (!key) throw new Error('Missing GOOGLE_API_KEY');
-  if (!global.__GENAI__) global.__GENAI__ = new GoogleGenerativeAI(key);
-  global.__GENAI_MODEL__ = MODEL;
-  return global.__GENAI__;
+function getClient(): GoogleGenerativeAI {
+  if (!ENV.GOOGLE_API_KEY) {
+    throw new Error('Missing GOOGLE_API_KEY environment variable.');
+  }
+
+  if (global.__GENAI_CLIENT__) {
+    logger.debug('Using cached GoogleGenerativeAI client');
+    return global.__GENAI_CLIENT__;
+  }
+  
+  logger.debug('Creating new GoogleGenerativeAI client');
+  global.__GENAI_CLIENT__ = new GoogleGenerativeAI(ENV.GOOGLE_API_KEY);
+  return global.__GENAI_CLIENT__;
 }
 
-export async function generateText(prompt: string) {
-  const client = getClient();
-  const model = client.getGenerativeModel({ model: MODEL });
-  const res = await model.generateContent(prompt);
-  return res.response.text();
+export async function generateText(prompt: string): Promise<string> {
+  try {
+    const client = getClient();
+    const model = client.getGenerativeModel({ model: MODEL });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (error: any) {
+    logger.error('Error generating text with Google AI', { 
+      error: error.message,
+      // The response from the Google AI API can contain sensitive information, so we log it cautiously.
+      details: error.response?.data 
+    });
+    // Re-throw a more generic error to the caller
+    throw new Error('Failed to generate text due to an AI service error.');
+  }
 }

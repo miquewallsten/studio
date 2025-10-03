@@ -1,10 +1,12 @@
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
 import { requireAuth } from '@/lib/authApi';
+import { requireRole } from '@/lib/rbac';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
 
 async function getTenants() {
     const adminDb = getAdminDb();
@@ -18,7 +20,7 @@ async function getTenants() {
 
 async function getUserProfilesAndTags(tenantId?: string) {
     const adminDb = getAdminDb();
-    let query: admin.firestore.Query<admin.firestore.DocumentData> = adminDb.collection('users');
+    let query: admin.firestore.Query = adminDb.collection('users');
     if (tenantId) {
         query = query.where('tenantId', '==', tenantId);
     }
@@ -28,28 +30,22 @@ async function getUserProfilesAndTags(tenantId?: string) {
     profilesSnapshot.forEach(doc => {
         const data = doc.data();
         profiles[doc.id] = data;
-        if (data.tags) {
+        if (data.tags && Array.isArray(data.tags)) {
             data.tags.forEach((tag: string) => allTags.add(tag));
         }
     });
     return { profiles, allTags: Array.from(allTags) };
 }
 
-async function getTicketCounts(tenantId?: string) {
+
+async function getTicketCountsByClient() {
     const adminDb = getAdminDb();
-    let query: admin.firestore.Query<admin.firestore.DocumentData> = adminDb.collection('tickets');
-    if (tenantId) {
-        query = query.where('clientId', '==', tenantId);
-    }
-    const ticketsSnapshot = await query.get();
+    const ticketsSnapshot = await adminDb.collection('tickets').get();
     const counts: { [key: string]: number } = {};
     ticketsSnapshot.forEach(doc => {
-        const clientId = doc.data().clientId; // In our schema, a ticket's clientId is the tenantId
+        const clientId = doc.data().clientId;
         if (clientId) {
-            if (!counts[clientId]) {
-                counts[clientId] = 0;
-            }
-            counts[clientId]++;
+            counts[clientId] = (counts[clientId] || 0) + 1;
         }
     });
     return counts;
@@ -61,43 +57,47 @@ export async function GET(request: NextRequest) {
     const adminAuth = getAdminAuth();
     const decodedToken = await requireAuth(request);
     
-    const callerRole = decodedToken.role;
-    const callerTenantId = callerRole === 'Tenant Admin' ? decodedToken.tenantId : undefined;
+    const isTenantAdmin = decodedToken.role === 'Tenant Admin';
+    const callerTenantId = isTenantAdmin ? decodedToken.tenantId : undefined;
 
-    const [tenants, { profiles, allTags }, tickets] = await Promise.all([
+    // Only Admins or Super Admins can view all users
+    if (!isTenantAdmin) {
+        requireRole(decodedToken.role, 'Admin');
+    }
+
+    const [tenants, { profiles, allTags }, ticketCounts] = await Promise.all([
         getTenants(), 
         getUserProfilesAndTags(callerTenantId), 
-        getTicketCounts(callerTenantId)
+        getTicketCountsByClient()
     ]);
     
     let userRecords: admin.auth.UserRecord[];
 
     if (callerTenantId) {
-        const userProfiles = Object.keys(profiles);
-        if (userProfiles.length === 0) {
+        // For Tenant Admins, we only fetch users belonging to their tenant from Auth.
+        const userIdsInTenant = Object.keys(profiles);
+        if (userIdsInTenant.length === 0) {
             userRecords = [];
         } else {
-             const result = await adminAuth.getUsers(userProfiles.map(uid => ({ uid })));
+             const result = await adminAuth.getUsers(userIdsInTenant.map(uid => ({ uid })));
              userRecords = result.users;
         }
     } else {
+        // For internal admins, fetch all users.
         const listUsersResult = await adminAuth.listUsers();
         userRecords = listUsersResult.users;
     }
     
     const userProcessingPromises = userRecords.map(async (userRecord) => {
         const tenantId = userRecord.customClaims?.tenantId;
-        let role = userRecord.customClaims?.role || 'Unassigned';
-        const profile = profiles[userRecord.uid];
-
-        if (userRecord.email === 'mikewallsten@me.com' && userRecord.customClaims?.role !== 'Super Admin') {
-            role = 'Super Admin';
-            try {
-                await adminAuth.setCustomUserClaims(userRecord.uid, { ...userRecord.customClaims, role: 'Super Admin' });
-            } catch (claimError) {
-                console.error(`Failed to set Super Admin claim for ${userRecord.email}:`, claimError);
-            }
+        
+        // If the caller is a tenant admin, we must not show users from other tenants.
+        if (callerTenantId && tenantId !== callerTenantId) {
+            return null;
         }
+
+        const role = (userRecord.customClaims?.role || 'Unassigned');
+        const profile = profiles[userRecord.uid];
 
         return {
             uid: userRecord.uid,
@@ -108,14 +108,14 @@ export async function GET(request: NextRequest) {
             phone: profile?.phone || null,
             tags: profile?.tags || [],
             tenantId: tenantId,
-            tenantName: tenantId ? tenants[tenantId] : (role === 'Tenant Admin' ? 'N/A' : 'Internal Staff'),
+            tenantName: tenantId ? tenants[tenantId] : null,
             role: role,
             createdAt: userRecord.metadata.creationTime,
-            ticketsCreated: tickets[userRecord.uid] || 0,
+            ticketsCreated: ticketCounts[userRecord.uid] || 0,
         }
     });
 
-    const users = await Promise.all(userProcessingPromises);
+    const users = (await Promise.all(userProcessingPromises)).filter(Boolean);
 
     return { users, allTags };
   });

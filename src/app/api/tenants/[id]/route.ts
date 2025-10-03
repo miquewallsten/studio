@@ -3,6 +3,8 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/authApi';
 import { requireRole } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +12,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     try {
+        checkRateLimit(request);
         const { id: tenantId } = params;
 
         const decodedToken = await requireAuth(request);
-        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
         requireRole(decodedToken.role, 'Super Admin');
 
         const batch = adminDb.batch();
@@ -31,7 +33,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         if (userIdsToDelete.length > 0) {
             await Promise.all(userIdsToDelete.map(uid => adminAuth.deleteUser(uid).catch(err => {
                 // Log error but don't fail the whole operation if a user is already deleted
-                console.error(`Failed to delete user ${uid} from Auth:`, err);
+                logger.warn(`Failed to delete user ${uid} from Auth during tenant deletion:`, { error: err.message });
             })));
         }
 
@@ -41,17 +43,13 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
         // Commit all Firestore deletions
         await batch.commit();
+        
+        logger.info('Tenant deleted successfully', { tenantId, deletedUsers: userIdsToDelete.length });
 
         return NextResponse.json({ message: 'Tenant and all associated users deleted successfully' });
 
     } catch (error: any) {
-        console.error('Error deleting tenant:', error);
-        let errorMessage = 'An unexpected error occurred.';
-        if (error.code === 'auth/id-token-expired') {
-            errorMessage = 'Authentication token has expired. Please log in again.';
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        logger.error('Error deleting tenant:', { error: error.message, tenantId: params.id });
+        return NextResponse.json({ error: error.message }, { status: error.status || 500 });
     }
 }

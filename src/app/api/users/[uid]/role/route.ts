@@ -1,18 +1,20 @@
 
-import { getAdminAuth } from '@/lib/firebaseAdmin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/authApi';
-import { requireRole } from '@/lib/rbac';
+import { requireRole, Role } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rateLimit';
 
-// Predefined roles
-const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 'Tenant Admin', 'Tenant User', 'End User'];
-
+const VALID_ROLES: Role[] = ['Super Admin', 'Admin', 'Manager', 'Analyst', 'View Only', 'Tenant Admin', 'Tenant User', 'End User', 'Unassigned'];
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest, { params }: { params: { uid: string } }) {
     const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     try {
+        checkRateLimit(request);
         const { uid } = params;
         const { role } = await request.json();
 
@@ -21,10 +23,9 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
         }
 
         const decodedToken = await requireAuth(request);
-        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
         requireRole(decodedToken.role, 'Admin');
 
-         // Prevent a regular Admin from creating a Super Admin
+        // Prevent a regular Admin from creating a Super Admin
         if (role === 'Super Admin' && decodedToken.role !== 'Super Admin') {
             return NextResponse.json({ error: 'Forbidden. Only Super Admins can assign the Super Admin role.' }, { status: 403 });
         }
@@ -33,16 +34,18 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
         const existingClaims = targetUser.customClaims || {};
 
         // Set custom claims for the role
-        await adminAuth.setCustomUserClaims(uid, { ...existingClaims, role: role });
+        const newClaims = { ...existingClaims, role: role };
+        await adminAuth.setCustomUserClaims(uid, newClaims);
+
+        // Also update the role in the Firestore user profile for consistency
+        await adminDb.collection('users').doc(uid).set({ role: role }, { merge: true });
         
+        logger.info('User role updated', { adminUid: decodedToken.uid, targetUid: uid, newRole: role });
+
         return NextResponse.json({ message: `User role successfully updated to ${role}` });
 
     } catch (error: any) {
-        console.error('Error updating user role:', error);
-        let errorMessage = 'An unexpected error occurred.';
-        if (error.code === 'auth/user-not-found') {
-            errorMessage = 'User not found.';
-        }
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        logger.error('Error updating user role', { error: error.message, targetUid: params.uid });
+        return NextResponse.json({ error: error.message }, { status: error.status || 500 });
     }
 }

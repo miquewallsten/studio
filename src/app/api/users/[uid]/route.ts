@@ -3,6 +3,8 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/authApi';
 import { requireRole } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,14 +12,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     try {
+        checkRateLimit(request);
         const { uid } = params;
         const body = await request.json();
         const { displayName, phone, tags } = body;
 
         const decodedToken = await requireAuth(request);
-        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
         requireRole(decodedToken.role, 'Admin');
-
 
         // Update Firebase Auth
         const authUpdates: { [key: string]: any } = {};
@@ -45,18 +46,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
             await userRef.set(profileData, { merge: true });
         }
 
-
+        logger.info('User profile updated', { adminUid: decodedToken.uid, targetUid: uid });
         return NextResponse.json({ message: 'User updated successfully' });
 
     } catch (error: any) {
-        console.error('Error updating user:', error);
-        let errorMessage = 'An unexpected error occurred.';
-        if (error.code === 'auth/user-not-found') {
-            errorMessage = 'User not found.';
-        } else if (error.code === 'auth/id-token-expired') {
-            errorMessage = 'Authentication token has expired. Please log in again.';
-        }
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        logger.error('Error updating user', { error: error.message, targetUid: params.uid });
+        return NextResponse.json({ error: error.message }, { status: error.status || 500 });
     }
 }
 
@@ -64,28 +59,29 @@ export async function DELETE(request: NextRequest, { params }: { params: { uid: 
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     try {
+        checkRateLimit(request);
         const { uid } = params;
 
         const decodedToken = await requireAuth(request);
-        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
         requireRole(decodedToken.role, 'Super Admin');
+        
+        if (decodedToken.uid === uid) {
+            return NextResponse.json({ error: 'Cannot delete your own account.' }, { status: 400 });
+        }
 
         await adminAuth.deleteUser(uid);
         
         // Optionally, delete user data from Firestore as well
         await adminDb.collection('users').doc(uid).delete().catch(err => {
             // Log error but don't fail the whole operation if Firestore deletion fails
-            console.error(`Failed to delete Firestore user profile for UID ${uid}:`, err);
+            logger.warn(`Failed to delete Firestore user profile for UID ${uid}:`, { error: err.message });
         });
 
+        logger.info('User deleted successfully', { adminUid: decodedToken.uid, targetUid: uid });
         return NextResponse.json({ message: 'User deleted successfully' });
 
     } catch (error: any) {
-        console.error('Error deleting user:', error);
-        let errorMessage = 'An unexpected error occurred.';
-        if (error.code === 'auth/user-not-found') {
-            errorMessage = 'User not found.';
-        }
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        logger.error('Error deleting user:', { error: error.message, targetUid: params.uid });
+        return NextResponse.json({ error: error.message }, { status: error.status || 500 });
     }
 }

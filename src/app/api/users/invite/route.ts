@@ -1,16 +1,20 @@
 
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { apiSafe } from '@/lib/api-safe';
 import { requireAuth } from '@/lib/authApi';
+import { checkRateLimit } from '@/lib/rateLimit';
+import { requireRole, Role } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 
-// Predefined roles
-const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 'Tenant Admin', 'Tenant User', 'End User'];
+const VALID_ROLES: Role[] = ['Super Admin', 'Admin', 'Manager', 'Analyst', 'View Only', 'Tenant Admin', 'Tenant User', 'End User'];
 
 export async function POST(request: NextRequest) {
   const adminAuth = getAdminAuth();
   const adminDb = getAdminDb();
+  
   return apiSafe(async () => {
+    checkRateLimit(request);
     const decodedToken = await requireAuth(request);
     
     const { email, role, tenantId } = await request.json();
@@ -18,20 +22,26 @@ export async function POST(request: NextRequest) {
     if (!email) {
       throw new Error('Email is required.');
     }
-    if (!role && !tenantId) {
-        throw new Error('Either a role or a tenantId must be provided.');
-    }
 
-    if (role && !VALID_ROLES.includes(role)) {
+    const assignedRole: Role = role || (tenantId ? 'End User' : 'Unassigned');
+    
+    if (!VALID_ROLES.includes(assignedRole)) {
       throw new Error('Invalid role specified.');
     }
-    
-    if (decodedToken.role !== 'Super Admin' && !tenantId) {
-        throw new Error('Forbidden. You can only invite users to a tenant.');
-    }
-    
-    if (tenantId && decodedToken.tenantId !== tenantId && decodedToken.role !== 'Super Admin') {
-        throw new Error('Forbidden. You cannot invite users to this tenant.');
+
+    if (tenantId) {
+        // Tenant Admins can invite users to their own tenant
+        if (decodedToken.role === 'Tenant Admin') {
+            if (decodedToken.tenantId !== tenantId) {
+                throw new Error('Forbidden. You can only invite users to your own tenant.');
+            }
+        // Super Admins can invite to any tenant
+        } else {
+            requireRole(decodedToken.role, 'Super Admin');
+        }
+    } else {
+        // Only Super Admins can invite internal staff (no tenantId)
+        requireRole(decodedToken.role, 'Super Admin');
     }
 
     let userRecord;
@@ -48,32 +58,23 @@ export async function POST(request: NextRequest) {
         }
     }
     
-    const batch = adminDb.batch();
-
-    const customClaims: {[key: string]: string} = {};
+    const customClaims: {[key: string]: string} = { role: assignedRole };
     const userProfile: {[key: string]: any} = {
         email: userRecord.email,
+        role: assignedRole,
     };
 
-    if (role) {
-        customClaims.role = role;
-        userProfile.role = role;
-    }
     if (tenantId) {
         customClaims.tenantId = tenantId;
         userProfile.tenantId = tenantId;
-        if (!role || (role !== 'Tenant Admin' && role !== 'End User')) {
-            customClaims.role = 'End User';
-            userProfile.role = 'End User';
-        }
     }
 
     await adminAuth.setCustomUserClaims(userRecord.uid, customClaims);
     
     const userRef = adminDb.collection('users').doc(userRecord.uid);
-    batch.set(userRef, userProfile, { merge: true });
-    
-    await batch.commit();
+    await userRef.set(userProfile, { merge: true });
+
+    logger.info('User invited', { inviterUid: decodedToken.uid, newUserEmail: email, role: assignedRole, tenantId });
 
     return { uid: userRecord.uid, email: userRecord.email, claims: customClaims };
   });

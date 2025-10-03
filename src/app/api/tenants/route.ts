@@ -6,6 +6,7 @@ import { apiSafe } from '@/lib/api-safe';
 import { requireAuth } from '@/lib/authApi';
 import { requireRole } from '@/lib/rbac';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
 
 async function getTenantData() {
     const adminDb = getAdminDb();
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
         const adminAuth = getAdminAuth();
         const adminDb = getAdminDb();
         const decodedToken = await requireAuth(request);
-        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
+        
         requireRole(decodedToken.role, 'Super Admin');
 
         const { companyName, companyUrl, adminName, adminEmail } = await request.json();
@@ -96,6 +97,8 @@ export async function POST(request: NextRequest) {
 
         const onboardingLink = await adminAuth.generatePasswordResetLink(adminEmail);
 
+        logger.info('Tenant created successfully', { tenantId: tenantRef.id, adminUserId: adminUserRecord.uid });
+
         return {
             message: 'Tenant and Admin created successfully.',
             tenantId: tenantRef.id,
@@ -109,6 +112,9 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   return apiSafe(async () => {
     checkRateLimit(request);
+    const decodedToken = await requireAuth(request);
+    requireRole(decodedToken.role, 'Super Admin');
+
     const [tenants, userCounts, ticketCounts] = await Promise.all([
         getTenantData(),
         getUserCountsByTenant(),

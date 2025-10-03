@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { requireAuth } from '@/lib/authApi';
 import { requireRole } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +13,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const adminAuth = getAdminAuth();
     const adminDb = getAdminDb();
     try {
+        checkRateLimit(request);
         const { id: tenantId } = params;
 
         const decodedToken = await requireAuth(request);
-        // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
         requireRole(decodedToken.role, 'Super Admin');
 
         // Find the Tenant Admin user associated with this tenant
@@ -40,6 +42,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             invitationSentAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        logger.info('Resent tenant admin invitation', { tenantId, adminEmail });
+
         return NextResponse.json({
             message: 'New onboarding link generated successfully.',
             onboardingLink: onboardingLink,
@@ -49,7 +53,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
 
     } catch (error: any) {
-        console.error('Error resending invitation:', error);
-        return NextResponse.json({ error: error.message || 'An unexpected error occurred.' }, { status: 500 });
+        logger.error('Error resending invitation:', { error: error.message, tenantId: params.id });
+        return NextResponse.json({ error: error.message || 'An unexpected error occurred.' }, { status: error.status || 500 });
     }
 }

@@ -1,10 +1,38 @@
 
-export function logInfo(msg: string, meta: Record<string, any> = {}) {
-  console.log(JSON.stringify({ level: 'info', msg, ...meta }));
+import { ENV } from './config';
+
+type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+
+interface LogMeta {
+    [key: string]: any;
 }
-export function logWarn(msg: string, meta: Record<string, any> = {}) {
-  console.warn(JSON.stringify({ level: 'warn', msg, ...meta }));
+
+function log(level: LogLevel, message: string, meta?: LogMeta) {
+    if (ENV.NODE_ENV === 'test') return; // Don't log during tests
+
+    const logObject = {
+        level,
+        message,
+        timestamp: new Date().toISOString(),
+        ...meta,
+    };
+    
+    // In production, we'd want structured JSON logs. In dev, pretty-printing is nice.
+    if (ENV.NODE_ENV === 'production') {
+        console[level === 'info' || level === 'debug' ? 'log' : level](JSON.stringify(logObject));
+    } else {
+         console[level === 'info' || level === 'debug' ? 'log' : level](`[${level.toUpperCase()}] ${message}`, meta || '');
+    }
 }
-export function logError(msg: string, meta: Record<string, any> = {}) {
-  console.error(JSON.stringify({ level: 'error', msg, ...meta }));
-}
+
+
+export const logger = {
+    info: (message: string, meta?: LogMeta) => log('info', message, meta),
+    warn: (message: string, meta?: LogMeta) => log('warn', message, meta),
+    error: (message: string, meta?: LogMeta) => log('error', message, meta),
+    debug: (message: string, meta?: LogMeta) => {
+        if (ENV.NODE_ENV !== 'production') {
+            log('debug', message, meta);
+        }
+    },
+};

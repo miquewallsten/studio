@@ -1,16 +1,39 @@
-export type Role = 'owner' | 'admin' | 'manager' | 'agent' | 'viewer';
 
-export function hasRole(userRole: Role, required: Role | Role[]) {
-  const set = Array.isArray(required) ? required : [required];
-  const order: Role[] = ['viewer','agent','manager','admin','owner'];
-  const rank = (r: Role) => order.indexOf(r);
-  return set.some(r => rank(userRole) >= rank(r));
+export type Role = 'Super Admin' | 'Admin' | 'Manager' | 'Analyst' | 'View Only' | 'Tenant Admin' | 'Tenant User' | 'End User' | 'Unassigned';
+
+const HIERARCHY: Role[] = [
+    'Unassigned',
+    'End User',
+    'Tenant User',
+    'View Only',
+    'Analyst',
+    'Manager',
+    'Tenant Admin',
+    'Admin',
+    'Super Admin'
+];
+
+const RANK = new Map(HIERARCHY.map((r, i) => [r, i]));
+
+/**
+ * Checks if a user's role meets the minimum required role.
+ * @param userRole The role of the user.
+ * @param requiredRole The minimum role required for the action.
+ * @returns True if the user has the required role or a higher one.
+ */
+export function hasRole(userRole: Role, requiredRole: Role): boolean {
+  const userRank = RANK.get(userRole) ?? -1;
+  const requiredRank = RANK.get(requiredRole) ?? -1;
+  return userRank >= requiredRank;
 }
 
-export function requireRole(userRole: Role, required: Role | Role[]) {
-  if (!hasRole(userRole, required)) throw new Error(`Forbidden: requires role ${Array.isArray(required)?required.join('|'):required}`);
-}
-
-export function requireTenantMatch(resourceTenantId: string, userTenantId: string) {
-  if (resourceTenantId !== userTenantId) throw new Error('Forbidden: tenant mismatch');
+/**
+ * Throws an error if the user's role does not meet the minimum requirement.
+ * @param userRole The role of the user.
+ * @param requiredRole The minimum role required.
+ */
+export function requireRole(userRole: Role, requiredRole: Role) {
+  if (!hasRole(userRole, requiredRole)) {
+    throw new Error(`Forbidden: requires role '${requiredRole}' or higher. User has role '${userRole}'.`);
+  }
 }
