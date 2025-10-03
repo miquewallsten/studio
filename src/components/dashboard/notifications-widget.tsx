@@ -9,13 +9,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  Timestamp,
-} from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
 import { AlertTriangle, RefreshCw, Bell, MailWarning } from 'lucide-react';

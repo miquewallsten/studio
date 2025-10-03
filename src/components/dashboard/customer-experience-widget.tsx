@@ -44,16 +44,13 @@ export function CustomerExperienceWidget() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [ratingsRes, feedbackRes] = await Promise.all([
-                secureFetch('/api/tickets?rating=low'),
-                secureFetch('/api/feedback'), // Assuming an endpoint for feedback exists
-            ]);
-
+            const ratingsRes = await secureFetch('/api/tickets?rating=low');
             const ratingsData = await ratingsRes.json();
-            const feedbackData = await feedbackRes.json();
             
             if(ratingsData.tickets) setLowRated(ratingsData.tickets);
-            if(feedbackData.feedback) setFeedback(feedbackData.feedback);
+            // In a real app, you would fetch feedback from a separate endpoint.
+            // For now, we simulate an empty feedback list.
+            setFeedback([]); 
         } catch(error) {
             // Silently fail for this widget, as it's not critical path
             console.warn("Could not fetch customer experience data:", error);

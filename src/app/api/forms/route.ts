@@ -2,24 +2,51 @@ import { getAdminDb } from '@/lib/firebaseAdmin';
 import { apiSafe } from '@/lib/api-safe';
 import { requireAuth } from '@/lib/authApi';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-// This endpoint is used by the client portal to get a list of available form templates.
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   return apiSafe(async () => {
     checkRateLimit(request);
-    // This endpoint can be accessed by any authenticated user who has access to the client portal.
     await requireAuth(request);
 
     const adminDb = getAdminDb();
     const formsSnapshot = await adminDb.collection('forms').orderBy('name').get();
     
-    const forms = formsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().name,
-    }));
+    const forms = formsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+      }
+    });
     
     return { forms };
   });
+}
+
+export async function POST(request: NextRequest) {
+    return apiSafe(async () => {
+        checkRateLimit(request);
+        const decodedToken = await requireAuth(request);
+        requireRole(decodedToken.role, 'Admin');
+
+        const { name, description } = await request.json();
+        
+        if (!name) {
+            throw new Error('Form Name is required.');
+        }
+
+        const adminDb = getAdminDb();
+        const docRef = await adminDb.collection('forms').add({
+            name,
+            description,
+            fields: [],
+            createdAt: new Date(),
+        });
+
+        return { id: docRef.id, message: 'Form created successfully.' };
+    });
 }
