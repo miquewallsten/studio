@@ -1,9 +1,6 @@
-
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
-import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { requireAuth } from '@/lib/authApi';
-import { ENV } from '@/lib/config';
+import { sendMail } from '@/lib/mailer';
 
 export const runtime = 'nodejs';
 
@@ -24,26 +21,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: 'Invalid request: "to", "subject", and "html" are required.' }, { status: 400 });
     }
 
-    // 3. Configure the Nodemailer transport
-    // IMPORTANT: In a real app, these credentials should come from environment variables.
-    // They are hardcoded here only for this prototype's simplicity.
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
-    });
-
-    // 4. Send the email
-    await transporter.sendMail({
-      from: `"TenantCheck" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
-      to: to,
-      subject: subject,
-      html: html,
-    });
+    // 3. Send the email using the mailer interface
+    await sendMail({ to, subject, html });
 
     return NextResponse.json({ ok: true, success: true, message: 'Email sent successfully.' });
 
