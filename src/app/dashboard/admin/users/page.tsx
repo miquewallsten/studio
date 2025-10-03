@@ -66,7 +66,7 @@ export default function AdminUsersPage() {
         setSelectedUser(null);
     }
 
-    const isCredentialError = error && (error.includes('credential') || error.includes('service-account.json') || error.includes('GOOGLE_APPLICATION_CREDENTIALS'));
+    const isCredentialError = error && (error.includes('credential') || error.includes('service-account.json') || error.includes('GOOGLE_APPLICATION_CREDENTIALS') || error.includes('firebase-admin.json'));
 
     const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, t]);
 
