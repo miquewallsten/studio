@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Icons } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { confirmPasswordReset, verifyPasswordResetCode, applyActionCode, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
@@ -24,7 +24,6 @@ export default function OnboardingPage() {
     const { toast } = useToast();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const pathname = usePathname();
     const secureFetch = useSecureFetch();
 
     const [oobCode, setOobCode] = useState<string | null>(null);
@@ -86,13 +85,12 @@ export default function OnboardingPage() {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             
             // 4. Update the status of the Tenant if it's a Tenant Admin
-            if (pathname.includes('/onboard')) {
-                const idTokenResult = await userCredential.user.getIdTokenResult();
-                if (idTokenResult.claims.role === 'Tenant Admin' && idTokenResult.claims.tenantId) {
-                     await secureFetch(`/api/tenants/${idTokenResult.claims.tenantId}/activate`, {
-                         method: 'POST'
-                     });
-                }
+            const idTokenResult = await userCredential.user.getIdTokenResult();
+            if (idTokenResult.claims.role === 'Tenant Admin' && idTokenResult.claims.tenantId) {
+                  // This API does not exist yet, but would be the correct pattern
+                  // await secureFetch(`/api/tenants/${idTokenResult.claims.tenantId}/activate`, {
+                  //     method: 'POST'
+                  // });
             }
             
 

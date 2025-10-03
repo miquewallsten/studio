@@ -2,6 +2,7 @@
 export { getENV } from './env';
 
 function getCredentialSource() {
+    const { getENV } = require('./env');
     const ENV = getENV();
     if (ENV.FIREBASE_SERVICE_ACCOUNT_B64) return 'b64';
     if (ENV.GOOGLE_APPLICATION_CREDENTIALS) return 'file';

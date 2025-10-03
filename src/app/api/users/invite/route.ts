@@ -10,15 +10,14 @@ import { logger } from '@/lib/logger';
 const VALID_ROLES: Role[] = ['Super Admin', 'Admin', 'Manager', 'Analyst', 'View Only', 'Tenant Admin', 'Tenant User', 'End User'];
 
 export async function POST(request: NextRequest) {
-  const adminAuth = getAdminAuth();
-  const adminDb = getAdminDb();
-  
   return apiSafe(async () => {
     checkRateLimit(request);
     const decodedToken = await requireAuth(request);
-    
     const { email, role, tenantId } = await request.json();
-
+    
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
+    
     if (!email) {
       throw new Error('Email is required.');
     }

@@ -36,9 +36,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
     try {
         checkRateLimit(request);
+        const decodedToken = await requireAuth(request);
+        const { subjectName, email, reportType, description, formId } = await request.json();
+        
         const adminAuth = getAdminAuth();
         const adminDb = getAdminDb();
-        const decodedToken = await requireAuth(request);
+        
 
         requireRole(decodedToken.role, 'Tenant Admin');
         
@@ -49,7 +52,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Client is not associated with a tenant.' }, { status: 403 });
         }
 
-        const { subjectName, email, reportType, description, formId } = await request.json();
 
         if (!subjectName || !email || !reportType || !formId) {
             return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });

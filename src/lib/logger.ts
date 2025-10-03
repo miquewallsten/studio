@@ -1,5 +1,5 @@
 
-import { ENV } from './config';
+import { getENV } from './config';
 
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
@@ -8,6 +8,7 @@ interface LogMeta {
 }
 
 function log(level: LogLevel, message: string, meta?: LogMeta) {
+    const ENV = getENV();
     if (ENV.NODE_ENV === 'test') return; // Don't log during tests
 
     const logObject = {
@@ -31,6 +32,7 @@ export const logger = {
     warn: (message: string, meta?: LogMeta) => log('warn', message, meta),
     error: (message: string, meta?: LogMeta) => log('error', message, meta),
     debug: (message: string, meta?: LogMeta) => {
+        const ENV = getENV();
         if (ENV.NODE_ENV !== 'production') {
             log('debug', message, meta);
         }
