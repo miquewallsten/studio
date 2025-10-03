@@ -8,7 +8,8 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "lint:llm": "node scripts/check-llm-strings.mjs"
+    "lint:llm": "node scripts/check-llm-strings.mjs",
+    "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {
     "@google/generative-ai": "^0.16.0",
