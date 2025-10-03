@@ -1,6 +1,6 @@
+
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
-import { sendEmail } from '@/ai/flows/send-email-flow';
 import admin from 'firebase-admin';
 
 async function getLeastBusyAnalyst(groupId: string): Promise<string | null> {
@@ -119,19 +119,34 @@ export async function POST(request: NextRequest) {
         const actionCode = new URL(passwordResetLink).searchParams.get('oobCode');
         const actionLink = `${request.nextUrl.origin}/onboard?oobCode=${actionCode}&continueUrl=/form/${ticketRef.id}`;
         
-        // Step 5: Send the email to the end-user
-        await sendEmail({
-            to: email,
-            subject: `Information Request for ${reportType}`,
-            html: `
-                <p>Hello ${subjectName},</p>
-                <p>${decodedToken.name || clientEmail} has requested that you complete a form for a ${reportType}.</p>
-                <p>Please use the secure link below to set up your account and fill out the required information:</p>
-                <p><a href="${actionLink}">Complete Your Form</a></p>
-                <p>This link is for single use only.</p>
-                <p>Thank you,<br/>The TenantCheck Team</p>
-            `.replace(/\n/g, '<br>')
+        const emailHtml = `
+            <p>Hello ${subjectName},</p>
+            <p>${decodedToken.name || clientEmail} has requested that you complete a form for a ${reportType}.</p>
+            <p>Please use the secure link below to set up your account and fill out the required information:</p>
+            <p><a href="${actionLink}">Complete Your Form</a></p>
+            <p>This link is for single use only.</p>
+            <p>Thank you,<br/>The TenantCheck Team</p>
+        `.replace(/\n/g, '<br>');
+
+        // Step 5: Send the email to the end-user via our own API route
+        const emailRes = await fetch(`${request.nextUrl.origin}/api/send-email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                 'Authorization': `Bearer ${idToken}` // Pass auth for security
+            },
+            body: JSON.stringify({
+                to: email,
+                subject: `Information Request for ${reportType}`,
+                html: emailHtml,
+            }),
         });
+
+        if (!emailRes.ok) {
+            const errorData = await emailRes.json();
+            console.warn('Failed to send email:', errorData.error);
+            // Don't fail the whole request, but maybe log it
+        }
 
 
         return NextResponse.json({

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -16,8 +17,8 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Download, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { sendEmail } from '@/ai/flows/send-email-flow';
 import { cn } from '@/lib/utils';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type Ticket = {
   id: string;
@@ -33,6 +34,7 @@ export default function ClientTicketDetailPage({ params }: { params: { id: strin
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
     const ticketRef = doc(db, 'tickets', params.id);
@@ -72,15 +74,19 @@ export default function ClientTicketDetailPage({ params }: { params: { id: strin
 
         // If rating is low, send an email to execs
         if (rating <= 3) {
-             await sendEmail({
-                to: 'executives@example.com', // Replace with actual exec email or distribution list
-                subject: `Low Rating Alert: Ticket ${ticket.id}`,
-                html: `
-                    <p>A low rating of <strong>${rating} stars</strong> was just submitted for ticket #${ticket.id}.</p>
-                    <p><strong>Subject:</strong> ${ticket.subjectName}</p>
-                    <p><strong>Report Type:</strong> ${ticket.reportType}</p>
-                    <p>Please review the ticket and consider following up with the client.</p>
-                `
+             const emailHtml = `
+                <p>A low rating of <strong>${rating} stars</strong> was just submitted for ticket #${ticket.id}.</p>
+                <p><strong>Subject:</strong> ${ticket.subjectName}</p>
+                <p><strong>Report Type:</strong> ${ticket.reportType}</p>
+                <p>Please review the ticket and consider following up with the client.</p>
+            `;
+             await secureFetch('/api/send-email', {
+                method: 'POST',
+                body: JSON.stringify({
+                    to: 'executives@example.com', // Replace with actual exec email or distribution list
+                    subject: `Low Rating Alert: Ticket ${ticket.id}`,
+                    html: emailHtml,
+                }),
             });
         }
     } catch(err) {

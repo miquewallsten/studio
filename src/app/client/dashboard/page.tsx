@@ -54,7 +54,8 @@ function TenantDashboard() {
         const fetchRequests = async () => {
             try {
             setLoading(true);
-            const data = await secureFetch('/api/client/tickets');
+            const res = await secureFetch('/api/client/tickets');
+            const data = await res.json();
             if (data.error) {
                 throw new Error(data.error);
             }
@@ -105,7 +106,8 @@ function EndUserDashboard() {
         const fetchRequests = async () => {
             try {
             setLoading(true);
-            const data = await secureFetch('/api/end-user/tickets');
+            const res = await secureFetch('/api/end-user/tickets');
+            const data = await res.json();
             if (data.error) {
                 throw new Error(data.error);
             }

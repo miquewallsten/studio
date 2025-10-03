@@ -20,7 +20,7 @@ import { Input } from './ui/input';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 import { Copy } from 'lucide-react';
-import { sendEmail } from '@/ai/flows/send-email-flow';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type Template = {
     id: string;
@@ -40,6 +40,7 @@ export function EmailTemplateEditor({ template: initialTemplate }: EmailTemplate
   const [testEmail, setTestEmail] = useState('');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
     setTemplate(initialTemplate);
@@ -91,12 +92,15 @@ export function EmailTemplateEditor({ template: initialTemplate }: EmailTemplate
               testBody = testBody.replace(new RegExp(ph, 'g'), sampleData);
           });
 
-          const result = await sendEmail({
-              to: testEmail,
-              subject: `[TEST] ${template.subject}`,
-              html: testBody.replace(/\n/g, '<br />'),
+          await secureFetch('/api/send-email', {
+              method: 'POST',
+              body: JSON.stringify({
+                  to: testEmail,
+                  subject: `[TEST] ${template.subject}`,
+                  html: testBody.replace(/\n/g, '<br />'),
+              }),
           });
-          if (!result.success) throw new Error(result.message);
+          
           toast({
               title: 'Test Email Sent',
               description: `A test email has been sent to ${testEmail}.`

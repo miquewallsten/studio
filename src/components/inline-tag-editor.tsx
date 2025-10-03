@@ -38,10 +38,13 @@ export function InlineTagEditor({ user, allTags, onUserUpdated }: InlineTagEdito
 
     const saveTags = async (newTags: string[]) => {
         try {
-            await secureFetch(`/api/users/${user.uid}`, {
+            const res = await secureFetch(`/api/users/${user.uid}`, {
                 method: 'PATCH',
                 body: JSON.stringify({ tags: newTags }),
             });
+            
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
             
             toast({ title: 'Tags updated' });
             onUserUpdated();

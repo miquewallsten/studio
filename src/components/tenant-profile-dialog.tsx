@@ -86,9 +86,11 @@ export function TenantProfileDialog({ tenant, isOpen, onOpenChange, onTenantUpda
     const handleDeleteTenant = async () => {
         if (!tenant) return;
         try {
-            await secureFetch(`/api/tenants/${tenant.id}`, {
+            const res = await secureFetch(`/api/tenants/${tenant.id}`, {
                 method: 'DELETE',
             });
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
 
             toast({
                 title: 'Tenant Deleted',
@@ -223,4 +225,10 @@ export function TenantProfileDialog({ tenant, isOpen, onOpenChange, onTenantUpda
                         </>
                     ) : (
                         <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-                    
+                    )}
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
+    );
+}

@@ -51,10 +51,13 @@ export default function TenantDashboardPage() {
         const fetchTenantData = async () => {
             try {
                 setLoading(true);
-                const [ticketData, userData] = await Promise.all([
+                const [ticketRes, userRes] = await Promise.all([
                     secureFetch('/api/client/tickets'),
                     secureFetch('/api/users')
                 ]);
+
+                const ticketData = await ticketRes.json();
+                const userData = await userRes.json();
 
                 if (ticketData.error) throw new Error(ticketData.error);
                 if (userData.error) throw new Error(userData.error);

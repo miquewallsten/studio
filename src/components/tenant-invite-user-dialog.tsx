@@ -68,10 +68,12 @@ export function TenantInviteUserDialog({
 
     setIsLoading(true);
     try {
-        await secureFetch('/api/users/invite', {
+        const res = await secureFetch('/api/users/invite', {
             method: 'POST',
             body: JSON.stringify({ email, role, tenantId }),
         });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
       
       toast({
         title: 'User Invited',
@@ -139,4 +141,7 @@ export function TenantInviteUserDialog({
             {isLoading ? 'Inviting User...' : 'Invite User'}
           </Button>
         </DialogFooter>
-      </
+      </DialogContent>
+    </Dialog>
+  );
+}

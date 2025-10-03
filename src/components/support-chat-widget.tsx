@@ -23,7 +23,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { sendEmail } from '@/ai/flows/send-email-flow';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 interface Message {
     role: 'user' | 'model';
@@ -38,6 +38,7 @@ export function SupportChatWidget() {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const secureFetch = useSecureFetch();
 
   const handleInitialMessage = () => {
       setIsAiThinking(true);

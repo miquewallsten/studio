@@ -60,10 +60,13 @@ export function ChangeRoleDialog({
     }
     setIsLoading(true);
     try {
-      const response = await secureFetch(`/api/users/${user.uid}/role`, {
+      const res = await secureFetch(`/api/users/${user.uid}/role`, {
         method: 'POST',
         body: JSON.stringify({ role: newRole }),
       });
+      
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
       
       toast({
         title: 'Role Updated',
@@ -126,4 +129,8 @@ export function ChangeRoleDialog({
           <Button onClick={handleRoleChange} disabled={isLoading} className="bg-accent hover:bg-accent/90">
             {isLoading ? 'Saving...' : 'Save New Role'}
           </Button>
-        </
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

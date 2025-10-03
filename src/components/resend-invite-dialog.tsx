@@ -17,9 +17,13 @@ import { useState, useEffect } from 'react';
 import { Textarea } from './ui/textarea';
 import { Copy, Mail } from 'lucide-react';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
-import { sendEmail } from '@/ai/flows/send-email-flow';
-import type { SendEmailInput } from '@/ai/schemas/send-email-schema';
 import { Skeleton } from './ui/skeleton';
+
+interface SendEmailInput {
+    to: string;
+    subject: string;
+    html: string;
+}
 
 type Tenant = {
     id: string;
@@ -50,9 +54,11 @@ export function ResendInviteDialog({
         const getNewLink = async () => {
             setIsLoading(true);
             try {
-                const data = await secureFetch(`/api/tenants/${tenant.id}/resend-invite`, {
+                const res = await secureFetch(`/api/tenants/${tenant.id}/resend-invite`, {
                     method: 'POST',
                 });
+                const data = await res.json();
+                if(data.error) throw new Error(data.error);
                 
                 const passwordResetLink = data.onboardingLink;
                 const actionCode = new URL(passwordResetLink).searchParams.get('oobCode');
@@ -93,14 +99,15 @@ export function ResendInviteDialog({
   const handleSendEmail = async () => {
     setIsLoading(true);
     try {
-        const result = await sendEmail({
-            to: emailContent.to,
-            subject: emailContent.subject,
-            html: emailContent.html.replace(/\n/g, '<br>'),
+        await secureFetch('/api/send-email', {
+            method: 'POST',
+            body: JSON.stringify({
+                to: emailContent.to,
+                subject: emailContent.subject,
+                html: emailContent.html.replace(/\n/g, '<br>'),
+            }),
         });
-        if (!result.success) {
-            throw new Error(result.message);
-        }
+        
         toast({
             title: 'Invitation Re-sent',
             description: `A new invitation email has been sent to ${emailContent.to}.`,

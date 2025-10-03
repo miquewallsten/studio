@@ -34,7 +34,8 @@ export default function TenantsPage() {
         setLoading(true);
         setError(null);
         try {
-            const data = await secureFetch('/api/tenants');
+            const res = await secureFetch('/api/tenants');
+            const data = await res.json();
             if (data.error) {
                 throw new Error(data.error || 'Failed to fetch tenants');
             }
@@ -112,4 +113,5 @@ export default function TenantsPage() {
         </CardContent>
       </Card>
     </div>
-  
+  );
+}

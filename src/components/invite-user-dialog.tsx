@@ -54,10 +54,12 @@ export function InviteUserDialog({
     }
     setIsLoading(true);
     try {
-      await secureFetch('/api/users/invite', {
+      const res = await secureFetch('/api/users/invite', {
         method: 'POST',
         body: JSON.stringify({ email, role }),
       });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
       
       toast({
         title: 'User Invited',
@@ -140,3 +142,4 @@ export function InviteUserDialog({
       </DialogContent>
     </Dialog>
   );
+}

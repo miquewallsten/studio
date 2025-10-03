@@ -92,7 +92,8 @@ export function DataTable<TData, TValue>({
     if (user) {
       const fetchPrefs = async () => {
         try {
-          const data = await secureFetch('/api/user/preferences');
+          const res = await secureFetch('/api/user/preferences');
+          const data = await res.json();
           if (isMounted && data[tableId]) {
             if (data[tableId].columnVisibility) setColumnVisibility(data[tableId].columnVisibility);
             if (data[tableId].sorting) setSorting(data[tableId].sorting);

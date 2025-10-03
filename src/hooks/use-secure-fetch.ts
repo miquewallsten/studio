@@ -23,34 +23,20 @@ export function useSecureFetch() {
       headers.set('Content-Type', 'application/json');
     }
 
-    const response = await fetch(url, {
+    const res = await fetch(url, {
       ...options,
       headers,
     });
     
-    if (!response.ok) {
-        let body: any;
-        try { 
-            body = await response.json(); 
-        } catch { 
-            const text = await response.text();
-            body = { error: text || `Request failed with status ${response.status}` };
-        }
-        const error = new Error(body.error || 'An unknown server error occurred.');
-        (error as any).data = body;
-        throw error;
-    }
-
-    // Check if the response is JSON before trying to parse it
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const text = await response.text();
-      // Handle cases where the response is empty but has a JSON content type
-      return text ? JSON.parse(text) : {};
-    }
+    if (!res.ok) {
+        let details = '';
+        try { details = await res.clone().text(); } catch {}
+        const err = new Error(`HTTP ${res.status} ${res.statusText} – ${details}`);
+        (err as any).status = res.status;
+        throw err;
+      }
     
-    // Handle non-json responses, e.g. from a proxy
-    return response;
+      return res; // callers can still do await res.json() once
   }, []);
 
   return secureFetch;

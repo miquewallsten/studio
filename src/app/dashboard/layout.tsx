@@ -39,7 +39,8 @@ function ImpersonationBanner() {
 
     const stopImpersonating = async () => {
         try {
-            const data = await secureFetch('/api/auth/stop-impersonating', { method: 'POST' });
+            const res = await secureFetch('/api/auth/stop-impersonating', { method: 'POST' });
+            const data = await res.json();
             
             await auth.signOut();
             

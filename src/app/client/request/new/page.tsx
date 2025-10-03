@@ -76,7 +76,7 @@ export default function NewRequestPage() {
     try {
         const selectedTemplate = formTemplates.find(t => t.id === reportType);
         
-        const response = await secureFetch('/api/client/tickets/create', {
+        const res = await secureFetch('/api/client/tickets/create', {
             method: 'POST',
             body: JSON.stringify({
                 subjectName,
@@ -86,9 +86,11 @@ export default function NewRequestPage() {
                 description,
             }),
         });
+
+        const data = await res.json();
         
-        if (response.error) {
-            throw new Error(response.error);
+        if (data.error) {
+            throw new Error(data.error);
         }
 
       toast({
@@ -174,3 +176,8 @@ export default function NewRequestPage() {
                 {isLoading ? 'Creating...' : 'Create and Send Form'}
             </Button>
           </div>
+        </div>
+      </form>
+    </div>
+  );
+}

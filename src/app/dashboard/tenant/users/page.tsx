@@ -33,7 +33,8 @@ export default function TenantUsersPage() {
         setLoading(true);
         setError(null);
         try {
-            const data = await secureFetch('/api/users');
+            const res = await secureFetch('/api/users');
+            const data = await res.json();
             if (data.error) {
                 throw new Error(data.error || 'Failed to fetch users');
             }
@@ -97,4 +98,11 @@ export default function TenantUsersPage() {
             <DataTable 
                 columns={memoizedColumns} 
                 data={users}
-                tableId="tenant-users-
+                tableId="tenant-users-table"
+            />
+           )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

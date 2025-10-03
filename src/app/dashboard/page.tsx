@@ -146,7 +146,7 @@ export default function DashboardPage() {
       await secureFetch('/api/user/preferences', {
         method: 'POST',
         body: JSON.stringify({ dashboard: prefs }),
-      }); // No JSON expected back, so we don't await the result directly
+      });
     } catch (e) {
       console.error('Failed to save preferences', e);
     }
@@ -161,7 +161,8 @@ export default function DashboardPage() {
     if (user) {
       const fetchPrefs = async () => {
         try {
-          const data = await secureFetch('/api/user/preferences');
+          const res = await secureFetch('/api/user/preferences');
+          const data = await res.json();
           if (isMounted) {
             if (data.dashboard?.layouts) setLayouts(data.dashboard.layouts);
             if (data.dashboard?.widgets) setActiveWidgets(data.dashboard.widgets);
@@ -210,8 +211,9 @@ export default function DashboardPage() {
           // In a real app, you would have dedicated API endpoints for these metrics
           // For now, we'll fetch all users to get a count, and all tickets for metrics
           const userResponse = await secureFetch('/api/users');
-          if (userResponse.users && isMounted) {
-              setUserCount(userResponse.users.length);
+          const userData = await userResponse.json();
+          if (userData.users && isMounted) {
+              setUserCount(userData.users.length);
           }
 
           const ticketsSnapshot = await getDocs(collection(db, 'tickets'));

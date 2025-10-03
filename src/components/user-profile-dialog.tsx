@@ -106,10 +106,12 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
         if (!user) return;
         try {
             const payload = { ...formData };
-            await secureFetch(`/api/users/${user.uid}`, {
+            const res = await secureFetch(`/api/users/${user.uid}`, {
                 method: 'PATCH',
                 body: JSON.stringify(payload),
             });
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
 
             toast({
                 title: 'User Updated',
@@ -130,9 +132,11 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
     const handleDeleteUser = async () => {
         if (!user) return;
         try {
-            await secureFetch(`/api/users/${user.uid}`, {
+            const res = await secureFetch(`/api/users/${user.uid}`, {
                 method: 'DELETE',
             });
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
             
             toast({
                 title: 'User Deleted',
@@ -440,3 +444,8 @@ export function UserProfileDialog({ user, allTags, isOpen, onOpenChange, onUserU
                         <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
                     )}
                 </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
+    );
+}
