@@ -32,17 +32,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.alias = {
-        ...(config.resolve.alias || {}),
-        'firebase/firestore': path.resolve(process.cwd(), 'src/lib/stubs/no-client-firestore.ts'),
-        '@firebase/firestore': path.resolve(process.cwd(), 'src/lib/stubs/no-client-firestore.ts'),
-        'firebase/app': path.resolve(process.cwd(), 'src/lib/stubs/no-client-firestore.ts'),
-      };
-    }
-    return config;
-  },
 };
 
 export default nextConfig;
