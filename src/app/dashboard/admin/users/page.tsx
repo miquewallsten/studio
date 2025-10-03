@@ -66,7 +66,7 @@ export default function AdminUsersPage() {
         setSelectedUser(null);
     }
 
-    const isCredentialError = error && (error.includes('credential') || error.includes('service-account.json'));
+    const isCredentialError = error && (error.includes('credential') || error.includes('service-account.json') || error.includes('GOOGLE_APPLICATION_CREDENTIALS'));
 
     const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, t]);
 
@@ -128,11 +128,11 @@ export default function AdminUsersPage() {
                         {error}
                         {isCredentialError && (
                             <div className="mt-4 bg-gray-900 text-white p-4 rounded-md text-sm">
-                                <p className="font-semibold">Action Required: Add Firebase Service Account</p>
-                                <p className="mt-2">To use server-side features like user management, you must provide a Firebase Service Account key. The application is correctly configured but cannot find the credential file.</p>
+                                <p className="font-semibold">Action Required: Add Firebase Service Account JSON File</p>
+                                <p className="mt-2">To use server-side features like user management, you must provide a Firebase Service Account key. The application is correctly configured to look for this file, but it was not found.</p>
                                 <ol className="list-decimal list-inside space-y-2 mt-3">
                                     <li>
-                                        Go to your Firebase project, click the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Gear icon</span> next to "Project Overview", then select <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Project settings</span>.
+                                        In the Firebase Console, go to your project, click the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Gear icon</span> next to "Project Overview", then select <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Project settings</span>.
                                     </li>
                                     <li>
                                         Go to the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Service accounts</span> tab.
@@ -140,8 +140,9 @@ export default function AdminUsersPage() {
                                     <li>
                                         Click the <span className="font-mono text-xs bg-gray-700 px-1 py-0.5 rounded">Generate new private key</span> button to download a JSON file.
                                     </li>
-                                     <li>In the file explorer to your left, drag and drop the downloaded JSON file into the root of your project.</li>
-                                     <li>Rename the downloaded file to exactly `service-account.json`.</li>
+                                     <li>In the file explorer to your left, create a new folder named `secrets` in the root of your project.</li>
+                                     <li>Drag and drop the downloaded JSON file into the new `secrets` folder.</li>
+                                     <li>Rename the downloaded file to exactly `firebase-admin.json`.</li>
                                     <li>
                                         The application will automatically use this file. You may need to restart the development server.
                                     </li>

@@ -12,7 +12,6 @@ const initializeAdmin = () => {
     if (getApps().length === 0) {
         try {
             // This will automatically use the file path from the GOOGLE_APPLICATION_CREDENTIALS environment variable.
-            // In this project, that is set to './service-account.json' in the .env file.
             initializeApp({
                 credential: applicationDefault(),
             });
@@ -20,7 +19,7 @@ const initializeAdmin = () => {
             console.error('Firebase admin initialization error', error);
             // Re-throw a more user-friendly error to be caught by the UI
             if (error.code === 'ENOENT') {
-                 throw new Error(`Firebase admin initialization error: Failed to read credentials from file ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Please follow the setup instructions.`);
+                 throw new Error(`Firebase admin initialization error: The credential file could not be found at the path specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable. Please follow the setup instructions.`);
             }
             throw new Error('Firebase admin initialization error: ' + error.message);
         }
