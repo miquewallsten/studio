@@ -11,8 +11,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Download, Star } from 'lucide-react';
@@ -25,7 +23,7 @@ type Ticket = {
   subjectName: string;
   reportType: string;
   status: string;
-  createdAt: Timestamp;
+  createdAt: string; // ISO string
   reportUrl?: string;
   rating?: number;
 };
@@ -37,17 +35,21 @@ export default function ClientTicketDetailPage({ params }: { params: { id: strin
   const secureFetch = useSecureFetch();
 
   useEffect(() => {
-    const ticketRef = doc(db, 'tickets', params.id);
-    const unsubscribe = onSnapshot(ticketRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Ticket;
-        setTicket({ id: docSnap.id, ...data });
+    const fetchTicket = async () => {
+      try {
+        setLoading(true);
+        const res = await secureFetch(`/api/tickets/${params.id}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setTicket(data.ticket);
+      } catch (error: any) {
+        toast({ title: "Error", description: `Could not load ticket: ${error.message}`, variant: "destructive" });
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [params.id]);
+    };
+    fetchTicket();
+  }, [params.id, secureFetch, toast]);
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -61,35 +63,22 @@ export default function ClientTicketDetailPage({ params }: { params: { id: strin
     if (!ticket || ticket.rating) return;
     
     try {
-        const ticketRef = doc(db, 'tickets', ticket.id);
-        await updateDoc(ticketRef, {
-            rating: rating,
-            ratingSubmittedAt: Timestamp.now(),
-        });
+      const res = await secureFetch(`/api/tickets/${ticket.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ rating }),
+      });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
 
-        toast({
-            title: 'Thank You!',
-            description: `You've rated this report ${rating} out of 5 stars.`,
-        });
+      // Optimistically update UI
+      setTicket(prev => prev ? { ...prev, rating } : null);
 
-        // If rating is low, send an email to execs
-        if (rating <= 3) {
-             const emailHtml = `
-                <p>A low rating of <strong>${rating} stars</strong> was just submitted for ticket #${ticket.id}.</p>
-                <p><strong>Subject:</strong> ${ticket.subjectName}</p>
-                <p><strong>Report Type:</strong> ${ticket.reportType}</p>
-                <p>Please review the ticket and consider following up with the client.</p>
-            `;
-             await secureFetch('/api/send-email', {
-                method: 'POST',
-                body: JSON.stringify({
-                    to: 'executives@example.com', // Replace with actual exec email or distribution list
-                    subject: `Low Rating Alert: Ticket ${ticket.id}`,
-                    html: emailHtml,
-                }),
-            });
-        }
-    } catch(err) {
+      toast({
+          title: 'Thank You!',
+          description: `You've rated this report ${rating} out of 5 stars.`,
+      });
+
+    } catch(err: any) {
         console.error("Failed to save rating:", err);
         toast({
             title: 'Error',
@@ -147,7 +136,7 @@ export default function ClientTicketDetailPage({ params }: { params: { id: strin
                 </div>
                 <div>
                   <h3 className="font-semibold text-muted-foreground">Requested On</h3>
-                  <p>{ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPP') : ''}</p>
+                  <p>{ticket.createdAt ? format(new Date(ticket.createdAt), 'PPP') : ''}</p>
                 </div>
               </div>
 

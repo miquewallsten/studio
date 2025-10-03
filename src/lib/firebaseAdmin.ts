@@ -1,23 +1,14 @@
 // Server-only; never import from "use client".
 if (typeof window !== 'undefined') throw new Error('firebaseAdmin is server-only');
 
-import { getApps, initializeApp, applicationDefault, cert, getApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, cert, getApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import { ENV } from './config';
 import { logger } from './logger';
 
 // @ts-ignore augment global to keep a single instance across hot reload
 declare global { var __ADMIN_APP__: ReturnType<typeof initializeApp> | undefined }
-
-function normalizePem(pemRaw: string): string {
-  let pk = String(pemRaw || '');
-  pk = pk.replace(/\\n/g, '\n').trim();
-  if (!pk.startsWith('-----BEGIN PRIVATE KEY-----')) pk = '-----BEGIN PRIVATE KEY-----\n' + pk;
-  if (!pk.endsWith('-----END PRIVATE KEY-----')) pk = pk + '\n-----END PRIVATE KEY-----';
-  if (!pk.endsWith('\n')) pk += '\n';
-  return pk;
-}
 
 function getServiceAccount() {
   // B64 is the preferred method for Vercel/serverless
@@ -25,12 +16,15 @@ function getServiceAccount() {
     try {
       const json = Buffer.from(ENV.FIREBASE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8');
       const sa = JSON.parse(json);
-      sa.private_key = normalizePem(sa.private_key);
+      if (!sa.private_key) {
+        throw new Error("private_key is missing from service account JSON");
+      }
+      sa.private_key = sa.private_key.replace(/\\n/g, '\n');
       logger.debug('Loaded Firebase credentials from FIREBASE_SERVICE_ACCOUNT_B64');
       return sa;
-    } catch (e) {
-      logger.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_B64', { error: (e as Error).message });
-      return null;
+    } catch (e: any) {
+      logger.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_B64', { error: e.message });
+      throw new Error(`Could not parse FIREBASE_SERVICE_ACCOUNT_B64: ${e.message}`);
     }
   }
 
@@ -45,34 +39,56 @@ function getServiceAccount() {
   if (ENV.FIREBASE_PROJECT_ID && ENV.FIREBASE_CLIENT_EMAIL && ENV.FIREBASE_PRIVATE_KEY) {
      logger.debug('Loaded Firebase credentials from triplet env vars');
     return {
-      project_id: ENV.FIREBASE_PROJECT_ID,
-      client_email: ENV.FIREBASE_CLIENT_EMAIL,
-      private_key: normalizePem(ENV.FIREBASE_PRIVATE_KEY),
+      projectId: ENV.FIREBASE_PROJECT_ID,
+      clientEmail: ENV.FIREBASE_CLIENT_EMAIL,
+      privateKey: ENV.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     };
   }
 
   logger.warn('No explicit Firebase credentials found, falling back to Application Default Credentials (ADC)');
-  return null;
+  return null; // Will use ADC
 }
 
-function ensureSingleApp() {
+function initializeAdminApp() {
   if (ENV.ADMIN_FAKE === '1') return;
-  if (global.__ADMIN_APP__) return global.__ADMIN_APP__;
-  if (getApps().length) { 
-    global.__ADMIN_APP__ = getApp(); 
+
+  // This guard is now primarily in config.ts, but an extra check here is safe.
+  const sourceCount = [
+    !!ENV.FIREBASE_SERVICE_ACCOUNT_B64,
+    !!ENV.GOOGLE_APPLICATION_CREDENTIALS,
+    !!(ENV.FIREBASE_PROJECT_ID && ENV.FIREBASE_CLIENT_EMAIL && ENV.FIREBASE_PRIVATE_KEY)
+  ].filter(Boolean).length;
+
+  if (sourceCount > 1) {
+    throw new Error('Single-instance guard: define exactly ONE Firebase credential source in your environment.');
+  }
+
+  if (global.__ADMIN_APP__) {
     return global.__ADMIN_APP__;
   }
 
-  const credentialSource = getServiceAccount();
+  if (getApps().length > 0) {
+    global.__ADMIN_APP__ = getApp();
+    return global.__ADMIN_APP__;
+  }
 
-  if (credentialSource) {
-    global.__ADMIN_APP__ = initializeApp({ credential: cert(credentialSource) });
+  const credential = getServiceAccount();
+
+  if (credential) {
+    global.__ADMIN_APP__ = initializeApp({ credential: cert(credential) });
   } else {
     // If no explicit credentials, try ADC. This is useful for some cloud environments.
-    global.__ADMIN_APP__ = initializeApp({ credential: applicationDefault() });
+    try {
+        global.__ADMIN_APP__ = initializeApp();
+    } catch (e: any) {
+        logger.error('Firebase Admin SDK initialization failed with ADC.', { error: e.message });
+        // Don't throw here, let health checks report the failure.
+    }
   }
   return global.__ADMIN_APP__;
 }
+
+initializeAdminApp();
 
 export function getAdminAuth() {
   if (ENV.ADMIN_FAKE === '1') {
@@ -89,7 +105,9 @@ export function getAdminAuth() {
       deleteUser: async () => {},
      } as any;
   }
-  ensureSingleApp();
+  if (!getApps().length) {
+    throw new Error("Firebase Admin SDK has not been initialized. Check your credentials and server logs.");
+  }
   return getAuth();
 }
 
@@ -133,6 +151,8 @@ export function getAdminDb() {
         })
     } as any;
   }
-  ensureSingleApp();
+  if (!getApps().length) {
+    throw new Error("Firebase Admin SDK has not been initialized. Check your credentials and server logs.");
+  }
   return getFirestore();
 }
