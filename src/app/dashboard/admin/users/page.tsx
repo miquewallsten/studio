@@ -67,7 +67,7 @@ export default function AdminUsersPage() {
         setSelectedUser(null);
     }
 
-    const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, t]);
+    const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, t, handleUserInvitedOrUpdated]);
 
 
     if (isRoleLoading) {
@@ -89,6 +89,9 @@ export default function AdminUsersPage() {
         </Card>
       )
     }
+    
+    const isCredentialError = error && (error.includes('credential') || error.includes('parse') || error.includes('service account'));
+
 
   return (
     <div className="flex-1 space-y-4">
@@ -122,10 +125,10 @@ export default function AdminUsersPage() {
             {error && (
                  <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{error.includes('credential') || error.includes('parse') ? 'Configuration Required: Service Account Key Invalid' : 'Error Fetching Data'}</AlertTitle>
+                    <AlertTitle>{isCredentialError ? 'Configuration Required: Service Account Key Invalid' : 'Error Fetching Data'}</AlertTitle>
                     <AlertDescription>
                         <p className="font-mono text-xs bg-muted p-2 rounded">{error}</p>
-                        {(error.includes('credential') || error.includes('parse')) && (
+                        {isCredentialError && (
                             <div className="mt-4 text-sm">
                                 <p className="font-semibold">Action Required: Add Firebase Admin Credentials</p>
                                 <p className="mt-2">To use server-side features like user management, you must provide a valid, base64-encoded Firebase Service Account key in your <code className="font-mono text-xs bg-muted p-1 rounded">.env</code> file under the variable <code className="font-mono text-xs bg-muted p-1 rounded">FIREBASE_SERVICE_ACCOUNT_B64</code>.</p>

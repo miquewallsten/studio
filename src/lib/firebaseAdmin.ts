@@ -6,6 +6,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { ENV } from './config';
 import { logger } from './logger';
+import { assertSingleInstance } from "./instanceGuard";
 
 // @ts-ignore augment global to keep a single instance across hot reload
 declare global { var __ADMIN_APP__: ReturnType<typeof initializeApp> | undefined }
@@ -19,6 +20,7 @@ function getServiceAccount() {
       if (!sa.private_key) {
         throw new Error("private_key is missing from service account JSON");
       }
+      // This is the critical fix: ensure newline characters are correctly formatted.
       sa.private_key = sa.private_key.replace(/\\n/g, '\n');
       logger.debug('Loaded Firebase credentials from FIREBASE_SERVICE_ACCOUNT_B64');
       return sa;
@@ -51,17 +53,7 @@ function getServiceAccount() {
 
 function initializeAdminApp() {
   if (ENV.ADMIN_FAKE === '1') return;
-
-  // This guard is now primarily in config.ts, but an extra check here is safe.
-  const sourceCount = [
-    !!ENV.FIREBASE_SERVICE_ACCOUNT_B64,
-    !!ENV.GOOGLE_APPLICATION_CREDENTIALS,
-    !!(ENV.FIREBASE_PROJECT_ID && ENV.FIREBASE_CLIENT_EMAIL && ENV.FIREBASE_PRIVATE_KEY)
-  ].filter(Boolean).length;
-
-  if (sourceCount > 1) {
-    throw new Error('Single-instance guard: define exactly ONE Firebase credential source in your environment.');
-  }
+  assertSingleInstance();
 
   if (global.__ADMIN_APP__) {
     return global.__ADMIN_APP__;

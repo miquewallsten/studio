@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, PlusCircle } from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { DataTable } from '@/components/ui/data-table';
@@ -30,7 +30,7 @@ export default function TenantsPage() {
     const { t } = useLanguage();
     const secureFetch = useSecureFetch();
 
-    const fetchTenants = async () => {
+    const fetchTenants = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -46,11 +46,11 @@ export default function TenantsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [secureFetch]);
 
     useEffect(() => {
         fetchTenants();
-    }, [secureFetch]);
+    }, [fetchTenants]);
     
     const handleDialogClose = () => {
         setSelectedTenant(null);
@@ -58,7 +58,7 @@ export default function TenantsPage() {
 
     const memoizedColumns = useMemo(() => columns({ onSelectTenant: setSelectedTenant, t }), [t]);
 
-    const isCredentialError = error && (error.includes('credential') || error.includes('FIREBASE_PROJECT_ID'));
+    const isCredentialError = error && (error.includes('credential') || error.includes('parse') || error.includes('service account'));
 
   return (
     <div className="flex-1 space-y-4">
@@ -91,7 +91,7 @@ export default function TenantsPage() {
             {error && (
                  <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{isCredentialError ? 'Configuration Required' : 'Error Fetching Data'}</AlertTitle>
+                    <AlertTitle>{isCredentialError ? 'Configuration Required: Service Account Key Invalid' : 'Error Fetching Data'}</AlertTitle>
                     <AlertDescription>
                         {error}
                         {isCredentialError && (
