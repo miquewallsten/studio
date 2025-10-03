@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -12,16 +13,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type Tenant = {
   id: string;
   name: string;
-  createdAt: Timestamp;
+  createdAt: string;
 };
 
 export default function TenantDetailPage({ params }: { params: { id: string } }) {
@@ -30,47 +30,47 @@ export default function TenantDetailPage({ params }: { params: { id: string } })
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
-    const tenantRef = doc(db, 'tenants', params.id);
-    const unsubscribe = onSnapshot(tenantRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setTenant({
-          id: docSnap.id,
-          name: data.name,
-          createdAt: data.createdAt,
-        });
+      const fetchTenant = async () => {
+          try {
+              const res = await secureFetch(`/api/tenants/${params.id}`);
+              const data = await res.json();
+              if (data.error) throw new Error(data.error);
+              setTenant(data.tenant);
+          } catch(err: any) {
+              toast({ title: 'Error', description: 'Could not load tenant data.', variant: 'destructive'});
+          } finally {
+              setLoading(false);
+          }
       }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [params.id]);
+      fetchTenant();
+  }, [params.id, secureFetch, toast]);
 
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsInviting(true);
-    // In a real app, you would use Firebase Admin SDK on a server
-    // to create a user and associate them with the tenantId.
-    // For this prototype, we'll simulate the invite.
     
-    // This is where you would call a serverless function to:
-    // 1. Check if a user with this email already exists.
-    // 2. If not, create one using `admin.auth().createUser()`.
-    // 3. Set a custom claim on the user token: `admin.auth().setCustomUserClaims(userId, { tenantId: params.id })`.
-    // 4. Send a custom invitation email.
-    
-    // Simulate a delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    toast({
-        title: 'Invitation Sent (Simulated)',
-        description: `An invitation has been sent to ${inviteEmail}. They will be associated with the "${tenant?.name}" tenant upon sign-up.`,
-    });
-
-    setInviteEmail('');
-    setIsInviting(false);
+    try {
+        await secureFetch('/api/users/invite', {
+            method: 'POST',
+            body: JSON.stringify({ email: inviteEmail, role: 'Tenant User', tenantId: params.id }),
+        });
+        toast({
+            title: 'Invitation Sent',
+            description: `An invitation has been sent to ${inviteEmail}.`,
+        });
+        setInviteEmail('');
+    } catch(err: any) {
+        toast({
+            title: 'Invite Failed',
+            description: err.message,
+            variant: 'destructive',
+        });
+    } finally {
+        setIsInviting(false);
+    }
   }
 
   if (loading) {
@@ -115,7 +115,7 @@ export default function TenantDetailPage({ params }: { params: { id: string } })
                 Tenant: {tenant.name}
               </CardTitle>
               <CardDescription>
-                Created on: {tenant.createdAt ? format(tenant.createdAt.toDate(), 'PPP') : ''}
+                Created on: {tenant.createdAt ? format(new Date(tenant.createdAt), 'PPP') : ''}
               </CardDescription>
             </div>
           </CardHeader>

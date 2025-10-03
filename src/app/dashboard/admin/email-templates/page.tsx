@@ -21,8 +21,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PlusCircle, Search, Mail } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
   Panel,
@@ -33,6 +31,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { EmailTemplateEditor } from '@/components/email-template-editor';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 export type Template = {
   id: string;
@@ -42,84 +41,41 @@ export type Template = {
   placeholders: string[];
 };
 
-const DEFAULT_TEMPLATES: Omit<Template, 'id'>[] = [
-    {
-        name: 'Tenant Admin Invitation',
-        subject: 'Your Invitation to the TenantCheck Platform',
-        body: 'Hello {{adminName}},\n\nYou have been invited to become an administrator for {{companyName}} on the TenantCheck platform.\n\nPlease use the following secure, single-use link to set up your account and get started:\n\n{{onboarding_link}}\n\nThis link will expire after its first use.\n\nWelcome aboard,\nThe TenantCheck Team',
-        placeholders: ['{{adminName}}', '{{companyName}}', '{{onboarding_link}}']
-    },
-    {
-        name: 'End-User Form Invitation',
-        subject: 'Information Request for {{reportType}}',
-        body: 'Hello {{subjectName}},\n\n{{clientName}} has requested that you complete a form for a {{reportType}}.\n\nPlease use the secure link below to set up your account and fill out the required information:\n\n{{action_link}}\n\nThis link is for single use only.\n\nThank you,\nThe TenantCheck Team',
-        placeholders: ['{{subjectName}}', '{{clientName}}', '{{reportType}}', '{{action_link}}']
-    }
-];
-
-
 export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
-  useEffect(() => {
-    const q = query(collection(db, 'email_templates'), orderBy('name'));
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-      if (querySnapshot.empty) {
-        // Firestore is empty, so seed it with default templates
-        try {
-            const batch = writeBatch(db);
-            for (const template of DEFAULT_TEMPLATES) {
-                const docId = template.name.toLowerCase().replace(/\s+/g, '-');
-                const docRef = doc(db, 'email_templates', docId);
-                batch.set(docRef, template);
-            }
-            await batch.commit();
-            // The onSnapshot listener will be called again automatically with the new data.
-        } catch (seedError) {
-            console.error("Failed to seed email templates:", seedError);
-            toast({
-                title: "Error",
-                description: "Could not automatically create default email templates.",
-                variant: "destructive"
-            });
+  const fetchTemplates = async () => {
+    setLoading(true);
+    try {
+        const res = await secureFetch('/api/admin/email-templates');
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        
+        setTemplates(data.templates);
+        if (!selectedTemplate && data.templates.length > 0) {
+            setSelectedTemplate(data.templates[0]);
+        } else if (selectedTemplate) {
+            setSelectedTemplate(prev => data.templates.find((t: Template) => t.id === prev?.id) || data.templates[0] || null);
         }
-        return;
-      }
-
-      const templatesData: Template[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        templatesData.push({
-          id: doc.id,
-          name: data.name,
-          subject: data.subject,
-          body: data.body,
-          placeholders: data.placeholders || []
-        });
-      });
-      setTemplates(templatesData);
-      if (!selectedTemplate && templatesData.length > 0) {
-        setSelectedTemplate(templatesData[0]);
-      } else if (selectedTemplate) {
-        setSelectedTemplate(prev => templatesData.find(t => t.id === prev?.id) || templatesData[0] || null);
-      }
-      setLoading(false);
-    }, (error) => {
-        console.error("Error fetching email templates:", error);
+    } catch (err: any) {
         toast({
             title: "Error",
-            description: "Could not fetch email templates.",
+            description: "Could not fetch email templates: " + err.message,
             variant: "destructive"
         })
+    } finally {
         setLoading(false);
-    });
+    }
+  }
 
-    return () => unsubscribe();
-  }, [toast]);
+  useEffect(() => {
+    fetchTemplates();
+  }, [secureFetch]);
   
   const filteredTemplates = useMemo(() => {
     if (!searchQuery) return templates;
@@ -190,6 +146,7 @@ export default function EmailTemplatesPage() {
                     <EmailTemplateEditor 
                         key={selectedTemplate.id}
                         template={selectedTemplate}
+                        onTemplateUpdated={fetchTemplates}
                     />
             ) : (
                     <Card className="h-full flex items-center justify-center">

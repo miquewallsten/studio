@@ -10,14 +10,11 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
-import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
 import { Copy } from 'lucide-react';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
@@ -32,9 +29,10 @@ type Template = {
 
 interface EmailTemplateEditorProps {
     template: Template;
+    onTemplateUpdated: () => void;
 }
 
-export function EmailTemplateEditor({ template: initialTemplate }: EmailTemplateEditorProps) {
+export function EmailTemplateEditor({ template: initialTemplate, onTemplateUpdated }: EmailTemplateEditorProps) {
   const [template, setTemplate] = useState<Template>(initialTemplate);
   const [isSaving, setIsSaving] = useState(false);
   const [testEmail, setTestEmail] = useState('');
@@ -50,15 +48,18 @@ export function EmailTemplateEditor({ template: initialTemplate }: EmailTemplate
     if (!template) return;
     setIsSaving(true);
     try {
-        const templateRef = doc(db, 'email_templates', template.id);
-        await updateDoc(templateRef, {
-            subject: template.subject,
-            body: template.body,
+        await secureFetch(`/api/admin/email-templates/${template.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                subject: template.subject,
+                body: template.body
+            }),
         });
         toast({
             title: 'Template Saved',
             description: 'Your changes have been saved successfully.',
         });
+        onTemplateUpdated();
     } catch (error) {
         console.error("Error saving template: ", error);
         toast({
