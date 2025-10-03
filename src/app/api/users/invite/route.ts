@@ -1,4 +1,4 @@
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiSafe } from '@/lib/api-safe';
 
@@ -6,6 +6,8 @@ import { apiSafe } from '@/lib/api-safe';
 const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 'Tenant Admin', 'Tenant User', 'End User'];
 
 export async function POST(request: NextRequest) {
+  const adminAuth = getAdminAuth();
+  const adminDb = getAdminDb();
   return apiSafe(async () => {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

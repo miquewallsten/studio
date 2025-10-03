@@ -1,10 +1,12 @@
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     try {
         const { id: tenantId } = params;
 

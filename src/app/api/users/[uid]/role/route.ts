@@ -1,4 +1,4 @@
-import { adminAuth } from '@/lib/firebaseAdmin';
+import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Predefined roles
@@ -8,6 +8,7 @@ const VALID_ROLES = ['Admin', 'Analyst', 'Manager', 'View Only', 'Super Admin', 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest, { params }: { params: { uid: string } }) {
+    const adminAuth = getAdminAuth();
     try {
         const { uid } = params;
         const { role } = await request.json();

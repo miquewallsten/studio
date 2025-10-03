@@ -1,9 +1,11 @@
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function PATCH(request: NextRequest, { params }: { params: { uid: string } }) {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     try {
         const { uid } = params;
         const body = await request.json();
@@ -67,6 +69,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { uid: string } }) {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     try {
         const { uid } = params;
 

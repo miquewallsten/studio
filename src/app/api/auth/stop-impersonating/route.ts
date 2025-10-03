@@ -1,6 +1,6 @@
 'use server';
 
-import { getAdminAuth } from '@/lib/firebase-admin';
+import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 

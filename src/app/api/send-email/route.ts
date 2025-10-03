@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { adminAuth } from '@/lib/firebaseAdmin';
+import { getAdminAuth } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +11,7 @@ const validateEmailInput = (input: { to?: string; subject?: string; html?: strin
 };
 
 export async function POST(req: Request) {
+  const adminAuth = getAdminAuth();
   try {
     // 1. Authenticate the request
     const authHeader = req.headers.get('Authorization');

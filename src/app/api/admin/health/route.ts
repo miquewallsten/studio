@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebaseAdmin';
+import { getAdminAuth } from '@/lib/firebaseAdmin';
 export const runtime = 'nodejs';
 export async function GET() {
   try {
+    const adminAuth = getAdminAuth();
     // lightweight call – checks initialization without requiring a user token
     await adminAuth.listUsers(1);
     return NextResponse.json({ ok: true });

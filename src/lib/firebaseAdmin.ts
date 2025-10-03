@@ -1,41 +1,90 @@
-// Server-only initializer. Never import from "use client".
-if (typeof window !== 'undefined') { throw new Error('firebaseAdmin is server-only'); }
+// Server-only; never import from "use client".
+if (typeof window !== 'undefined') throw new Error('firebaseAdmin is server-only');
 
-import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import fs from 'node:fs';
+import path from 'node:path';
+import { getApps, initializeApp, applicationDefault, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-function getServiceAccountFromB64() {
-  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
-  if (!b64) throw new Error('FIREBASE_SERVICE_ACCOUNT_B64 is missing');
-  try {
-    // Trim accidental whitespace/newlines
-    const clean = b64.trim();
-    // Decode
-    const json = Buffer.from(clean, 'base64').toString('utf8');
-    // Validate JSON
+const ADMIN_FAKE = process.env.ADMIN_FAKE === '1';
+
+function normalizePem(pemRaw: string) {
+  let pk = String(pemRaw || '');
+  pk = pk.replace(/\\n/g, '\n').replace(/\r/g, '').trim();
+  if (!pk.startsWith('-----BEGIN PRIVATE KEY-----')) {
+    pk = '-----BEGIN PRIVATE KEY-----\n' + pk;
+  }
+  if (!pk.endsWith('-----END PRIVATE KEY-----')) {
+    pk = pk + '\n-----END PRIVATE KEY-----';
+  }
+  if (!pk.endsWith('\n')) pk += '\n';
+  return pk;
+}
+
+function getServiceAccount() {
+  // 1) File path
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (credPath) {
+    const abs = path.isAbsolute(credPath) ? credPath : path.resolve(process.cwd(), credPath);
+    if (!fs.existsSync(abs)) throw new Error(`Credential file not found at ${abs}`);
+    const json = fs.readFileSync(abs, 'utf8').trim().replace(/^\uFEFF/, '');
     const sa = JSON.parse(json);
-    if (!sa.project_id || !sa.client_email || !sa.private_key) {
-      throw new Error('Decoded JSON missing required fields (project_id, client_email, private_key)');
-    }
-    return sa;
-  } catch (e: any) {
-    throw new Error('Could not parse FIREBASE_SERVICE_ACCOUNT_B64. Make sure it is a valid base64-encoded JSON string. Inner: ' + String(e?.message || e));
+    return { project_id: sa.project_id, client_email: sa.client_email, private_key: normalizePem(sa.private_key) };
+  }
+  // 2) Base64 of full JSON
+  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
+  if (b64) {
+    const json = Buffer.from(b64.trim(), 'base64').toString('utf8').trim().replace(/^\uFEFF/, '');
+    const unwrapped = (json.startsWith('"') && json.endsWith('"')) ? json.slice(1, -1) : json;
+    const sa = JSON.parse(unwrapped);
+    return { project_id: sa.project_id, client_email: sa.client_email, private_key: normalizePem(sa.private_key) };
+  }
+  // 3) Triplet envs
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+  if (projectId && clientEmail && rawKey) {
+    return { project_id: projectId, client_email: clientEmail, private_key: normalizePem(rawKey) };
+  }
+  return null;
+}
+
+function ensureApp() {
+  if (getApps().length) return getApps()[0];
+  const sa = getServiceAccount();
+  if (ADMIN_FAKE) {
+    // No initialization in fake mode
+    return null;
+  }
+  if (sa) {
+    return initializeApp({ credential: cert({
+      projectId: sa.project_id,
+      clientEmail: sa.client_email,
+      privateKey: sa.private_key,
+    })});
+  } else {
+    // Fallback to ADC (rare in Studio, but safe)
+    return initializeApp({ credential: applicationDefault() });
   }
 }
 
-const sa = getServiceAccountFromB64();
+export function getAdminAuth() {
+  if (ADMIN_FAKE) {
+    return {
+      async listUsers() { return { users: [] }; },
+      async verifyIdToken() { return { uid: 'fake-user' }; },
+    } as any;
+  }
+  ensureApp();
+  return getAuth();
+}
 
-const app = getApps().length
-  ? getApps()[0]
-  : initializeApp({
-      credential: cert({
-        projectId: sa.project_id,
-        clientEmail: sa.client_email,
-        // IMPORTANT: Replace literal "\\n" with actual newline characters
-        privateKey: sa.private_key.replace(/\\n/g, '\n'),
-      }),
-    });
-
-export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app);
+export function getAdminDb() {
+  if (ADMIN_FAKE) {
+    // Minimal mock shape
+    return { collection: () => ({ doc: () => ({ get: async()=>({ exists:false }), set: async()=>{}, update: async()=>{} }), get: async()=>({ forEach:()=>{} }) }) } as any;
+  }
+  ensureApp();
+  return getFirestore();
+}

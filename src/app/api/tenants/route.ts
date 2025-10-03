@@ -1,9 +1,10 @@
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
 
 async function getTenantData() {
+    const adminDb = getAdminDb();
     const tenantsSnapshot = await adminDb.collection('tenants').orderBy('createdAt', 'desc').get();
     const tenants: any[] = [];
     tenantsSnapshot.forEach(doc => {
@@ -13,6 +14,7 @@ async function getTenantData() {
 }
 
 async function getUserCountsByTenant() {
+    const adminAuth = getAdminAuth();
     const userRecords = await adminAuth.listUsers();
     const counts: { [key: string]: number } = {};
     userRecords.users.forEach(user => {
@@ -25,6 +27,7 @@ async function getUserCountsByTenant() {
 }
 
 async function getTicketCountsByTenant() {
+    const adminDb = getAdminDb();
     const ticketsSnapshot = await adminDb.collection('tickets').get();
     const counts: { [key: string]: number } = {};
     ticketsSnapshot.forEach(doc => {
@@ -37,6 +40,8 @@ async function getTicketCountsByTenant() {
 }
 
 export async function POST(request: NextRequest) {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     return apiSafe(async () => {
         const authHeader = request.headers.get('Authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {

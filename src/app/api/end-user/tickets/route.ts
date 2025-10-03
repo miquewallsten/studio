@@ -1,10 +1,12 @@
-import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 // This new endpoint is specifically for End Users to fetch tickets where they are the subject.
 export async function GET(request: NextRequest) {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     try {
         const authHeader = request.headers.get('Authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
