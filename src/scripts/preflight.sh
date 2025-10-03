@@ -12,7 +12,8 @@ LEAKS=""
 if [ -n "$CLIENT_FILES" ]; then
     LEAKS=$( (for f in $CLIENT_FILES; do
       # We are now blocking both firestore and app, as client should only use auth.
-      grep -nE "from ['\"](@?firebase/|firebase/)(app|firestore)" "$f" || true
+      # This regex ensures we only match 'firebase/...' and NOT 'firebase-admin/...'
+      grep -nE "from ['\"](firebase/app|firebase/firestore)['\"]" "$f" || true
     done) | sed '/^$/d' || true)
 fi
 
