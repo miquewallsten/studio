@@ -3,6 +3,7 @@ import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { requireAuth } from '@/lib/authApi';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 async function getLeastBusyAnalyst(groupId: string): Promise<string | null> {
     const adminDb = getAdminDb();
@@ -31,9 +32,10 @@ async function getLeastBusyAnalyst(groupId: string): Promise<string | null> {
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-    const adminAuth = getAdminAuth();
-    const adminDb = getAdminDb();
     try {
+        checkRateLimit(request);
+        const adminAuth = getAdminAuth();
+        const adminDb = getAdminDb();
         const decodedToken = await requireAuth(request);
         const clientUid = decodedToken.uid;
         const clientEmail = decodedToken.email;

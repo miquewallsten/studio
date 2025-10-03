@@ -2,14 +2,16 @@
 import { getAdminAuth, getAdminDb } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/authApi';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 // This new endpoint is specifically for End Users to fetch tickets where they are the subject.
 export async function GET(request: NextRequest) {
-    const adminAuth = getAdminAuth();
-    const adminDb = getAdminDb();
     try {
+        checkRateLimit(request);
+        const adminAuth = getAdminAuth();
+        const adminDb = getAdminDb();
         const decodedToken = await requireAuth(request);
         
         // The user's own UID is what we use to find their tickets.

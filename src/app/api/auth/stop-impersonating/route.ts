@@ -3,11 +3,13 @@
 import { getAdminAuth } from '@/lib/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    checkRateLimit(request);
     const cookieStore = cookies();
     const impersonatorToken = cookieStore.get('impersonatorToken')?.value;
 

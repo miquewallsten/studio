@@ -5,6 +5,7 @@ import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
 import { requireAuth } from '@/lib/authApi';
 import { requireRole } from '@/lib/rbac';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 async function getTenantData() {
     const adminDb = getAdminDb();
@@ -43,9 +44,10 @@ async function getTicketCountsByTenant() {
 }
 
 export async function POST(request: NextRequest) {
-    const adminAuth = getAdminAuth();
-    const adminDb = getAdminDb();
     return apiSafe(async () => {
+        checkRateLimit(request);
+        const adminAuth = getAdminAuth();
+        const adminDb = getAdminDb();
         const decodedToken = await requireAuth(request);
         // TODO: Resolve user role from a reliable source (e.g., Firestore) instead of just the token claim.
         requireRole(decodedToken.role, 'Super Admin');
@@ -106,6 +108,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   return apiSafe(async () => {
+    checkRateLimit(request);
     const [tenants, userCounts, ticketCounts] = await Promise.all([
         getTenantData(),
         getUserCountsByTenant(),

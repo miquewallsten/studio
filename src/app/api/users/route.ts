@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { apiSafe } from '@/lib/api-safe';
 import { requireAuth } from '@/lib/authApi';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 async function getTenants() {
     const adminDb = getAdminDb();
@@ -55,8 +56,9 @@ async function getTicketCounts(tenantId?: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const adminAuth = getAdminAuth();
   return apiSafe(async () => {
+    checkRateLimit(request);
+    const adminAuth = getAdminAuth();
     const decodedToken = await requireAuth(request);
     
     const callerRole = decodedToken.role;

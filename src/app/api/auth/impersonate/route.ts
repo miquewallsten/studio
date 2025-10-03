@@ -4,11 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIdToken } from 'firebase/auth';
 import { requireAuth } from '@/lib/authApi';
 import { requireRole } from '@/lib/rbac';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    checkRateLimit(request);
     const adminAuth = getAdminAuth();
     const decodedToken = await requireAuth(request);
     
