@@ -11,7 +11,7 @@ if (typeof window !== 'undefined') {
 // @ts-ignore keep one client across hot reloads
 declare global { var __GENAI_CLIENT__: GoogleGenerativeAI | undefined; }
 
-export const MODEL = 'gemini-1.5-flash-lite';
+export const MODEL = 'gemini-2.5-flash-lite';
 
 function getClient(): GoogleGenerativeAI {
   if (!ENV.GOOGLE_API_KEY) {
