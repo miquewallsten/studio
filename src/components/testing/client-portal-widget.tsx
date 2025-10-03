@@ -10,9 +10,8 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, User, ExternalLink } from 'lucide-react';
-import { db, auth } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, onSnapshot, query, where, Timestamp, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -21,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '../ui/dropdown-menu';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type User = {
     uid: string;
@@ -117,6 +117,7 @@ export function ClientPortalWidget({ users, onImpersonate, onUserCreated, isImpe
 function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onUserCreated: () => void, clientUser: any }) {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+    const secureFetch = useSecureFetch();
   
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -138,56 +139,24 @@ function NewRequestDialog({ isOpen, onOpenChange, onUserCreated, clientUser }: {
       }
   
       try {
-        const inviteResponse = await fetch('/api/users/invite', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email, tenantId: clientUser.uid }), 
-        });
-  
-        const inviteData = await inviteResponse.json();
+        const idTokenResult = await clientUser.getIdTokenResult();
+        const tenantId = idTokenResult.claims.tenantId;
         
-        if (!inviteResponse.ok && !inviteData.error?.includes('already exists')) {
-          throw new Error(inviteData.error || 'Failed to create the end-user account.');
-        }
-
-        const prompt = `You are an AI assistant that suggests specialized compliance questions. Given the report type and description below, suggest a list of 3-5 compliance questions. Return *only* a JSON object with a "suggestedQuestions" key containing an array of strings. Do not add any other text, markdown, or explanation.\n\nReport Type: ${reportType}\nDescription: ${description}`;
-      
-        const res = await fetch('/api/ai/echo', {
+        await secureFetch('/api/client/tickets/create', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt }),
-        });
-        const json = await res.json();
-        const aiResponse = json.text ?? '';
-        
-        let suggestedQuestions: string[] = [];
-        try {
-          const jsonResponse = aiResponse.replace(/```json|```/g, '').trim();
-          const parsed = JSON.parse(jsonResponse);
-          suggestedQuestions = parsed.suggestedQuestions || [];
-        } catch (e) {
-          console.error("Failed to parse AI response for compliance questions:", e);
-        }
-  
-        // Query for user if they already existed
-        const endUserId = inviteData.uid;
-
-        await addDoc(collection(db, 'tickets'), {
-          subjectName,
-          email,
-          reportType,
-          description,
-          suggestedQuestions,
-          status: 'New',
-          createdAt: serverTimestamp(),
-          clientId: clientUser.uid,
-          clientEmail: clientUser.email,
-          endUserId: endUserId || null,
+            body: JSON.stringify({
+                subjectName,
+                email,
+                reportType, // The API expects formId, but we are sending reportType. This might need correction depending on API.
+                formId: reportType,
+                description,
+                tenantId: tenantId
+            })
         });
   
         toast({
           title: 'Request Created',
-          description: `A new end-user form has been created for ${email}.`,
+          description: `A new request has been created for ${email}.`,
           variant: 'default',
         });
         

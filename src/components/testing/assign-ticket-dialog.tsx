@@ -19,8 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type Analyst = {
     uid: string;
@@ -47,6 +46,7 @@ export function AssignTicketDialog({
   const [selectedAnalystId, setSelectedAnalystId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   const handleAssign = async () => {
     if (!selectedAnalystId || !ticket) {
@@ -59,10 +59,12 @@ export function AssignTicketDialog({
     }
     setIsLoading(true);
     try {
-        const ticketRef = doc(db, 'tickets', ticket.id);
-        await updateDoc(ticketRef, {
-            status: 'In Progress',
-            assignedAnalystId: selectedAnalystId,
+        await secureFetch(`/api/tickets/${ticket.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                status: 'In Progress',
+                assignedAnalystId: selectedAnalystId,
+            })
         });
       
       toast({
@@ -116,5 +118,3 @@ export function AssignTicketDialog({
     </Dialog>
   );
 }
-
-    

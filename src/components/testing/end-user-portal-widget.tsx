@@ -9,11 +9,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { db, auth } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { User, ExternalLink } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '../ui/dropdown-menu';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type PortalUser = {
     uid: string;
@@ -29,16 +30,37 @@ interface EndUserPortalWidgetProps {
 export function EndUserPortalWidget({ users, onImpersonate, isImpersonating }: EndUserPortalWidgetProps) {
   const [user, loadingAuth] = useAuthState(auth);
   const [iframeKey, setIframeKey] = useState(Date.now());
+  const [firstTicketId, setFirstTicketId] = useState<string | null>(null);
+  const secureFetch = useSecureFetch();
+
+  const fetchFirstTicket = useCallback(async () => {
+    if (user) {
+        try {
+            const res = await secureFetch('/api/end-user/tickets');
+            const data = await res.json();
+            if (data.tickets && data.tickets.length > 0) {
+                setFirstTicketId(data.tickets[0].id);
+            } else {
+                setFirstTicketId(null);
+            }
+        } catch (error) {
+            console.error("Could not fetch user's first ticket", error);
+            setFirstTicketId(null);
+        }
+    }
+  }, [user, secureFetch]);
+
 
   useEffect(() => {
-    // When the user changes, force the iframe to re-render to reflect the new auth state
     setIframeKey(Date.now());
-  }, [user]);
+    if ((user?.stsTokenManager as any)?.claims?.role === 'End User') {
+        fetchFirstTicket();
+    }
+  }, [user, fetchFirstTicket]);
 
   const role = (user?.stsTokenManager as any)?.claims?.role;
   const isEndUser = role === 'End User';
-  const firstTicketId = 'some-ticket-id'; // This would need to be dynamically fetched
-
+  
   return (
     <Card className="h-full flex flex-col">
         <CardHeader className="non-draggable">
@@ -78,6 +100,10 @@ export function EndUserPortalWidget({ users, onImpersonate, isImpersonating }: E
             ) : !isEndUser ? (
                  <div className="h-full flex items-center justify-center p-4">
                     <p className="text-sm text-muted-foreground text-center">Impersonate an end-user via the Invitation Inbox to see their form.</p>
+                </div>
+            ) : !firstTicketId ? (
+                <div className="h-full flex items-center justify-center p-4">
+                    <p className="text-sm text-muted-foreground text-center">This user has no pending forms.</p>
                 </div>
             ) : (
                 <iframe key={iframeKey} src={`/form/${firstTicketId}`} className="w-full h-full border-0" />

@@ -11,9 +11,8 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useEffect, useState, useRef } from 'react';
-import { doc, getDoc, updateDoc, Timestamp, collection, where, query, getDocs } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -25,6 +24,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
+import type { Timestamp } from 'firebase/firestore';
 
 
 type Ticket = {
@@ -32,13 +33,13 @@ type Ticket = {
   subjectName: string;
   reportType: string;
   status: string;
-  createdAt: Timestamp;
+  createdAt: string;
   description: string;
   clientEmail: string;
   endUserId: string;
   formId?: string;
   suggestedQuestions?: string[];
-  formSubmittedAt?: Timestamp;
+  formSubmittedAt?: string;
 };
 
 type Message = {
@@ -53,6 +54,7 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
   
   const [formMode, setFormMode] = useState<'ai' | 'manual'>('ai');
 
@@ -68,6 +70,53 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const getTicketData = useCallback(async (userId: string) => {
+      setLoading(true);
+      try {
+        const res = await secureFetch(`/api/tickets/${params.ticketId}`);
+        const data = await res.json();
+        
+        if (data.error) throw new Error(data.error);
+        const ticketData = data.ticket as Ticket;
+
+        if (ticketData.endUserId !== userId) {
+          toast({
+            title: 'Access Denied',
+            description: 'You do not have permission to view this form.',
+            variant: 'destructive',
+          });
+          setTicket(null);
+        } else if (ticketData.status !== 'New' && ticketData.status !== 'In Progress') {
+            setTicket(ticketData); 
+        } else {
+          let questions = ticketData.suggestedQuestions || [];
+          if (ticketData.formId) {
+            const formRes = await secureFetch(`/api/forms/${ticketData.formId}`);
+            const formData = await formRes.json();
+            if (formData.form && formData.form.fields) {
+                const fieldIds = formData.form.fields;
+                if (fieldIds.length > 0) {
+                    const fieldsRes = await secureFetch(`/api/fields?ids=${fieldIds.join(',')}`);
+                    const fieldsData = await fieldsRes.json();
+                    questions = fieldsData.fields.map((d: any) => d.label);
+                }
+            }
+          }
+          const finalTicketData = { ...ticketData, suggestedQuestions: questions };
+          setTicket(finalTicketData);
+          
+          if (history.length === 0 && formMode === 'ai') {
+            handleSend(true, finalTicketData);
+          }
+        }
+      } catch (err: any) {
+        toast({ title: 'Not Found', description: err.message, variant: 'destructive'});
+        setTicket(null);
+      } finally {
+        setLoading(false);
+      }
+    }, [params.ticketId, toast, secureFetch, formMode, history.length]);
+
 
   useEffect(() => {
     if (loadingAuth) return;
@@ -80,59 +129,9 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
         return;
     }
     
-    const getTicketData = async () => {
-      setLoading(true);
-      const ticketRef = doc(db, 'tickets', params.ticketId);
-      const ticketSnap = await getDoc(ticketRef);
-
-      if (ticketSnap.exists()) {
-        const ticketData = { id: ticketSnap.id, ...ticketSnap.data() } as Ticket;
-
-        if (ticketData.endUserId !== user.uid) {
-          toast({
-            title: 'Access Denied',
-            description: 'You do not have permission to view this form.',
-            variant: 'destructive',
-          });
-          setTicket(null);
-        } else if (ticketData.status !== 'New' && ticketData.status !== 'In Progress') { // Allow viewing if In Progress
-             setTicket(ticketData); 
-        } else {
-          // Fetch questions from the form template if formId exists
-          let questions = ticketData.suggestedQuestions || [];
-          if (ticketData.formId) {
-            const formRef = doc(db, 'forms', ticketData.formId);
-            const formSnap = await getDoc(formRef);
-            if (formSnap.exists()) {
-              const formFieldsIds = formSnap.data()?.fields || [];
-              if (formFieldsIds.length > 0) {
-                 const fieldsQuery = query(collection(db, 'fields'), where('__name__', 'in', formFieldsIds));
-                 const fieldsSnap = await getDocs(fieldsQuery);
-                 questions = fieldsSnap.docs.map(d => d.data().label);
-              }
-            }
-          }
-          const finalTicketData = { ...ticketData, suggestedQuestions: questions };
-          setTicket(finalTicketData);
-          
-          if (history.length === 0 && formMode === 'ai') {
-            handleSend(true, finalTicketData);
-          }
-        }
-      } else {
-        toast({
-          title: 'Not Found',
-          description: 'This form could not be found or has already been submitted.',
-          variant: 'destructive',
-        });
-        setTicket(null);
-      }
-      setLoading(false);
-    };
-
-    getTicketData();
+    getTicketData(user.uid);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loadingAuth, authError, params.ticketId, router, toast, formMode]);
+  }, [user, loadingAuth, authError, getTicketData, router]);
 
     // Auto-scroll to bottom for chat
   useEffect(() => {
@@ -245,16 +244,18 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     });
 
     try {
-        const ticketRef = doc(db, 'tickets', ticket.id);
-        await updateDoc(ticketRef, {
-            status: 'In Progress', 
-            formData: formValues, 
-            formSubmittedAt: Timestamp.now(),
-            eSignature: {
-                agreed: true,
-                timestamp: Timestamp.now(),
-                ipAddress: '0.0.0.0' // Placeholder
-            }
+        await secureFetch(`/api/tickets/${ticket.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                status: 'In Progress', 
+                formData: formValues, 
+                formSubmittedAt: new Date().toISOString(),
+                eSignature: {
+                    agreed: true,
+                    timestamp: new Date().toISOString(),
+                    ipAddress: '0.0.0.0' // Placeholder
+                }
+            })
         });
 
         toast({
@@ -313,7 +314,7 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
                     <CardHeader>
                         <CardTitle>Form Already Submitted</CardTitle>
                         <CardDescription>
-                            This form was submitted on {ticket.formSubmittedAt ? new Date(ticket.formSubmittedAt.toDate()).toLocaleDateString() : 'a previous date'}.
+                            This form was submitted on {ticket.formSubmittedAt ? new Date(ticket.formSubmittedAt).toLocaleDateString() : 'a previous date'}.
                         </CardDescription>
                     </CardHeader>
                      <CardContent>
