@@ -67,6 +67,12 @@ export function DataTableToolbar<TData>({
     return id.includes('name') || id.includes('email') || id.includes('subjectname');
   });
 
+  const roleCol = table.getColumn('role');
+  const statusCol = table.getColumn('status');
+  const reportTypeCol = table.getColumn('reportType');
+  const tenantNameCol = table.getColumn('tenantName');
+
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
@@ -80,30 +86,30 @@ export function DataTableToolbar<TData>({
             className="h-8 w-[150px] lg:w-[250px]"
             />
         )}
-        {allColumnIds.has('role') && (
+        {roleCol && (
           <DataTableFacetedFilter
-            column={table.getColumn('role')}
+            column={roleCol}
             title="Role"
             options={roles}
           />
         )}
-        {allColumnIds.has('status') && (
+        {statusCol && (
             <DataTableFacetedFilter
-                column={table.getColumn('status')}
+                column={statusCol}
                 title="Status"
                 options={ticketStatuses}
             />
         )}
-        {allColumnIds.has('reportType') && (
+        {reportTypeCol && (
             <DataTableFacetedFilter
-                column={table.getColumn('reportType')}
+                column={reportTypeCol}
                 title="Report Type"
                 options={reportTypes}
             />
         )}
-        {allColumnIds.has('tenantName') && tenantNames.length > 0 && (
+        {tenantNameCol && tenantNames.length > 0 && (
             <DataTableFacetedFilter
-                column={table.getColumn('tenantName')}
+                column={tenantNameCol}
                 title="Tenant"
                 options={tenantNames}
             />
