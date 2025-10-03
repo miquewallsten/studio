@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-base="http://localhost:3000"
-echo "HEALTH _health:"; curl -fsS "$base/api/_health"; echo
-echo "HEALTH admin:";   curl -fsS "$base/api/admin/health"; echo
-echo "HEALTH ai:";      curl -fsS "$base/api/ai/health"; echo
+echo -n "HEALTH _health: "
+curl -s http://localhost:9002/api/_health
+echo
+echo -n "HEALTH instance: "
+curl -s http://localhost:9002/api/_instance
+echo
+echo -n "HEALTH ai: "
+curl -s http://localhost:9002/api/ai/health
+echo
