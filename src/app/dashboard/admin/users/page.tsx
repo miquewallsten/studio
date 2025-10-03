@@ -66,7 +66,7 @@ export default function AdminUsersPage() {
         setSelectedUser(null);
     }
 
-    const isCredentialError = error && (error.includes('credential') || error.includes('service-account.json') || error.includes('GOOGLE_APPLICATION_CREDENTIALS') || error.includes('firebase-admin.json'));
+    const isCredentialFileNotFoundError = error && error.includes('ENOENT');
 
     const memoizedColumns = useMemo(() => columns({ onSelectUser: setSelectedUser, allTags: allTags, onUserUpdated: handleUserInvitedOrUpdated, t }), [allTags, t]);
 
@@ -123,12 +123,12 @@ export default function AdminUsersPage() {
             {error && (
                  <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{isCredentialError ? t('users.config_required') : t('users.error_fetching')}</AlertTitle>
+                    <AlertTitle>{isCredentialFileNotFoundError ? 'Configuration Required: Service Account Key Missing' : 'Error Fetching Data'}</AlertTitle>
                     <AlertDescription>
-                        {error}
-                        {isCredentialError && (
+                        <p>{error}</p>
+                        {isCredentialFileNotFoundError && (
                             <div className="mt-4 bg-gray-900 text-white p-4 rounded-md text-sm">
-                                <p className="font-semibold">Action Required: Add Firebase Service Account JSON File</p>
+                                <p className="font-semibold">Action Required: Add Firebase Admin Credentials</p>
                                 <p className="mt-2">To use server-side features like user management, you must provide a Firebase Service Account key. The application is correctly configured to look for this file, but it was not found.</p>
                                 <ol className="list-decimal list-inside space-y-2 mt-3">
                                     <li>
@@ -147,6 +147,7 @@ export default function AdminUsersPage() {
                                         The application will automatically use this file. You may need to restart the development server.
                                     </li>
                                 </ol>
+                                <p className="mt-3 text-yellow-300 text-xs">Note: Your `.env` file is already correctly configured to point to `secrets/firebase-admin.json`.</p>
                             </div>
                         )}
                     </AlertDescription>
