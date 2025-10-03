@@ -12,9 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FileUp, MessageSquare, Save, UserPlus, CheckCircle, Upload, Bot, EyeOff, Sparkles } from 'lucide-react';
-import { useEffect, useState, useRef } from 'react';
-import { doc, onSnapshot, Timestamp, updateDoc, collection, getDoc, getDocs, where, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
@@ -22,13 +20,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthRole } from '@/hooks/use-auth-role';
 import type { Field } from '@/app/dashboard/fields/schema';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type Ticket = {
   id: string;
   subjectName: string;
   reportType: string;
   status: string;
-  createdAt: Timestamp;
+  createdAt: string; // ISO string
   description: string;
   clientEmail: string;
   formId?: string;
@@ -63,60 +62,67 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   const { toast } = useToast();
   const { role } = useAuthRole();
   const [reportSections, setReportSections] = useState<ReportSection[]>([]);
+  const secureFetch = useSecureFetch();
+
+  const fetchFormFields = useCallback(async (formId: string, formData: {[key: string]: any}) => {
+    try {
+        const res = await secureFetch(`/api/forms/${formId}`);
+        const data = await res.json();
+        if (data.form && data.form.fields) {
+            const fieldIds = data.form.fields;
+            if (fieldIds.length === 0) {
+                setFormFields([]);
+                return;
+            }
+            
+            const fieldsRes = await secureFetch(`/api/fields?ids=${fieldIds.join(',')}`);
+            const fieldsData = await fieldsRes.json();
+            
+            const fields: Field[] = fieldsData.fields;
+            const orderedFields = fieldIds.map((id: string) => {
+                const fieldDef = fields.find(f => f.id === id);
+                const value = formData[fieldDef?.label || ''];
+                return { ...fieldDef, value };
+            }).filter(Boolean) as FormField[];
+            
+            setFormFields(orderedFields);
+            const sections = orderedFields.map(field => ({
+                title: field.label,
+                content: '',
+            }));
+            setReportSections(sections);
+        }
+    } catch(err: any) {
+        toast({ title: "Error", description: `Could not fetch form fields: ${err.message}`, variant: "destructive"});
+    }
+  }, [secureFetch, toast]);
+
+  const fetchTicket = useCallback(async () => {
+    setLoading(true);
+     try {
+        const res = await secureFetch(`/api/tickets/${params.id}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        const fetchedTicket = data.ticket;
+        setTicket(fetchedTicket);
+        setInternalNotes(fetchedTicket.internalNotes || {});
+        setPrivateManagerNote(fetchedTicket.privateManagerNote || '');
+
+        if (fetchedTicket.formId && fetchedTicket.formData) {
+            fetchFormFields(fetchedTicket.formId, fetchedTicket.formData);
+        }
+      } catch (error: any) {
+        toast({ title: "Error", description: `Could not load ticket: ${error.message}`, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+  }, [params.id, secureFetch, toast, fetchFormFields]);
 
   useEffect(() => {
-    const ticketRef = doc(db, 'tickets', params.id);
-    const unsubscribe = onSnapshot(ticketRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Ticket;
-        setTicket({ id: docSnap.id, ...data });
-        setInternalNotes(data.internalNotes || {});
-        setPrivateManagerNote(data.privateManagerNote || '');
-
-        if (data.formId && data.formData) {
-            fetchFormFields(data.formId, data.formData);
-        }
-
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [params.id]);
+    fetchTicket();
+  }, [fetchTicket]);
   
-  const fetchFormFields = async (formId: string, formData: {[key: string]: any}) => {
-    const formRef = doc(db, 'forms', formId);
-    const formSnap = await getDoc(formRef);
-
-    if (formSnap.exists()) {
-        const formFieldsIds = formSnap.data()?.fields || [];
-        if (formFieldsIds.length === 0) {
-            setFormFields([]);
-            return;
-        }
-
-        const fieldsQuery = query(collection(db, 'fields'), where('__name__', 'in', formFieldsIds));
-        const fieldsSnap = await getDocs(fieldsQuery);
-
-        const fieldsData = fieldsSnap.docs.map(d => ({id: d.id, ...d.data()} as Field));
-        
-        const orderedFields = formFieldsIds.map((id: string) => {
-            const fieldDef = fieldsData.find(f => f.id === id);
-            const value = formData[fieldDef?.label || ''];
-            return { ...fieldDef, value };
-        }).filter(Boolean) as FormField[];
-
-        setFormFields(orderedFields);
-        
-        // Initialize report sections based on fields
-        const sections = orderedFields.map(field => ({
-            title: field.label,
-            content: '',
-        }));
-        setReportSections(sections);
-    }
-  }
-
   const handleNoteChange = (fieldName: string, value: string) => {
     setInternalNotes(prev => ({...prev, [fieldName]: value}));
   }
@@ -125,10 +131,12 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     if (!ticket) return;
     setIsSaving(true);
     try {
-        const ticketRef = doc(db, 'tickets', ticket.id);
-        await updateDoc(ticketRef, {
-            internalNotes: internalNotes,
-            privateManagerNote: privateManagerNote
+        await secureFetch(`/api/tickets/${ticket.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                internalNotes: internalNotes,
+                privateManagerNote: privateManagerNote
+            }),
         });
         toast({
             title: 'Notes Saved',
@@ -223,14 +231,15 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     if (!ticket) return;
     setIsCompleting(true);
     try {
-        const ticketRef = doc(db, 'tickets', ticket.id);
-        await updateDoc(ticketRef, {
-            status: 'Completed',
+        await secureFetch(`/api/tickets/${ticket.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'Completed' }),
         });
          toast({
             title: 'Ticket Completed',
             description: 'This ticket has been marked as complete and is now available to the client.',
         });
+        fetchTicket(); // Re-fetch to get latest status
     } catch (error: any) {
         toast({
             title: 'Error',
@@ -246,18 +255,23 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
       fileInputRef.current?.click();
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && ticket) {
         setReportFile(file);
-        if(ticket) {
-            const ticketRef = doc(db, 'tickets', ticket.id);
-            const fakeUrl = `/reports/${ticket.id}/${file.name}`;
-            updateDoc(ticketRef, { reportUrl: fakeUrl });
+        const fakeUrl = `/reports/${ticket.id}/${file.name}`;
+         try {
+            await secureFetch(`/api/tickets/${ticket.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ reportUrl: fakeUrl }),
+            });
             toast({
                 title: 'Report Uploaded',
                 description: `${file.name} is now attached to the ticket.`
-            })
+            });
+            fetchTicket(); // Re-fetch to get latest status
+        } catch (error: any) {
+            toast({ title: "Error", description: 'Failed to upload report.', variant: "destructive" });
         }
     }
   }
@@ -343,7 +357,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
                 </div>
                 <div>
                   <h3 className="font-semibold text-muted-foreground">Requested On</h3>
-                  <p>{ticket.createdAt ? format(ticket.createdAt.toDate(), 'PPP') : ''}</p>
+                  <p>{ticket.createdAt ? format(new Date(ticket.createdAt), 'PPP') : ''}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-muted-foreground">Report Type</h3>

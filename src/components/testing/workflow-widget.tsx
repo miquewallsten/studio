@@ -1,17 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-  doc,
-  updateDoc,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useEffect, useState, useCallback } from 'react';
 import {
   DragDropContext,
   Droppable,
@@ -29,13 +19,15 @@ import {
 } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
+import { useToast } from '@/hooks/use-toast';
 
 type Ticket = {
   id: string;
   subjectName: string;
   reportType: string;
   status: 'New' | 'In Progress' | 'Pending Review' | 'Completed';
-  createdAt: Timestamp;
+  createdAt: string; // ISO string
   assignedAnalystId?: string;
 };
 
@@ -71,8 +63,10 @@ const getColumnIdFromTicket = (ticket: Ticket): string => {
 export function WorkflowWidget({ analysts }: { analysts: Analyst[] }) {
   const [columns, setColumns] = useState<Columns>({});
   const [loading, setLoading] = useState(true);
+  const secureFetch = useSecureFetch();
+  const { toast } = useToast();
 
-  useEffect(() => {
+  const fetchTicketsAndAnalysts = useCallback(async () => {
     const initialColumns: Columns = {
       'new': { name: 'New Tickets', items: [] },
       ...analysts.reduce((acc, analyst) => {
@@ -83,31 +77,38 @@ export function WorkflowWidget({ analysts }: { analysts: Analyst[] }) {
       'completed': { name: 'Completed', items: [] },
     };
 
-    const q = query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const ticketsData: Ticket[] = [];
-      querySnapshot.forEach((doc) => {
-        ticketsData.push({ id: doc.id, ...doc.data() } as Ticket);
-      });
+    try {
+        const res = await secureFetch('/api/tickets');
+        const data = await res.json();
+        
+        if (data.error) throw new Error(data.error);
 
-      const newColumns: Columns = JSON.parse(JSON.stringify(initialColumns));
-      ticketsData.forEach((ticket) => {
-        const columnId = getColumnIdFromTicket(ticket);
-        if (newColumns[columnId]) {
-          newColumns[columnId].items.push(ticket);
-        } else {
-            // If a ticket is assigned to an analyst that doesn't exist anymore, put it in 'New'
-            newColumns['new'].items.push(ticket);
-        }
-      });
-      setColumns(newColumns);
-      setLoading(false);
-    });
+        const ticketsData: Ticket[] = data.tickets;
 
-    return () => unsubscribe();
-  }, [analysts]);
+        const newColumns: Columns = JSON.parse(JSON.stringify(initialColumns));
+        ticketsData.forEach((ticket) => {
+            const columnId = getColumnIdFromTicket(ticket);
+            if (newColumns[columnId]) {
+                newColumns[columnId].items.push(ticket);
+            } else {
+                newColumns['new'].items.push(ticket);
+            }
+        });
+        setColumns(newColumns);
+    } catch (error: any) {
+        toast({ title: 'Error', description: `Could not fetch data for workflow: ${error.message}`, variant: 'destructive'});
+    } finally {
+        setLoading(false);
+    }
+  }, [analysts, secureFetch, toast]);
 
-  const onDragEnd = (result: DropResult) => {
+
+  useEffect(() => {
+    setLoading(true);
+    fetchTicketsAndAnalysts();
+  }, [fetchTicketsAndAnalysts]);
+
+  const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
     const { source, destination, draggableId } = result;
     
@@ -135,15 +136,21 @@ export function WorkflowWidget({ analysts }: { analysts: Analyst[] }) {
       });
     }
     
-    // Firestore Update
     const newStatus = getStatusFromColumnId(destination.droppableId, analysts);
     const assignedAnalystId = analysts.find(a => a.uid === destination.droppableId)?.uid || null;
 
-    const ticketRef = doc(db, 'tickets', draggableId);
-    updateDoc(ticketRef, { 
-        status: newStatus, 
-        assignedAnalystId: destination.droppableId === 'new' ? null : assignedAnalystId || removed.assignedAnalystId,
-    });
+    try {
+        await secureFetch(`/api/tickets/${draggableId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ 
+                status: newStatus, 
+                assignedAnalystId: destination.droppableId === 'new' ? null : assignedAnalystId || removed.assignedAnalystId,
+            }),
+        });
+    } catch (error) {
+        toast({ title: 'Update Failed', description: 'Could not update ticket status.', variant: 'destructive' });
+        fetchTicketsAndAnalysts(); // Re-fetch to get true state
+    }
   };
 
   const columnOrder = ['new', ...analysts.map(a => a.uid), 'pending-review', 'completed'];
@@ -221,7 +228,7 @@ export function WorkflowWidget({ analysts }: { analysts: Analyst[] }) {
                                                     {item.reportType}
                                                     </p>
                                                     <p className="mt-2 text-xs text-muted-foreground">
-                                                    {format(item.createdAt.toDate(), 'PP')}
+                                                    {format(new Date(item.createdAt), 'PP')}
                                                     </p>
                                                 </Card>
                                         </TooltipTrigger>

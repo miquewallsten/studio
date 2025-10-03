@@ -27,18 +27,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-  limit,
-  Timestamp,
-  doc,
-  writeBatch,
-  getDocs,
-} from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -61,13 +50,13 @@ type Ticket = {
   subjectName: string;
   reportType: string;
   status: string;
-  createdAt: Timestamp;
+  createdAt: string; // ISO string
 };
 
 type Tenant = {
   id: string;
   name: string;
-  createdAt: Timestamp;
+  createdAt: string; // ISO string
 };
 
 type TicketStatus = 'New' | 'In Progress' | 'Pending Review' | 'Completed';
@@ -178,70 +167,55 @@ export default function DashboardPage() {
     }
 
 
-    const ticketQuery = query(
-      collection(db, 'tickets'),
-      orderBy('createdAt', 'desc'),
-      limit(5)
-    );
-    const tenantQuery = query(
-      collection(db, 'tenants'),
-      orderBy('createdAt', 'desc'),
-      limit(5)
-    );
-
-    const unsubscribeTickets = onSnapshot(ticketQuery, (snapshot) => {
+    const fetchData = async () => {
       if (!isMounted) return;
-      const ticketsData = snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as Ticket)
-      );
-      setTickets(ticketsData);
-      if (loading) setLoading(false);
-    });
+      try {
+        const [ticketsRes, tenantsRes, usersRes] = await Promise.all([
+          secureFetch('/api/tickets'),
+          secureFetch('/api/tenants'),
+          secureFetch('/api/users'),
+        ]);
 
-    const unsubscribeTenants = onSnapshot(tenantQuery, (snapshot) => {
-      if (!isMounted) return;
-      const tenantsData = snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as Tenant)
-      );
-      setTenants(tenantsData);
-    });
-
-    const fetchUsersAndMetrics = async () => {
-        try {
-          // In a real app, you would have dedicated API endpoints for these metrics
-          // For now, we'll fetch all users to get a count, and all tickets for metrics
-          const userResponse = await secureFetch('/api/users');
-          const userData = await userResponse.json();
-          if (userData.users && isMounted) {
-              setUserCount(userData.users.length);
-          }
-
-          const ticketsSnapshot = await getDocs(collection(db, 'tickets'));
-          if (isMounted) {
-              const metrics = { New: 0, 'In Progress': 0, Completed: 0 };
-              ticketsSnapshot.forEach(doc => {
-                  const status = doc.data().status as TicketStatus;
-                  if (metrics[status] !== undefined) {
-                      metrics[status]++;
-                  }
-              });
-              setTicketMetrics(metrics);
-          }
-
-        } catch (error) {
-          console.error('Failed to fetch users and metrics:', error);
+        const ticketsData = await ticketsRes.json();
+        const tenantsData = await tenantsRes.json();
+        const usersData = await usersRes.json();
+        
+        if (!isMounted) return;
+        
+        if (ticketsData.tickets) {
+          setTickets(ticketsData.tickets.slice(0, 5));
+           const metrics = { New: 0, 'In Progress': 0, Completed: 0 };
+            ticketsData.tickets.forEach((ticket: Ticket) => {
+                const status = ticket.status as TicketStatus;
+                if (metrics[status] !== undefined) {
+                    metrics[status]++;
+                }
+            });
+            setTicketMetrics(metrics);
         }
-      };
+        
+        if (tenantsData.tenants) {
+          setTenants(tenantsData.tenants.slice(0, 5));
+        }
+
+        if (usersData.users) {
+          setUserCount(usersData.users.length);
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
   
-      fetchUsersAndMetrics();
+    fetchData();
 
     return () => {
       isMounted = false;
-      unsubscribeTickets();
-      unsubscribeTenants();
       savePreferences.cancel();
     };
-  }, [user, loading, savePreferences, secureFetch]);
+  }, [user, savePreferences, secureFetch]);
 
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     if (isEditMode && hasLoadedPrefs.current) {
@@ -392,7 +366,7 @@ export default function DashboardPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {ticket.createdAt?.toDate().toLocaleDateString()}
+                          {new Date(ticket.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button asChild variant="ghost" size="icon">
@@ -454,9 +428,7 @@ export default function DashboardPage() {
                           {tenant.name}
                         </TableCell>
                         <TableCell>
-                          {tenant.createdAt
-                            ? format(tenant.createdAt.toDate(), 'PPP')
-                            : ''}
+                          {format(new Date(tenant.createdAt), 'PPP')}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button asChild variant="ghost" size="icon">

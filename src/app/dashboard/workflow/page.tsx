@@ -23,7 +23,6 @@ import {
 import { format } from 'date-fns';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { useToast } from '@/hooks/use-toast';
-import type { Timestamp } from 'firebase/firestore';
 
 type Ticket = {
   id: string;
@@ -142,10 +141,14 @@ export default function WorkflowPage() {
             variant: 'destructive',
         });
         // Revert UI change on failure
+        const revertedSourceItems = [...sourceColumn.items];
+        revertedSourceItems.splice(source.index, 0, removed);
+        const revertedDestItems = destItems.filter(item => item.id !== removed.id);
+        
         setColumns({
-            ...columns,
-            [source.droppableId]: { ...sourceColumn, items: [...sourceItems, removed] },
-            [destination.droppableId]: { ...destColumn, items: destItems.filter(item => item.id !== removed.id) },
+             ...columns,
+            [source.droppableId]: { ...sourceColumn, items: revertedSourceItems },
+            [destination.droppableId]: { ...destColumn, items: revertedDestItems },
         });
     }
   };

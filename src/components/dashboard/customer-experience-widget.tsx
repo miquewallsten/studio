@@ -9,16 +9,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { db } from '@/lib/firebase';
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  limit,
-  Timestamp,
-} from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageSquare, Star, Smile, Frown, Lightbulb, User } from 'lucide-react';
@@ -27,12 +17,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '../ui/badge';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type LowRatedTicket = {
   id: string;
   subjectName: string;
   rating: number;
-  ratingSubmittedAt: Timestamp;
+  ratingSubmittedAt: string; // ISO String
 };
 
 type Feedback = {
@@ -40,51 +31,38 @@ type Feedback = {
     category: 'Complaint' | 'Suggestion' | 'Other';
     summary: string;
     userName: string;
-    createdAt: Timestamp;
+    createdAt: string; // ISO String
 }
 
 export function CustomerExperienceWidget() {
   const [lowRated, setLowRated] = useState<LowRatedTicket[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
-    const ratingsQuery = query(
-      collection(db, 'tickets'),
-      where('rating', '<=', 3),
-      orderBy('rating', 'asc'),
-      limit(10)
-    );
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [ratingsRes, feedbackRes] = await Promise.all([
+                secureFetch('/api/tickets?rating=low'),
+                secureFetch('/api/feedback'), // Assuming an endpoint for feedback exists
+            ]);
 
-    const feedbackQuery = query(
-        collection(db, 'feedback'),
-        orderBy('createdAt', 'desc'),
-        limit(10)
-    );
-
-    const unsubscribeRatings = onSnapshot(ratingsQuery, (snapshot) => {
-      const tickets: LowRatedTicket[] = [];
-      snapshot.forEach(doc => tickets.push({ id: doc.id, ...doc.data() } as LowRatedTicket));
-      setLowRated(tickets);
-      setLoading(false);
-    }, (error) => {
-        console.error("Error fetching low ratings:", error);
-        // Don't crash the widget if the index is missing.
-        setLoading(false);
-    });
-
-    const unsubscribeFeedback = onSnapshot(feedbackQuery, (snapshot) => {
-        const feedbackItems: Feedback[] = [];
-        snapshot.forEach(doc => feedbackItems.push({id: doc.id, ...doc.data()} as Feedback));
-        setFeedback(feedbackItems);
-        setLoading(false);
-    });
-
-    return () => {
-        unsubscribeRatings();
-        unsubscribeFeedback();
-    };
-  }, []);
+            const ratingsData = await ratingsRes.json();
+            const feedbackData = await feedbackRes.json();
+            
+            if(ratingsData.tickets) setLowRated(ratingsData.tickets);
+            if(feedbackData.feedback) setFeedback(feedbackData.feedback);
+        } catch(error) {
+            // Silently fail for this widget, as it's not critical path
+            console.warn("Could not fetch customer experience data:", error);
+        } finally {
+            setLoading(false);
+        }
+    }
+    fetchData();
+  }, [secureFetch]);
 
   const getCategoryIcon = (category: string) => {
       switch(category) {
@@ -139,7 +117,7 @@ export function CustomerExperienceWidget() {
                                             <p className="font-semibold text-destructive">{ticket.subjectName}</p>
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            Rated {ticket.ratingSubmittedAt ? formatDistanceToNow(ticket.ratingSubmittedAt.toDate(), { addSuffix: true }) : ''}
+                                            Rated {ticket.ratingSubmittedAt ? formatDistanceToNow(new Date(ticket.ratingSubmittedAt), { addSuffix: true }) : ''}
                                         </p>
                                     </div>
                                     <Button asChild size="sm" variant="secondary">
@@ -170,7 +148,7 @@ export function CustomerExperienceWidget() {
                                             {getCategoryIcon(item.category)}
                                             <Badge variant={item.category === 'Complaint' ? 'destructive' : 'secondary'}>{item.category}</Badge>
                                         </div>
-                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</p>
                                     </div>
                                     <p className="text-sm my-2">{item.summary}</p>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

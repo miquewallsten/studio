@@ -9,10 +9,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { Mail, Send } from 'lucide-react';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type Ticket = {
   id: string;
@@ -20,7 +19,7 @@ type Ticket = {
   email: string;
   reportType: string;
   status: string;
-  createdAt: Timestamp;
+  createdAt: string; // ISO string
   endUserId: string;
   clientEmail: string;
 };
@@ -33,30 +32,30 @@ interface InvitationInboxWidgetProps {
 export function InvitationInboxWidget({ onImpersonate, isImpersonating }: InvitationInboxWidgetProps) {
   const [pendingInvitations, setPendingInvitations] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'tickets'),
-      where('status', '==', 'New')
-    );
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-      const invitesData: Ticket[] = [];
-       querySnapshot.forEach(doc => {
-            const data = doc.data();
-            // We only want to show invitations for users who have just been created
-            // A good proxy for this is if they haven't submitted the form yet (status is 'New')
-            // and have an associated endUserId.
-            if (data.endUserId) {
-                 invitesData.push({ id: doc.id, ...data } as Ticket);
+    const fetchInvites = async () => {
+        setLoading(true);
+        try {
+            const res = await secureFetch('/api/tickets?status=New');
+            const data = await res.json();
+            if (data.tickets) {
+                const invites = data.tickets.filter((t: Ticket) => t.endUserId);
+                setPendingInvitations(invites);
             }
-       });
+        } catch (error) {
+            console.error("Failed to fetch pending invitations:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    fetchInvites();
+    const interval = setInterval(fetchInvites, 5000); // Poll for new invites
 
-      setPendingInvitations(invitesData.sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+    return () => clearInterval(interval);
+  }, [secureFetch]);
 
   const handleImpersonateAndFill = (uid: string, email?: string) => {
     onImpersonate(uid, email);
@@ -96,7 +95,7 @@ export function InvitationInboxWidget({ onImpersonate, isImpersonating }: Invita
                                 <p className="text-xs text-muted-foreground">To: {invite.email}</p>
                                 <p className="font-semibold">{invite.reportType} Request</p>
                             </div>
-                            <p className="text-xs text-muted-foreground">{new Date(invite.createdAt.seconds * 1000).toLocaleTimeString()}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(invite.createdAt).toLocaleTimeString()}</p>
                         </div>
                         <div className="mt-2 py-2">
                              <p className="text-sm">
