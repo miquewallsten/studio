@@ -4,7 +4,7 @@ import { z } from 'zod';
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development','test','production']).default('development'),
   
-  AI_ENABLED: z.string().optional().default("0").transform(val => val === "1"),
+  AI_ENABLED: z.string().default("1").transform(val => val === "1"),
   GOOGLE_API_KEY: z.string().optional(),
 
   // Firebase Admin Credentials (provide one method)
@@ -25,10 +25,10 @@ const EnvSchema = z.object({
 })
 .superRefine((data, ctx) => {
     // If AI is enabled, GOOGLE_API_KEY is required
-    if (data.AI_ENABLED && (!data.GOOGLE_API_KEY || data.GOOGLE_API_KEY.length < 10)) {
+    if (data.AI_ENABLED && (!data.GOOGLE_API_KEY || data.GOOGLE_API_KEY.length < 20)) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "GOOGLE_API_KEY is required when AI_ENABLED is set to '1'.",
+            message: "GOOGLE_API_KEY is required when AI_ENABLED is set to '1' and must be at least 20 characters.",
             path: ['GOOGLE_API_KEY'],
         });
     }
@@ -49,3 +49,16 @@ const EnvSchema = z.object({
 
 
 export const ENV = EnvSchema.parse(process.env);
+export const MODEL = 'gemini-2.5-flash-lite' as const;
+
+function getCredentialSource() {
+    if (ENV.FIREBASE_SERVICE_ACCOUNT_B64) return 'b64';
+    if (ENV.GOOGLE_APPLICATION_CREDENTIALS) return 'file';
+    if (ENV.FIREBASE_PROJECT_ID) return 'triplet';
+    return 'adc_or_missing';
+}
+
+export const config = {
+    ...ENV,
+    credentialSource: getCredentialSource(),
+}

@@ -1,4 +1,6 @@
+
 import type {NextConfig} from 'next';
+import path from 'path';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -29,6 +31,17 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        'firebase/firestore': path.resolve(process.cwd(), 'src/lib/stubs/no-client-firestore.ts'),
+        '@firebase/firestore': path.resolve(process.cwd(), 'src/lib/stubs/no-client-firestore.ts'),
+        'firebase/app': path.resolve(process.cwd(), 'src/lib/stubs/no-client-firestore.ts'),
+      };
+    }
+    return config;
   },
 };
 
