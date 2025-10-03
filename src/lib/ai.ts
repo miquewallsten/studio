@@ -6,7 +6,8 @@ const key = process.env.GOOGLE_API_KEY;
 if (!key) throw new Error('Missing GOOGLE_API_KEY');
 
 const genAI = new GoogleGenerativeAI(key);
-export const MODEL = 'gemini-1.5-flash-latest';
+// Use a concrete, GA v1 model: no "-latest", no "v1beta"
+export const MODEL = 'gemini-1.5-flash-lite';
 
 export async function generateText(prompt: string) {
   const model = genAI.getGenerativeModel({ model: MODEL });
