@@ -12,18 +12,13 @@ const ADMIN_FAKE = process.env.ADMIN_FAKE === '1';
 function normalizePem(pemRaw: string) {
   let pk = String(pemRaw || '');
   pk = pk.replace(/\\n/g, '\n').replace(/\r/g, '').trim();
-  if (!pk.startsWith('-----BEGIN PRIVATE KEY-----')) {
-    pk = '-----BEGIN PRIVATE KEY-----\n' + pk;
-  }
-  if (!pk.endsWith('-----END PRIVATE KEY-----')) {
-    pk = pk + '\n-----END PRIVATE KEY-----';
-  }
+  if (!pk.startsWith('-----BEGIN PRIVATE KEY-----')) pk = '-----BEGIN PRIVATE KEY-----\n' + pk;
+  if (!pk.endsWith('-----END PRIVATE KEY-----')) pk = pk + '\n-----END PRIVATE KEY-----';
   if (!pk.endsWith('\n')) pk += '\n';
   return pk;
 }
 
 function getServiceAccount() {
-  // 1) File path
   const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (credPath) {
     const abs = path.isAbsolute(credPath) ? credPath : path.resolve(process.cwd(), credPath);
@@ -32,7 +27,7 @@ function getServiceAccount() {
     const sa = JSON.parse(json);
     return { project_id: sa.project_id, client_email: sa.client_email, private_key: normalizePem(sa.private_key) };
   }
-  // 2) Base64 of full JSON
+
   const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
   if (b64) {
     const json = Buffer.from(b64.trim(), 'base64').toString('utf8').trim().replace(/^\uFEFF/, '');
@@ -40,32 +35,25 @@ function getServiceAccount() {
     const sa = JSON.parse(unwrapped);
     return { project_id: sa.project_id, client_email: sa.client_email, private_key: normalizePem(sa.private_key) };
   }
-  // 3) Triplet envs
+
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const rawKey = process.env.FIREBASE_PRIVATE_KEY;
   if (projectId && clientEmail && rawKey) {
     return { project_id: projectId, client_email: clientEmail, private_key: normalizePem(rawKey) };
   }
+
   return null;
 }
 
 function ensureApp() {
-  if (getApps().length) return getApps()[0];
+  if (getApps().length) return;
+  if (ADMIN_FAKE) return; // no real init in fake mode
   const sa = getServiceAccount();
-  if (ADMIN_FAKE) {
-    // No initialization in fake mode
-    return null;
-  }
   if (sa) {
-    return initializeApp({ credential: cert({
-      projectId: sa.project_id,
-      clientEmail: sa.client_email,
-      privateKey: sa.private_key,
-    })});
+    initializeApp({ credential: cert({ projectId: sa.project_id, clientEmail: sa.client_email, privateKey: sa.private_key }) });
   } else {
-    // Fallback to ADC (rare in Studio, but safe)
-    return initializeApp({ credential: applicationDefault() });
+    initializeApp({ credential: applicationDefault() });
   }
 }
 
@@ -82,7 +70,6 @@ export function getAdminAuth() {
 
 export function getAdminDb() {
   if (ADMIN_FAKE) {
-    // Minimal mock shape
     return { collection: () => ({ doc: () => ({ get: async()=>({ exists:false }), set: async()=>{}, update: async()=>{} }), get: async()=>({ forEach:()=>{} }) }) } as any;
   }
   ensureApp();
