@@ -20,9 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PlusCircle, Search } from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Field } from './schema';
 import { FieldEditor } from '@/components/field-editor';
@@ -36,6 +34,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { NewFieldDialog } from '@/components/new-field-dialog';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 
 export default function FieldsPage() {
@@ -46,42 +45,30 @@ export default function FieldsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewFieldDialogOpen, setNewFieldDialogOpen] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
-  const fetchFields = () => {
+  const fetchFields = useCallback(async () => {
     setLoading(true);
-    const q = query(collection(db, 'fields'), orderBy('label'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const fieldsData: Field[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        fieldsData.push({
-          id: doc.id,
-          label: data.label,
-          type: data.type,
-          subFields: data.subFields || [],
-          aiInstructions: data.aiInstructions || '',
-          internalFields: data.internalFields || [],
-        });
-      });
-      setFields(fieldsData);
-      setLoading(false);
-    }, (error) => {
+    try {
+        const res = await secureFetch('/api/fields');
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
+        setFields(data.fields);
+    } catch(error: any) {
         console.error("Error fetching fields:", error);
         toast({
             title: "Error",
             description: "Could not fetch fields.",
             variant: "destructive"
         })
+    } finally {
         setLoading(false);
-    });
-
-    return unsubscribe;
-  }
+    }
+  }, [secureFetch, toast]);
 
   useEffect(() => {
-    const unsubscribe = fetchFields();
-    return () => unsubscribe();
-  }, []);
+    fetchFields();
+  }, [fetchFields]);
   
   const filteredFields = useMemo(() => {
     if (!searchQuery) return fields;
@@ -91,7 +78,7 @@ export default function FieldsPage() {
   const handleDelete = async () => {
     if (fieldToDelete) {
       try {
-        await deleteDoc(doc(db, 'fields', fieldToDelete.id));
+        await secureFetch(`/api/fields/${fieldToDelete.id}`, { method: 'DELETE' });
         toast({
           title: 'Field Deleted',
           description: `The field "${fieldToDelete.label}" has been deleted.`,
@@ -99,7 +86,8 @@ export default function FieldsPage() {
         if (selectedField?.id === fieldToDelete.id) {
           setSelectedField(null);
         }
-      } catch (error) {
+        fetchFields(); // Re-fetch after deletion
+      } catch (error: any) {
         toast({
           title: 'Error',
           description: 'Failed to delete the field. It might be in use.',
@@ -117,8 +105,12 @@ export default function FieldsPage() {
   };
   
   const handleFieldUpdate = () => {
-    // onSnapshot should handle the update, but we can force a re-render if needed
-    // For now, we'll just close the editor or let the live update do its job.
+    fetchFields();
+    if (selectedField) {
+      // Find the updated field in the new list and re-select it
+      const updatedField = fields.find(f => f.id === selectedField.id);
+      setSelectedField(updatedField || null);
+    }
   };
 
   return (
@@ -144,7 +136,7 @@ export default function FieldsPage() {
       <NewFieldDialog
         isOpen={isNewFieldDialogOpen}
         onOpenChange={setNewFieldDialogOpen}
-        onFieldCreated={() => { /* onSnapshot will auto-update the list */ }}
+        onFieldCreated={fetchFields}
       />
 
 

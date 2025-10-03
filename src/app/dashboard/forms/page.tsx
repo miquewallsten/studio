@@ -20,9 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PlusCircle, Search } from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Panel,
@@ -37,6 +35,8 @@ import { FormEditor } from '@/components/form-editor';
 import { FieldLibrary } from '@/components/field-library';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { useLanguage } from '@/contexts/language-context';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
+import type { Timestamp } from 'firebase/firestore';
 
 export type Form = {
   id: string;
@@ -56,50 +56,46 @@ export default function FormsPage() {
   const [isNewFormDialogOpen, setNewFormDialogOpen] = useState(false);
   const { toast } = useToast();
   const { t } = useLanguage();
+  const secureFetch = useSecureFetch();
 
-  const fetchForms = () => {
+  const fetchForms = useCallback(async () => {
     setLoading(true);
-    const q = query(collection(db, 'forms'), orderBy('name'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const formsData: Form[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        formsData.push({
-          id: doc.id,
-          name: data.name,
-          description: data.description,
-          createdAt: data.createdAt,
-          fields: data.fields || [],
-          expertiseGroupId: data.expertiseGroupId,
-        });
-      });
-      setForms(formsData);
-      setLoading(false);
-    }, (error) => {
+    try {
+        const res = await secureFetch('/api/forms');
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
+
+        const formsData = data.forms.map((form: any) => ({
+            ...form,
+            createdAt: { // Reconstruct a Timestamp-like object for compatibility
+                toDate: () => new Date(form.createdAt)
+            }
+        }))
+        setForms(formsData);
+    } catch(error) {
         console.error("Error fetching forms:", error);
         toast({
             title: t('common.error'),
             description: t('forms.error_fetching'),
             variant: "destructive"
         })
+    } finally {
         setLoading(false);
-    });
+    }
+  }, [secureFetch, t, toast]);
 
-    return unsubscribe;
-  }
 
   useEffect(() => {
-    const unsubscribe = fetchForms();
-    return () => unsubscribe();
-  }, []);
+    fetchForms();
+  }, [fetchForms]);
   
   useEffect(() => {
-    // When the forms list updates, we need to update the selected form as well
-    // to get the latest field list for the editor.
     if (selectedForm) {
       const updatedSelectedForm = forms.find(f => f.id === selectedForm.id);
       if (updatedSelectedForm) {
         setSelectedForm(updatedSelectedForm);
+      } else {
+        setSelectedForm(null); // The selected form might have been deleted
       }
     }
   }, [forms, selectedForm]);
@@ -112,7 +108,7 @@ export default function FormsPage() {
   const handleDelete = async () => {
     if (formToDelete) {
       try {
-        await deleteDoc(doc(db, 'forms', formToDelete.id));
+        await secureFetch(`/api/forms/${formToDelete.id}`, { method: 'DELETE' });
         toast({
           title: t('forms.deleted_title'),
           description: t('forms.deleted_desc').replace('{formName}', formToDelete.name),
@@ -120,10 +116,11 @@ export default function FormsPage() {
         if (selectedForm?.id === formToDelete.id) {
           setSelectedForm(null);
         }
-      } catch (error) {
+        fetchForms();
+      } catch (error: any) {
         toast({
           title: t('common.error'),
-          description: t('forms.error_deleting'),
+          description: error.message || t('forms.error_deleting'),
           variant: 'destructive',
         });
         console.error('Error deleting form:', error);
@@ -140,17 +137,13 @@ export default function FormsPage() {
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
 
-    // 1. Check if the drop is valid
     if (!destination) return;
     if (source.droppableId === 'form-fields-drop-zone' && destination.droppableId === 'form-fields-drop-zone') {
-        // Reordering logic will go here
         return;
     }
     if (destination.droppableId !== 'form-fields-drop-zone') return;
     if (!selectedForm) return;
 
-    // 2. Add the field to the form
-    // Avoid adding duplicates
     const currentFields = selectedForm.fields || [];
     if (currentFields.includes(draggableId)) {
         toast({
@@ -161,28 +154,27 @@ export default function FormsPage() {
         return;
     }
     
-    // Optimistic update
     const newFields = [...currentFields, draggableId];
     setSelectedForm(form => form ? {...form, fields: newFields} : null);
 
-    // 3. Update Firestore
-    const formRef = doc(db, 'forms', selectedForm.id);
     try {
-        await updateDoc(formRef, {
-            fields: newFields
+        await secureFetch(`/api/forms/${selectedForm.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ fields: newFields })
         });
+
         toast({
             title: t('forms.field_added_title'),
             description: t('forms.field_added_desc')
         });
-    } catch (error) {
+        fetchForms(); // Re-fetch to get latest form state
+    } catch (error: any) {
         console.error("Error adding field to form: ", error);
         toast({
             title: t('common.error'),
-            description: t('forms.error_adding_field'),
+            description: error.message || t('forms.error_adding_field'),
             variant: "destructive"
         });
-        // Rollback optimistic update
         setSelectedForm(form => form ? {...form, fields: currentFields} : null);
     }
 };
@@ -210,7 +202,7 @@ export default function FormsPage() {
       <NewFormDialog
         isOpen={isNewFormDialogOpen}
         onOpenChange={setNewFormDialogOpen}
-        onFormCreated={() => { /* onSnapshot will auto-update the list */ }}
+        onFormCreated={fetchForms}
       />
 
       <div className="flex items-center justify-between">
@@ -280,7 +272,7 @@ export default function FormsPage() {
                     <FormEditor 
                         key={selectedForm.id}
                         form={selectedForm}
-                        onFormUpdated={() => {}}
+                        onFormUpdated={fetchForms}
                         onDeleteForm={() => setFormToDelete(selectedForm)}
                     />
             ) : (

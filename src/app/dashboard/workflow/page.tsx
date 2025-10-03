@@ -1,16 +1,7 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-  doc,
-  updateDoc,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useEffect, useState, useCallback } from 'react';
 import {
   DragDropContext,
   Droppable,
@@ -30,13 +21,16 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
+import { useToast } from '@/hooks/use-toast';
+import type { Timestamp } from 'firebase/firestore';
 
 type Ticket = {
   id: string;
   subjectName: string;
   reportType: string;
   status: 'New' | 'In Progress' | 'Pending Review' | 'Completed';
-  createdAt: Timestamp;
+  createdAt: string; // ISO string from API
 };
 
 type Columns = {
@@ -54,22 +48,10 @@ const statusMap: { [key: string]: 'New' | 'In Progress' | 'Pending Review' | 'Co
 }
 
 const initialColumns: Columns = {
-  'new': {
-    name: 'New',
-    items: [],
-  },
-  'in-progress': {
-    name: 'In Progress',
-    items: [],
-  },
-  'pending-review': {
-    name: 'Pending Review',
-    items: [],
-  },
-  'completed': {
-    name: 'Completed',
-    items: [],
-  },
+  'new': { name: 'New', items: [] },
+  'in-progress': { name: 'In Progress', items: [] },
+  'pending-review': { name: 'Pending Review', items: [] },
+  'completed': { name: 'Completed', items: [] },
 };
 
 const getStatusFromColumnId = (columnId: string) => {
@@ -84,68 +66,87 @@ const getColumnIdFromStatus = (status: string) => {
 export default function WorkflowPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [loading, setLoading] = useState(true);
+  const secureFetch = useSecureFetch();
+  const { toast } = useToast();
+
+  const fetchTickets = useCallback(async () => {
+    setLoading(true);
+    try {
+        const res = await secureFetch('/api/tickets');
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
+
+        const newColumns = JSON.parse(JSON.stringify(initialColumns));
+        data.tickets.forEach((ticket: Ticket) => {
+            const columnId = getColumnIdFromStatus(ticket.status);
+            if (newColumns[columnId]) {
+                newColumns[columnId].items.push(ticket);
+            }
+        });
+        setColumns(newColumns);
+
+    } catch (error: any) {
+        toast({
+            title: 'Error',
+            description: 'Could not fetch tickets for the workflow.',
+            variant: 'destructive',
+        });
+    } finally {
+        setLoading(false);
+    }
+  }, [secureFetch, toast]);
 
   useEffect(() => {
-    const q = query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const newColumns = JSON.parse(JSON.stringify(initialColumns));
-      querySnapshot.forEach((doc) => {
-        const ticket = { id: doc.id, ...doc.data() } as Ticket;
-        const columnId = getColumnIdFromStatus(ticket.status);
-        if (newColumns[columnId]) {
-          newColumns[columnId].items.push(ticket);
-        }
-      });
-      setColumns(newColumns);
-      setLoading(false);
-    });
+    fetchTickets();
+  }, [fetchTickets]);
 
-    return () => unsubscribe();
-  }, []);
-
-  const onDragEnd = (result: DropResult) => {
+  const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
     const { source, destination, draggableId } = result;
-
+    
+    // Optimistic UI update
+    const sourceColumn = columns[source.droppableId];
+    const destColumn = columns[destination.droppableId];
+    const sourceItems = [...sourceColumn.items];
+    const destItems = [...destColumn.items];
+    const [removed] = sourceItems.splice(source.index, 1);
+    
     if (source.droppableId === destination.droppableId) {
-        // Reordering within the same column
-        const column = columns[source.droppableId];
-        const copiedItems = [...column.items];
-        const [removed] = copiedItems.splice(source.index, 1);
+        const copiedItems = [...sourceColumn.items];
+        copiedItems.splice(source.index, 1);
         copiedItems.splice(destination.index, 0, removed);
         setColumns({
             ...columns,
-            [source.droppableId]: {
-                ...column,
-                items: copiedItems,
-            },
+            [source.droppableId]: { ...sourceColumn, items: copiedItems },
         });
-
     } else {
-        // Moving to a different column
-        const sourceColumn = columns[source.droppableId];
-        const destColumn = columns[destination.droppableId];
-        const sourceItems = [...sourceColumn.items];
-        const destItems = [...destColumn.items];
-        const [removed] = sourceItems.splice(source.index, 1);
         destItems.splice(destination.index, 0, removed);
-
         setColumns({
             ...columns,
-            [source.droppableId]: {
-                ...sourceColumn,
-                items: sourceItems,
-            },
-            [destination.droppableId]: {
-                ...destColumn,
-                items: destItems,
-            },
+            [source.droppableId]: { ...sourceColumn, items: sourceItems },
+            [destination.droppableId]: { ...destColumn, items: destItems },
         });
-        
-        // Update ticket status in Firestore
-        const newStatus = getStatusFromColumnId(destination.droppableId);
-        const ticketRef = doc(db, 'tickets', draggableId);
-        updateDoc(ticketRef, { status: newStatus });
+    }
+    
+    // Update ticket status in Firestore via API
+    const newStatus = getStatusFromColumnId(destination.droppableId);
+    try {
+        await secureFetch(`/api/tickets/${draggableId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: newStatus }),
+        });
+    } catch (error: any) {
+        toast({
+            title: 'Update Failed',
+            description: 'Could not update ticket status. Reverting change.',
+            variant: 'destructive',
+        });
+        // Revert UI change on failure
+        setColumns({
+            ...columns,
+            [source.droppableId]: { ...sourceColumn, items: [...sourceItems, removed] },
+            [destination.droppableId]: { ...destColumn, items: destItems.filter(item => item.id !== removed.id) },
+        });
     }
   };
 
@@ -216,7 +217,7 @@ export default function WorkflowPage() {
                                       <h4 className="font-semibold">{item.subjectName}</h4>
                                       <p className="text-sm text-muted-foreground">{item.reportType}</p>
                                       <p className="text-xs text-muted-foreground mt-2">
-                                        Created: {item.createdAt ? format(item.createdAt.toDate(), 'PPP') : ''}
+                                        Created: {item.createdAt ? format(new Date(item.createdAt), 'PPP') : ''}
                                       </p>
                                     </Card>
                                   </Link>

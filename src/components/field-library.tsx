@@ -9,9 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { useEffect, useState, useMemo } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Field } from '@/app/dashboard/fields/schema';
 import { Search } from 'lucide-react';
@@ -19,42 +17,37 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Draggable, Droppable } from '@hello-pangea/dnd';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 export function FieldLibrary() {
   const [fields, setFields] = useState<Field[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
-  useEffect(() => {
-    const q = query(collection(db, 'fields'), orderBy('label'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const fieldsData: Field[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        fieldsData.push({
-          id: doc.id,
-          label: data.label,
-          type: data.type,
-          subFields: data.subFields || [],
-          aiInstructions: data.aiInstructions || '',
-          internalFields: data.internalFields || [],
-        });
-      });
-      setFields(fieldsData);
-      setLoading(false);
-    }, (error) => {
+  const fetchFields = useCallback(async () => {
+    setLoading(true);
+    try {
+        const res = await secureFetch('/api/fields');
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
+        setFields(data.fields);
+    } catch(error: any) {
         console.error("Error fetching fields:", error);
         toast({
             title: "Error",
             description: "Could not fetch field library.",
             variant: "destructive"
         });
+    } finally {
         setLoading(false);
-    });
+    }
+  }, [secureFetch, toast]);
 
-    return () => unsubscribe();
-  }, [toast]);
+  useEffect(() => {
+    fetchFields();
+  }, [fetchFields]);
   
   const filteredFields = useMemo(() => {
     if (!searchQuery) return fields;

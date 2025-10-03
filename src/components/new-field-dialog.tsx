@@ -20,13 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
 import SubFieldsEditor from '@/components/sub-fields-editor';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from './ui/scroll-area';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type SubField = {
   id: string;
@@ -48,6 +45,7 @@ export function NewFieldDialog({ isOpen, onOpenChange, onFieldCreated }: NewFiel
   const [subFields, setSubFields] = useState<SubField[]>([]);
   const [aiInstructions, setAiInstructions] = useState('');
   const [internalFields, setInternalFields] = useState<SubField[]>([]);
+  const secureFetch = useSecureFetch();
 
   const resetForm = () => {
     setLabel('');
@@ -85,14 +83,19 @@ export function NewFieldDialog({ isOpen, onOpenChange, onFieldCreated }: NewFiel
         type,
         aiInstructions,
         internalFields,
-        createdAt: serverTimestamp(),
       };
 
       if (type === 'composite') {
         fieldData.subFields = subFields;
       }
+      
+      const res = await secureFetch('/api/fields', {
+          method: 'POST',
+          body: JSON.stringify(fieldData)
+      });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
 
-      const docRef = await addDoc(collection(db, 'fields'), fieldData);
 
       toast({
         title: 'Field Created',
@@ -102,11 +105,11 @@ export function NewFieldDialog({ isOpen, onOpenChange, onFieldCreated }: NewFiel
       onFieldCreated();
       handleOpenChange(false);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating field:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create field. Please try again.',
+        description: error.message || 'Failed to create field. Please try again.',
         variant: 'destructive',
       });
     } finally {

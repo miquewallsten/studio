@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -11,17 +12,15 @@ import {
 } from '@/components/ui/card';
 import SubFieldsEditor from '@/components/sub-fields-editor';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { Field as FieldType } from '@/app/dashboard/fields/schema';
-import { ScrollArea } from './ui/scroll-area';
 import { Trash2 } from 'lucide-react';
 import { Input } from './ui/input';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 interface FieldEditorProps {
     field: FieldType;
@@ -33,6 +32,7 @@ export function FieldEditor({ field: initialField, onFieldUpdated, onDeleteField
   const [field, setField] = useState<FieldType>(initialField);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
     setField(initialField);
@@ -42,23 +42,26 @@ export function FieldEditor({ field: initialField, onFieldUpdated, onDeleteField
     if (!field) return;
     setIsSaving(true);
     try {
-        const fieldRef = doc(db, 'fields', field.id);
-        await updateDoc(fieldRef, {
-            label: field.label,
-            subFields: field.subFields,
-            internalFields: field.internalFields,
-            aiInstructions: field.aiInstructions,
+        await secureFetch(`/api/fields/${field.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                label: field.label,
+                subFields: field.subFields,
+                internalFields: field.internalFields,
+                aiInstructions: field.aiInstructions,
+            }),
         });
+
         toast({
             title: 'Field Saved',
             description: 'Your changes have been saved successfully.',
         });
         onFieldUpdated();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error saving field: ", error);
         toast({
             title: 'Error',
-            description: 'Failed to save field changes. Please try again.',
+            description: error.message || 'Failed to save field changes. Please try again.',
             variant: 'destructive'
         });
     } finally {

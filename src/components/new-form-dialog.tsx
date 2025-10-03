@@ -14,9 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 interface NewFormDialogProps {
   isOpen: boolean;
@@ -29,6 +28,7 @@ export function NewFormDialog({ isOpen, onOpenChange, onFormCreated }: NewFormDi
   const [isLoading, setIsLoading] = useState(false);
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
+  const secureFetch = useSecureFetch();
 
   const resetForm = () => {
     setFormName('');
@@ -58,11 +58,12 @@ export function NewFormDialog({ isOpen, onOpenChange, onFormCreated }: NewFormDi
     }
 
     try {
-      await addDoc(collection(db, 'forms'), {
-        name: formName,
-        description: formDescription,
-        createdAt: serverTimestamp(),
+      const res = await secureFetch('/api/forms', {
+        method: 'POST',
+        body: JSON.stringify({ name: formName, description: formDescription }),
       });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
 
       toast({
         title: 'Form Template Created',
@@ -72,11 +73,11 @@ export function NewFormDialog({ isOpen, onOpenChange, onFormCreated }: NewFormDi
       onFormCreated();
       handleOpenChange(false);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating form template:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create form template. Please try again.',
+        description: error.message || 'Failed to create form template. Please try again.',
         variant: 'destructive',
       });
     } finally {

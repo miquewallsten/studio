@@ -11,8 +11,6 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import { useEffect, useState, useMemo } from 'react';
-import { doc, updateDoc, getDocs, collection, where, query, documentId, onSnapshot, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -25,6 +23,7 @@ import { Badge } from './ui/badge';
 import type { Field } from '@/app/dashboard/fields/schema';
 import { cn } from '@/lib/utils';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 interface FormEditorProps {
     form: FormType;
@@ -43,63 +42,75 @@ export function FormEditor({ form: initialForm, onFormUpdated, onDeleteForm }: F
   const [formFields, setFormFields] = useState<Field[]>([]);
   const [expertiseGroups, setExpertiseGroups] = useState<ExpertiseGroup[]>([]);
   const { toast } = useToast();
+  const secureFetch = useSecureFetch();
 
   useEffect(() => {
     setForm(initialForm);
   }, [initialForm]);
 
   useEffect(() => {
-    // Fetch expertise groups
-    const q = query(collection(db, 'expertise_groups'), orderBy('name'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const groups = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
-        setExpertiseGroups(groups);
-    });
-    return () => unsubscribe();
-  }, []);
+    const fetchGroups = async () => {
+        try {
+            const res = await secureFetch('/api/admin/teams'); // Assuming this endpoint exists
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
+            setExpertiseGroups(data.groups || []);
+        } catch(error) {
+            console.warn("Could not fetch expertise groups", error);
+        }
+    }
+    fetchGroups();
+  }, [secureFetch]);
 
   useEffect(() => {
     if (form.fields && form.fields.length > 0) {
-      const fieldsQuery = query(
-        collection(db, 'fields'),
-        where(documentId(), 'in', form.fields)
-      );
-      getDocs(fieldsQuery).then((snapshot) => {
-        const fieldsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Field));
-        
-        // Preserve the order from the form's field array
-        const orderedFields = form.fields!.map(fieldId => 
-            fieldsData.find(field => field.id === fieldId)
-        ).filter((f): f is Field => f !== undefined);
+      const fetchFields = async () => {
+          try {
+              const res = await secureFetch(`/api/fields?ids=${form.fields!.join(',')}`);
+              const data = await res.json();
+              if (data.error) throw new Error(data.error);
 
-        setFormFields(orderedFields);
-      });
+              const fieldsData: Field[] = data.fields;
+              const orderedFields = form.fields!.map(fieldId => 
+                  fieldsData.find(field => field.id === fieldId)
+              ).filter((f): f is Field => f !== undefined);
+
+              setFormFields(orderedFields);
+
+          } catch(error) {
+              console.error("Error fetching form fields", error);
+          }
+      }
+      fetchFields();
     } else {
       setFormFields([]);
     }
-  }, [form.fields]);
+  }, [form.fields, secureFetch]);
 
 
  const handleSaveAll = async () => {
     if (!form) return;
     setIsSaving(true);
     try {
-        const formRef = doc(db, 'forms', form.id);
-        await updateDoc(formRef, {
-            name: form.name,
-            description: form.description,
-            expertiseGroupId: form.expertiseGroupId,
+        await secureFetch(`/api/forms/${form.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                name: form.name,
+                description: form.description,
+                expertiseGroupId: form.expertiseGroupId,
+            })
         });
+
         toast({
             title: 'Form Saved',
             description: 'Your changes have been saved successfully.',
         });
         onFormUpdated();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error saving form: ", error);
         toast({
             title: 'Error',
-            description: 'Failed to save form changes. Please try again.',
+            description: error.message || 'Failed to save form changes. Please try again.',
             variant: 'destructive'
         });
     } finally {
