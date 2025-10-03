@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
-const BAD = ['v1beta','-latest','gemini-pro','gemini-1.5-','@genkit-ai',"from 'genkit'","from \"genkit\""];
+const BAD = ['v1beta','-latest','gemini-pro','gemini-1.5-','@genkit-ai',"from 'genkit'","from \\"genkit\\""];
 const files = execSync("git ls-files '*.ts' '*.tsx' '*.js' '*.jsx'").toString().trim().split('\n').filter(Boolean);
 let badHits = [];
 for (const f of files) {
