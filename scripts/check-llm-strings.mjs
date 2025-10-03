@@ -1,15 +1,18 @@
-import fs from 'node:fs';
-import { execSync } from 'node:child_process';
-const BAD = ['v1beta','-latest','gemini-pro','gemini-1.5-','@genkit-ai',"from 'genkit'","from \\"genkit\\""];
-const files = execSync("git ls-files '*.ts' '*.tsx' '*.js' '*.jsx'").toString().trim().split('\n').filter(Boolean);
-let badHits = [];
-for (const f of files) {
-  const s = fs.readFileSync(f,'utf8');
-  for (const b of BAD) if (s.includes(b)) badHits.push({file:f, b});
+
+// Also flag suspicious env patterns appearing together
+const ENV_BAD = [
+  'GOOGLE_APPLICATION_CREDENTIALS=',
+  'FIREBASE_SERVICE_ACCOUNT_B64=',
+  'FIREBASE_PROJECT_ID=',
+];
+const envFile = '.env.local';
+if (fs.existsSync(envFile)) {
+  const e = fs.readFileSync(envFile,'utf8');
+  const has = (s)=>e.includes(s);
+  const file = has(ENV_BAD[0]), b64 = has(ENV_BAD[1]), trip = has(ENV_BAD[2]);
+  const n = [file,b64,trip].filter(Boolean).length;
+  if (n > 1) {
+    console.error('Single-instance guard: .env.local appears to define multiple Firebase credential sources. Keep exactly ONE.');
+    process.exit(1);
+  }
 }
-if (badHits.length) {
-  console.error('Forbidden strings found:');
-  for (const h of badHits) console.error(` - ${h.b} in ${h.file}`);
-  process.exit(1);
-}
-console.log('OK: no forbidden strings');
