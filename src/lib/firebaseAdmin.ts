@@ -1,63 +1,58 @@
+import 'server-only';
+import { initializeApp, getApps, getApp, App, cert } from 'firebase-admin/app';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getENV } from './config';
 
-import "server-only";
-import { initializeApp, getApps, cert, getApp, App } from "firebase-admin/app";
-import { getAuth, Auth } from "firebase-admin/auth";
-import { getFirestore, Firestore } from "firebase-admin/firestore";
-import { ENV } from "./config";
+let app: App | null = null;
+let db: Firestore | null = null;
+let auth: Auth | null = null;
 
-let adminApp: App | null = null;
-
-function initializeAdmin() {
-  if (getApps().length) {
-    return getApp();
-  }
+function init() {
+  if (app) return app;
+  const ENV = getENV();
 
   if (ENV.ADMIN_FAKE === '1') {
-    // In a fake/test environment, we might not initialize a real app
-    // or use emulators. For now, we'll just prevent crashes.
     console.log("Running in ADMIN_FAKE mode. Firebase Admin SDK not initialized.");
     return null;
   }
 
-  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
-  if (!b64 || b64 === 'PASTE_BASE64_OF_serviceAccountKey.json_HERE') {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_B64 missing or is a placeholder. Provide base64-encoded serviceAccountKey.json in .env");
-  }
-
-  let creds;
-  try {
-    creds = JSON.parse(Buffer.from(b64, "base64").toString("utf8"));
-    if (!creds.project_id || !creds.client_email || !creds.private_key) {
-      throw new Error("Decoded B64 JSON is not a valid service account. It's missing project_id, client_email, or private_key.");
+  if (getApps().length) {
+    app = getApp();
+  } else {
+    // Resolve credentials from exactly one source
+    let creds: any | null = null;
+    if (ENV.FIREBASE_SERVICE_ACCOUNT_B64) {
+      const json = Buffer.from(ENV.FIREBASE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8');
+      creds = JSON.parse(json);
+    } else if (ENV.GOOGLE_APPLICATION_CREDENTIALS) {
+      // ADC by file path; admin SDK will read it automatically
+    } else if (ENV.FIREBASE_PROJECT_ID && ENV.FIREBASE_CLIENT_EMAIL && ENV.FIREBASE_PRIVATE_KEY) {
+      creds = {
+        projectId: ENV.FIREBASE_PROJECT_ID!,
+        clientEmail: ENV.FIREBASE_CLIENT_EMAIL!,
+        privateKey: ENV.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+      };
     }
-  } catch (e:any) {
-    throw new Error(`Could not parse FIREBASE_SERVICE_ACCOUNT_B64: ${e.message}`);
+
+    app = initializeApp(creds ? { credential: cert(creds) } : {});
   }
 
-  return initializeApp({ credential: cert(creds) });
+  db = getFirestore(app);
+  auth = getAuth(app);
+  return app;
 }
 
-// Initialize on module load
-adminApp = initializeAdmin();
-
-export function getAdminAuth(): Auth {
-  if (ENV.ADMIN_FAKE === '1') {
-    // Provide a fake Auth object for testing/UI development if needed
-    return {} as Auth;
-  }
-  if (!adminApp) {
-    throw new Error("Firebase Admin App not initialized. Check server logs for credential errors.");
-  }
-  return getAuth(adminApp);
+export function getAdminApp() {
+  return init();
 }
-
 export function getAdminDb(): Firestore {
-   if (ENV.ADMIN_FAKE === '1') {
-    // Provide a fake DB object for testing/UI development if needed
-    return {} as Firestore;
-  }
-  if (!adminApp) {
-    throw new Error("Firebase Admin App not initialized. Check server logs for credential errors.");
-  }
-  return getFirestore(adminApp);
+  init();
+  if (!db) throw new Error('Admin DB not initialized');
+  return db!;
+}
+export function getAdminAuth(): Auth {
+  init();
+  if (!auth) throw new Error('Admin Auth not initialized');
+  return auth!;
 }

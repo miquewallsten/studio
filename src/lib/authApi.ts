@@ -1,6 +1,7 @@
 
+import 'server-only';
 import { getAdminAuth } from '@/lib/firebaseAdmin';
-import { ENV } from './config';
+import { getENV } from './config';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import type { Role } from './rbac';
 
@@ -9,12 +10,13 @@ export interface AppDecodedIdToken extends DecodedIdToken {
     tenantId?: string;
 }
 
-export function getBearer(req: Request): string {
+export function getBearer(req: Request): string | null {
   const h = req.headers.get('authorization') || '';
-  return h.startsWith('Bearer ') ? h.slice(7) : '';
+  return h.startsWith('Bearer ') ? h.slice(7) : null;
 }
 
 export async function requireAuth(req: Request): Promise<AppDecodedIdToken> {
+  const ENV = getENV();
   const token = getBearer(req);
   
   if (ENV.ADMIN_FAKE === '1') {
@@ -24,7 +26,7 @@ export async function requireAuth(req: Request): Promise<AppDecodedIdToken> {
   }
   
   if (!token) {
-      const err = new Error('Not authenticated: missing Bearer token.');
+      const err = new Error('Unauthorized: missing Bearer token');
       (err as any).status = 401;
       throw err;
   }

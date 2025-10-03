@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 import { MODEL, getAiClient } from "@/lib/ai";
 import { getAdminAuth } from "@/lib/firebaseAdmin";
 import { getApps } from "firebase-admin/app";
-import { config } from "@/lib/config";
+import { config, getENV } from "@/lib/config";
 
 export const runtime = 'nodejs';
 
 export async function GET() {
+  const ENV = getENV();
   let adminApps = 0;
   try { getAdminAuth(); adminApps = getApps().length; } catch { adminApps = 0; }
   

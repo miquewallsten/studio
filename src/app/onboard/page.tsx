@@ -16,8 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { confirmPasswordReset, verifyPasswordResetCode, applyActionCode, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDocs, query, where, collection, writeBatch } from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 
 export default function OnboardingPage() {
@@ -25,6 +25,7 @@ export default function OnboardingPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
+    const secureFetch = useSecureFetch();
 
     const [oobCode, setOobCode] = useState<string | null>(null);
     const [continueUrl, setContinueUrl] = useState<string | null>(null);
@@ -81,26 +82,19 @@ export default function OnboardingPage() {
             // 2. Mark the user's email as verified (same oobCode is used)
             await applyActionCode(auth, oobCode);
             
-            // 3. Update the status of the Tenant if it's a Tenant Admin
-            if (pathname.includes('/onboard')) { // Distinguish between end-user and tenant admin onboarding
-                const q = query(collection(db, "users"), where("email", "==", email), where("role", "==", "Tenant Admin"));
-                const userQuerySnapshot = await getDocs(q);
-
-                if (!userQuerySnapshot.empty) {
-                    const userDoc = userQuerySnapshot.docs[0];
-                    const tenantId = userDoc.data().tenantId;
-                    
-                    if (tenantId) {
-                        const batch = writeBatch(db);
-                        const tenantRef = doc(db, "tenants", tenantId);
-                        batch.update(tenantRef, { status: "ACTIVE" });
-                        await batch.commit();
-                    }
+            // 3. Log the user in to get an ID token
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            
+            // 4. Update the status of the Tenant if it's a Tenant Admin
+            if (pathname.includes('/onboard')) {
+                const idTokenResult = await userCredential.user.getIdTokenResult();
+                if (idTokenResult.claims.role === 'Tenant Admin' && idTokenResult.claims.tenantId) {
+                     await secureFetch(`/api/tenants/${idTokenResult.claims.tenantId}/activate`, {
+                         method: 'POST'
+                     });
                 }
             }
             
-            // 4. Log the user in
-            await signInWithEmailAndPassword(auth, email, password);
 
             toast({
                 title: 'Account Activated!',
