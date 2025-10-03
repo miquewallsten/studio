@@ -34,7 +34,9 @@ const EnvSchema = z.object({
   
   const sourceCount = [byFile, byB64, byTriplet].filter(Boolean).length;
 
-  if (sourceCount !== 1) {
+  // This is the key change: Only error if there's a conflict (more than one source).
+  // If zero sources are provided, we assume Application Default Credentials (ADC) will be used.
+  if (sourceCount > 1) {
     ctx.addIssue({ 
       code: z.ZodIssueCode.custom, 
       message: 'Provide exactly ONE valid Firebase credential source: a non-empty FIREBASE_SERVICE_ACCOUNT_B64, a path in GOOGLE_APPLICATION_CREDENTIALS, or the FIREBASE_* triplet.' 
