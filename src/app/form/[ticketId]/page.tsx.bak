@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import type { Timestamp } from "firebase/firestore";
 import { useSecureFetch } from "@/lib/use-secure-fetch";
 
@@ -69,12 +70,6 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
   // Selfie state
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
- 
-  // TEMP stub so TypeScript compiles; real implementation can replace this.
-  const handleSend = async (_isSystem: boolean, _ticket: Ticket) => {
-    /* no-op */
-  };
-
 
   const getTicketData = useCallback(async (userId: string) => {
       setLoading(true);
@@ -124,51 +119,3 @@ export default function FormPage({ params }: { params: { ticketId: string }}) {
     }, [params.ticketId, toast, secureFetch, formMode, history.length]);
 
 
-  useEffect(() => {
-    if (!user || loadingAuth) return;
-    getTicketData(user.uid);
-  }, [user, loadingAuth, getTicketData]);
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <Skeleton className="h-6 w-48" />
-      </div>
-    );
-  }
-
-  if (!ticket) {
-    return (
-      <div className="p-6">
-        <Alert>
-          <AlertTitle>No ticket</AlertTitle>
-          <AlertDescription>We couldn’t load this ticket.</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Form for {ticket.subjectName}</CardTitle>
-          <CardDescription>Ticket #{ticket.id}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-2">Status: {ticket.status}</p>
-          {ticket.suggestedQuestions?.length ? (
-            <ul className="list-disc pl-5">
-              {ticket.suggestedQuestions.map((q, i) => (
-                <li key={i}>{q}</li>
-              ))}
-            </ul>
-          ) : null}
-        </CardContent>
-        <CardFooter>
-          <Button onClick={() => router.push('/client/dashboard')}>Back</Button>
-        </CardFooter>
-      </Card>
-    </div>
-  );
-}

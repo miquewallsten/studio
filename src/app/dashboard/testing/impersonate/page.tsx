@@ -318,8 +318,8 @@ export default function ImpersonateUserPage() {
     {isClient && 
         <ResponsiveGridLayout
             className={`layout ${!isEditMode ? 'non-interactive' : ''}`}
-            layouts={layouts}
-            layout={finalLayout}
+            layouts={(layouts as any)}
+            /* duplicate removed */
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}

@@ -12,7 +12,7 @@ const validateEmailInput = (input: { to?: string; subject?: string; html?: strin
 export async function POST(req: Request) {
   try {
     // 1. Authenticate the request
-    await requireAuth(req);
+    await requireAuth(req as any);
 
     // 2. Parse and validate the request body
     const { to, subject, html } = await req.json();

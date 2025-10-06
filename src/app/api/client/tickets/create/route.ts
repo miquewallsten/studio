@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         const adminDb = getAdminDb();
         
 
-        requireRole(decodedToken.role, 'Tenant Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Tenant Admin');
         
         const clientUid = decodedToken.tenantId;
         const clientEmail = decodedToken.email;

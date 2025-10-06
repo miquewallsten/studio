@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         const adminDb = getAdminDb();
         const decodedToken = await requireAuth(request);
         
-        requireRole(decodedToken.role, 'Super Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
 
         const { companyName, companyUrl, adminName, adminEmail } = await request.json();
 
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
   return apiSafe(async () => {
     checkRateLimit(request);
     const decodedToken = await requireAuth(request);
-    requireRole(decodedToken.role, 'Super Admin');
+    requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
 
     const [tenants, userCounts, ticketCounts] = await Promise.all([
         getTenantData(),

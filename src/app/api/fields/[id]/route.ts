@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   return apiSafe(async () => {
     checkRateLimit(request);
     const decodedToken = await requireAuth(request);
-    requireRole(decodedToken.role, 'Admin');
+    requireRole( (decodedToken as any).role || 'Unassigned', 'Admin');
 
     const { id } = params;
     const body = await request.json();
@@ -33,7 +33,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   return apiSafe(async () => {
     checkRateLimit(request);
     const decodedToken = await requireAuth(request);
-    requireRole(decodedToken.role, 'Super Admin');
+    requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
 
     const { id } = params;
     

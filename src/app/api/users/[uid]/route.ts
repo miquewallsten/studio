@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { uid: s
         const { displayName, phone, tags } = body;
 
         const decodedToken = await requireAuth(request);
-        requireRole(decodedToken.role, 'Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Admin');
 
         // Update Firebase Auth
         const authUpdates: { [key: string]: any } = {};
@@ -63,7 +63,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { uid: 
         const { uid } = params;
 
         const decodedToken = await requireAuth(request);
-        requireRole(decodedToken.role, 'Super Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
         
         if (decodedToken.uid === uid) {
             return NextResponse.json({ error: 'Cannot delete your own account.' }, { status: 400 });

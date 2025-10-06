@@ -35,7 +35,7 @@ export function AnalystPortalWidget({ users, onImpersonate, isImpersonating }: A
     setIframeKey(Date.now());
   }, [user]);
 
-  const role = (user?.stsTokenManager as any)?.claims?.role;
+  const role = ((user as any)?.stsTokenManager as any)?.claims?.role;
   const isAnalyst = role === 'Analyst';
   
   const showPortal = !loadingAuth && isAnalyst;

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const adminAuth = getAdminAuth();
     const decodedToken = await requireAuth(request);
     
-    requireRole(decodedToken.role, 'Super Admin');
+    requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
 
     const { targetUid } = await request.json();
     if (!targetUid) {

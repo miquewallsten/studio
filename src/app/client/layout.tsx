@@ -23,7 +23,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         const idTokenResult = await user.getIdTokenResult();
         const userRole = idTokenResult.claims.role;
         // Allow Tenant Admins, Tenant Users, and End Users. Deny internal staff.
-        if (userRole && ['Tenant Admin', 'Tenant User', 'End User'].includes(userRole)) {
+        if (userRole && ['Tenant Admin', 'Tenant User', 'End User'].includes(userRole as unknown as string)) {
           setUser(user);
           // Set cookie for server-side rendering
           const idToken = await user.getIdToken();

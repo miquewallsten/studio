@@ -35,7 +35,7 @@ import { format } from 'date-fns';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { WidgetLibrary } from '@/components/dashboard/widget-library';
 import { AssistantWidget } from '@/components/dashboard/assistant-widget';
-import { NotificationsWidget } from '@/components/dashboard/notifications-widget';
+import { NotificationsWidget } from '@/components/dashboard/expiring-invites-widget';
 import { useLanguage } from '@/contexts/language-context';
 import { useSecureFetch } from '@/hooks/use-secure-fetch';
 import { debounce } from 'lodash';
@@ -94,7 +94,7 @@ const WIDGET_DEFINITIONS: {
   },
   'recent-tickets': {
     title: 'Recent Tickets',
-    defaultLayout: { i: 'recent-tickets', x: 2, y: 1, w: 4, h: 2, minW: 2, minH: 2 },
+    defaultLayout: { i: 'recent-tickets', x: 2, y: 1, w: 4, h: 2, minW: 3, minH: 2 },
   },
   'new-tenants': {
     title: 'New Tenants',
@@ -117,16 +117,15 @@ export default function DashboardPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [userCount, setUserCount] = useState(0);
-  const [ticketMetrics, setTicketMetrics] = useState({ New: 0, 'In Progress': 0, Completed: 0 });
+  const [ticketMetrics, setTicketMetrics] = useState({ New: 0, 'In Progress': 0, Completed: 0, 'Pending Review': 0 });
   const [loading, setLoading] = useState(true);
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [layouts, setLayouts] = useState<{[key: string]: Layout[]}>({});
-  const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_WIDGETS);
+  const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
   const [isClient, setIsClient] = useState(false);
   
   const hasLoadedPrefs = useRef(false);
-  const hasSeeded = useRef(false);
 
   // Debounced save function
   const savePreferences = useCallback(debounce(async (prefs: { layouts?: any, widgets?: any }) => {
@@ -154,7 +153,11 @@ export default function DashboardPage() {
           const data = await res.json();
           if (isMounted) {
             if (data.dashboard?.layouts) setLayouts(data.dashboard.layouts);
-            if (data.dashboard?.widgets) setActiveWidgets(data.dashboard.widgets);
+            if (data.dashboard?.widgets) {
+                setActiveWidgets(data.dashboard.widgets);
+            } else {
+                setActiveWidgets(DEFAULT_WIDGETS);
+            }
           }
         } catch (e) {
           console.log('No saved preferences found, using defaults.');
@@ -184,7 +187,7 @@ export default function DashboardPage() {
         
         if (ticketsData.tickets) {
           setTickets(ticketsData.tickets.slice(0, 5));
-           const metrics = { New: 0, 'In Progress': 0, Completed: 0 };
+           const metrics = { New: 0, 'In Progress': 0, Completed: 0, 'Pending Review': 0 };
             ticketsData.tickets.forEach((ticket: Ticket) => {
                 const status = ticket.status as TicketStatus;
                 if (metrics[status] !== undefined) {
@@ -323,7 +326,7 @@ export default function DashboardPage() {
         return <QuickActionsWidget />;
       case 'recent-tickets':
         return (
-          <Card className="h-full">
+          <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 {t('dashboard.recent_tickets')}
@@ -335,7 +338,7 @@ export default function DashboardPage() {
                 {t('dashboard.recent_tickets_desc')}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -391,7 +394,7 @@ export default function DashboardPage() {
         );
       case 'new-tenants':
         return (
-            <Card className="h-full">
+            <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 {t('dashboard.new_tenants')}
@@ -403,7 +406,7 @@ export default function DashboardPage() {
                 {t('dashboard.new_tenants_desc')}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -460,13 +463,12 @@ export default function DashboardPage() {
     }
   };
 
-  const currentLayout = (layouts.lg || []).filter(l => activeWidgets.includes(l.i));
-  const defaultLayoutForActive = activeWidgets
-    .filter(id => !currentLayout.some(l => l.i === id))
-    .map(id => WIDGET_DEFINITIONS[id]?.defaultLayout)
-    .filter(Boolean) as Layout[];
-  
-  const finalLayout = [...currentLayout, ...defaultLayoutForActive];
+  const getLayouts = () => {
+      if (Object.keys(layouts).length > 0) return layouts;
+      // create default layout
+      const defaultLayout = DEFAULT_WIDGETS.map(id => WIDGET_DEFINITIONS[id].defaultLayout);
+      return { lg: defaultLayout };
+  }
 
   return (
     <div className="flex-1 space-y-4">
@@ -491,7 +493,7 @@ export default function DashboardPage() {
       {isClient && 
         <ResponsiveGridLayout
             className={`layout ${!isEditMode ? 'non-interactive' : ''}`}
-            layouts={layouts}
+            layouts={getLayouts()}
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}

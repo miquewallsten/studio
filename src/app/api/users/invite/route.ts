@@ -36,11 +36,11 @@ export async function POST(request: NextRequest) {
             }
         // Super Admins can invite to any tenant
         } else {
-            requireRole(decodedToken.role, 'Super Admin');
+            requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
         }
     } else {
         // Only Super Admins can invite internal staff (no tenantId)
-        requireRole(decodedToken.role, 'Super Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
     }
 
     let userRecord;

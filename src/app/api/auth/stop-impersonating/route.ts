@@ -9,9 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     checkRateLimit(request);
-    const cookieStore = cookies();
-    const impersonatorToken = cookieStore.get('impersonatorToken')?.value;
-    const impersonatorUid = cookieStore.get('impersonatorUid')?.value;
+    const cookieStore = await cookies();
+    const impersonatorToken =  (await cookies()).get('impersonatorToken')?.value;
+    const impersonatorUid =  (await cookies()).get('impersonatorUid')?.value;
 
     if (!impersonatorToken || !impersonatorUid) {
       return NextResponse.json({ error: 'No active impersonation session found.' }, { status: 400 });

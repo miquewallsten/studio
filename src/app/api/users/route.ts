@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Only Admins or Super Admins can view all users
     if (!isTenantAdmin) {
-        requireRole(decodedToken.role, 'Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Admin');
     }
 
     const [tenants, { profiles, allTags }, ticketCounts] = await Promise.all([

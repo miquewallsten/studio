@@ -53,12 +53,12 @@ export function EndUserPortalWidget({ users, onImpersonate, isImpersonating }: E
 
   useEffect(() => {
     setIframeKey(Date.now());
-    if ((user?.stsTokenManager as any)?.claims?.role === 'End User') {
+    if (((user as any)?.stsTokenManager as any)?.claims?.role === 'End User') {
         fetchFirstTicket();
     }
   }, [user, fetchFirstTicket]);
 
-  const role = (user?.stsTokenManager as any)?.claims?.role;
+  const role = ((user as any)?.stsTokenManager as any)?.claims?.role;
   const isEndUser = role === 'End User';
   
   return (

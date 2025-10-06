@@ -44,8 +44,8 @@ async function findClientImports(dir: string): Promise<{ file: string; lines: { 
 
 export async function GET(request: Request) {
     try {
-        const decodedToken = await requireAuth(request);
-        requireRole(decodedToken.role, 'Admin');
+        const decodedToken = await requireAuth(request as any);
+        requireRole(((decodedToken as any).role ?? 'Unassigned'), 'Admin');
 
         const offendingFiles = await findClientImports(path.join(process.cwd(), 'src'));
 

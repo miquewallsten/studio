@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: { params: { uid: st
         }
 
         const decodedToken = await requireAuth(request);
-        requireRole(decodedToken.role, 'Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Admin');
 
         // Prevent a regular Admin from creating a Super Admin
         if (role === 'Super Admin' && decodedToken.role !== 'Super Admin') {

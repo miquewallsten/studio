@@ -1,15 +1,12 @@
-
-import 'server-only';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-export const MODEL = 'gemini-2.5-flash-lite' as const;
+export const MODEL = process.env.AI_MODEL || 'stub-model';
 
 export function getAiClient() {
-  const AI_ENABLED = process.env.AI_ENABLED === '1';
-  const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+  return {
+    name: 'stub-ai',
+    async ping() { return 'pong'; },
+  };
+}
 
-  if (!AI_ENABLED || !GOOGLE_API_KEY) return null;
-  
-  const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
-  return genAI.getGenerativeModel({ model: MODEL });
+export async function generateText(_: { model: string; prompt: string }) {
+  return { text: 'stub' };
 }

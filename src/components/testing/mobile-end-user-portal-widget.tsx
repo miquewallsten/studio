@@ -23,7 +23,7 @@ export function MobileEndUserPortalWidget() {
     setIframeKey(Date.now());
   }, [user]);
 
-  const role = (user?.stsTokenManager as any)?.claims?.role;
+  const role = ((user as any)?.stsTokenManager as any)?.claims?.role;
   const isEndUser = role === 'End User';
   const firstTicketId = 'some-ticket-id'; 
 

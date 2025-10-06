@@ -1,47 +1,65 @@
-
-import 'server-only';
-import { getAdminAuth } from '@/lib/firebaseAdmin';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { DecodedIdToken } from 'firebase-admin/auth';
+import { getAdminAuth } from '@/lib/firebaseAdmin';
 import type { Role } from './rbac';
 
-export interface AppDecodedIdToken extends DecodedIdToken {
-    role: Role;
-    tenantId?: string;
-}
+// --- helpers ---------------------------------------------------------------
 
-export function getBearer(req: Request): string | null {
-  const h = req.headers.get('authorization') || '';
-  return h.startsWith('Bearer ') ? h.slice(7) : null;
-}
-
-export async function requireAuth(req: Request): Promise<AppDecodedIdToken> {
-  const token = getBearer(req);
-  
-  if (process.env.ADMIN_FAKE === '1') {
-      return { uid: 'fake-super-admin', role: 'Super Admin', tenantId: 'fake-tenant-id' } as AppDecodedIdToken;
+function getBearerFromHeaders(req: NextRequest): string | null {
+  // Standard Authorization: Bearer <token>
+  const auth = req.headers.get('authorization') || req.headers.get('Authorization');
+  if (auth && auth.startsWith('Bearer ')) {
+    return auth.slice('Bearer '.length).trim();
   }
-  
+
+  // Optional fallback: custom header some clients use during testing
+  const x = req.headers.get('x-firebase-auth');
+  if (x) return x.trim();
+
+  // Optional: cookie called "Authorization" or "session" that holds just the token
+  const cookieAuth = req.cookies.get('Authorization')?.value || req.cookies.get('session')?.value;
+  if (cookieAuth) return cookieAuth.trim();
+
+  return null;
+}
+
+// --- public API ------------------------------------------------------------
+
+export async function requireAuth(req: NextRequest): Promise<DecodedIdToken & { role?: Role; tenantId?: string; email?: string }> {
+  // IMPORTANT: we DO NOT read req.json() here (never touch the body)
+  const token = getBearerFromHeaders(req);
   if (!token) {
-      const err = new Error('Unauthorized: missing Bearer token');
-      (err as any).status = 401;
-      throw err;
+    throw new Error('Missing bearer token');
   }
-  
+
   const adminAuth = getAdminAuth();
+  const decoded = await adminAuth.verifyIdToken(token, true);
+  // Keep common fields handy for routes
+  (decoded as any).email = decoded.email || decoded.firebase?.identities?.email?.[0];
+  return decoded as any;
+}
+
+export function requireRole(actual: string | undefined, required: Role): void {
+  if (!actual) {
+    throw new Error('Missing role');
+  }
+  if (actual !== required && actual !== 'Platform Admin') {
+    // Platform Admin can do everything
+    throw new Error(`Requires role: ${required}`);
+  }
+}
+
+// Simple wrapper so routes can throw and get JSON consistently
+export async function apiSafe<T>(fn: () => Promise<T>) {
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    return {
-        ...decodedToken,
-        role: (decodedToken.role as Role) || 'Unassigned',
-    } as AppDecodedIdToken;
-  } catch (error: any) {
-      let message = 'Invalid authentication token.';
-      if (error.code === 'auth/id-token-expired') {
-          message = 'Authentication token has expired. Please log in again.';
-      }
-      const err = new Error(message);
-      (err as any).status = 401;
-      (err as any).code = error.code;
-      throw err;
+    const data = await fn();
+    return NextResponse.json(data ?? { ok: true });
+  } catch (err: any) {
+    const msg = typeof err?.message === 'string' ? err.message : 'Internal error';
+    const status = /auth|role|missing|forbid|unauthor/i.test(msg) ? 401
+                 : /not found/i.test(msg) ? 404
+                 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         const { id: tenantId } = params;
 
         const decodedToken = await requireAuth(request);
-        requireRole(decodedToken.role, 'Super Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
 
         // Find the Tenant Admin user associated with this tenant
         const usersQuerySnapshot = await adminDb.collection('users').where('tenantId', '==', tenantId).where('role', '==', 'Tenant Admin').limit(1).get();

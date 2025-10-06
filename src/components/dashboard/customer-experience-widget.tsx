@@ -45,9 +45,13 @@ export function CustomerExperienceWidget() {
         setLoading(true);
         try {
             const ratingsRes = await secureFetch('/api/tickets?rating=low');
-            const ratingsData = await ratingsRes.json();
+            if (ratingsRes.ok) {
+                const ratingsData = await ratingsRes.json();
+                if(ratingsData.tickets) setLowRated(ratingsData.tickets);
+            } else {
+                console.error("Failed to fetch low rated tickets");
+            }
             
-            if(ratingsData.tickets) setLowRated(ratingsData.tickets);
             // In a real app, you would fetch feedback from a separate endpoint.
             // For now, we simulate an empty feedback list.
             setFeedback([]); 

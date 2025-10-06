@@ -16,7 +16,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         const { id: tenantId } = params;
 
         const decodedToken = await requireAuth(request);
-        requireRole(decodedToken.role, 'Super Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Super Admin');
 
         const batch = adminDb.batch();
 

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         const userPrefsRef = adminDb.collection('users').doc(uid).collection('preferences').doc('dashboard');
         const docSnap = await userPrefsRef.get();
 
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
              return NextResponse.json({ error: 'No preferences found.' }, { status: 404 });
         }
         

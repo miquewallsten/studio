@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   return apiSafe(async () => {
     checkRateLimit(request);
-    const decodedToken = await requireAuth(request);
-    requireRole(decodedToken.role, 'Admin');
+    const decodedToken = await requireAuth(request as any);
+    requireRole( (decodedToken as any).role || 'Unassigned', 'Admin');
 
     const adminDb = getAdminDb();
     const templatesSnapshot = await adminDb.collection('email_templates').orderBy('name').get();

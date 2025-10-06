@@ -44,7 +44,7 @@ export function ClientPortalWidget({ users, onImpersonate, onUserCreated, isImpe
     setIframeKey(Date.now());
   }, [user]);
 
-  const isClient = !!(user?.stsTokenManager as any)?.claims?.tenantId;
+  const isClient = !!((user as any)?.stsTokenManager as any)?.claims?.tenantId;
   
   return (
     <Card className="h-full flex flex-col">

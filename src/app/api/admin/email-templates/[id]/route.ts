@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   return apiSafe(async () => {
     checkRateLimit(request);
     const decodedToken = await requireAuth(request);
-    requireRole(decodedToken.role, 'Admin');
+    requireRole( (decodedToken as any).role || 'Unassigned', 'Admin');
 
     const { id } = params;
     const { subject, body } = await request.json();
