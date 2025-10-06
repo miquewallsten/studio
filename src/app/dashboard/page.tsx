@@ -70,7 +70,7 @@ const WIDGET_DEFINITIONS: {
   },
   'customer-experience': {
     title: 'Customer Experience',
-    defaultLayout: { i: 'customer-experience', x: 0, y: 3, w: 6, h: 3, minW: 3, minH: 3 },
+    defaultLayout: { i: 'customer-experience', x: 0, y: 3, w: 6, h: 2, minW: 3, minH: 2 },
   },
   'new-tickets': {
     title: 'New Tickets',
@@ -98,11 +98,11 @@ const WIDGET_DEFINITIONS: {
   },
   'new-tenants': {
     title: 'New Tenants',
-    defaultLayout: { i: 'new-tenants', x: 4, y: 3, w: 2, h: 2, minW: 2, minH: 2 },
+    defaultLayout: { i: 'new-tenants', x: 0, y: 5, w: 2, h: 2, minW: 2, minH: 2 },
   },
   'ai-assistant': {
     title: 'AI Assistant',
-    defaultLayout: { i: 'ai-assistant', x: 0, y: 5, w: 6, h: 3, minW: 3, minH: 3 },
+    defaultLayout: { i: 'ai-assistant', x: 2, y: 5, w: 4, h: 2, minW: 3, minH: 2 },
   },
 };
 
@@ -238,17 +238,22 @@ export default function DashboardPage() {
     }
   };
   
-  const handleWidgetChange = (newWidgets: string[]) => {
+  const addWidget = (widgetId: string) => {
+    const newWidgets = [...activeWidgets, widgetId];
     setActiveWidgets(newWidgets);
     savePreferences({ layouts, widgets: newWidgets });
-  }
-
-  const addWidget = (widgetId: string) => {
-    handleWidgetChange([...activeWidgets, widgetId]);
-  }
-
+  };
+  
   const removeWidget = (widgetId: string) => {
-    handleWidgetChange(activeWidgets.filter(id => id !== widgetId));
+    const newWidgets = activeWidgets.filter(id => id !== widgetId);
+    setActiveWidgets(newWidgets);
+    // Also remove the layout for the widget
+    const newLayouts = { ...layouts };
+    Object.keys(newLayouts).forEach(breakpoint => {
+        newLayouts[breakpoint] = newLayouts[breakpoint].filter(l => l.i !== widgetId);
+    });
+    setLayouts(newLayouts);
+    savePreferences({ layouts: newLayouts, widgets: newWidgets });
   };
 
 
@@ -463,12 +468,22 @@ export default function DashboardPage() {
     }
   };
 
-  const getLayouts = () => {
-      if (Object.keys(layouts).length > 0) return layouts;
-      // create default layout
-      const defaultLayout = DEFAULT_WIDGETS.map(id => WIDGET_DEFINITIONS[id].defaultLayout);
-      return { lg: defaultLayout };
-  }
+  const getLayoutsForCurrentWidgets = () => {
+    const currentBreakpoint = 'lg'; // Or determine dynamically
+    const savedLayout = layouts[currentBreakpoint] || [];
+    
+    // Filter saved layouts to only include active widgets
+    const filteredSavedLayout = savedLayout.filter(l => activeWidgets.includes(l.i));
+    
+    // Find which active widgets don't have a layout defined yet
+    const widgetsWithoutLayout = activeWidgets.filter(id => !filteredSavedLayout.some(l => l.i === id));
+
+    // Create default layouts for these new widgets
+    const newDefaultLayouts = widgetsWithoutLayout.map(id => WIDGET_DEFINITIONS[id]?.defaultLayout).filter(Boolean) as Layout[];
+
+    return { [currentBreakpoint]: [...filteredSavedLayout, ...newDefaultLayouts] };
+  };
+
 
   return (
     <div className="flex-1 space-y-4">
@@ -493,7 +508,7 @@ export default function DashboardPage() {
       {isClient && 
         <ResponsiveGridLayout
             className={`layout ${!isEditMode ? 'non-interactive' : ''}`}
-            layouts={getLayouts()}
+            layouts={getLayoutsForCurrentWidgets()}
             onLayoutChange={onLayoutChange}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 6, md: 4, sm: 2, xs: 1, xxs: 1 }}
@@ -509,7 +524,11 @@ export default function DashboardPage() {
                             variant="destructive" 
                             size="icon" 
                             className="absolute top-2 right-2 z-10 h-6 w-6 opacity-0 group-hover/widget:opacity-100 transition-opacity"
-                            onClick={() => removeWidget(widgetId)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                removeWidget(widgetId);
+                            }}
                         >
                             <span className="sr-only">Remove widget</span>
                             &times;
