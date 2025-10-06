@@ -7,6 +7,7 @@ export function getAiClient() {
   };
 }
 
-export async function generateText(_: { model: string; prompt: string }) {
-  return { text: 'stub' };
+export async function generateText(prompt: any) {
+  const text = `This is a stub response for the prompt: ${JSON.stringify(prompt)}`;
+  return { text };
 }
