@@ -127,7 +127,6 @@ export default function DashboardPage() {
   
   const hasLoadedPrefs = useRef(false);
 
-  // Debounced save function
   const savePreferences = useCallback(debounce(async (prefs: { layouts?: any, widgets?: any }) => {
     if (!hasLoadedPrefs.current || !auth.currentUser) return;
     try {
@@ -145,19 +144,22 @@ export default function DashboardPage() {
     setIsClient(true);
     let isMounted = true;
 
-    // Fetch user preferences
     if (user) {
       const fetchPrefs = async () => {
         try {
           const res = await secureFetch('/api/user/preferences');
           const data = await res.json();
           if (isMounted) {
-            if (data.dashboard?.layouts) setLayouts(data.dashboard.layouts);
-            if (data.dashboard?.widgets) {
-                setActiveWidgets(data.dashboard.widgets);
+            const savedWidgets = data.dashboard?.widgets;
+            const savedLayouts = data.dashboard?.layouts;
+
+            // Ensure all default widgets are present if no saved widgets exist
+            if (Array.isArray(savedWidgets) && savedWidgets.length > 0) {
+                 setActiveWidgets(savedWidgets);
             } else {
                 setActiveWidgets(DEFAULT_WIDGETS);
             }
+            if (savedLayouts) setLayouts(savedLayouts);
           }
         } catch (e) {
           console.log('No saved preferences found, using defaults.');
@@ -169,56 +171,54 @@ export default function DashboardPage() {
       fetchPrefs();
     }
 
+    return () => { isMounted = false; };
+  }, [user, secureFetch]);
 
+  useEffect(() => {
     const fetchData = async () => {
-      if (!isMounted) return;
-      try {
-        const [ticketsRes, tenantsRes, usersRes] = await Promise.all([
-          secureFetch('/api/tickets'),
-          secureFetch('/api/tenants'),
-          secureFetch('/api/users'),
-        ]);
+        if (!user) return;
+        setLoading(true);
+        try {
+            const [ticketsRes, tenantsRes, usersRes] = await Promise.all([
+            secureFetch('/api/tickets'),
+            secureFetch('/api/tenants'),
+            secureFetch('/api/users'),
+            ]);
 
-        const ticketsData = await ticketsRes.json();
-        const tenantsData = await tenantsRes.json();
-        const usersData = await usersRes.json();
-        
-        if (!isMounted) return;
-        
-        if (ticketsData.tickets) {
-          setTickets(ticketsData.tickets.slice(0, 5));
-           const metrics = { New: 0, 'In Progress': 0, Completed: 0, 'Pending Review': 0 };
-            ticketsData.tickets.forEach((ticket: Ticket) => {
-                const status = ticket.status as TicketStatus;
-                if (metrics[status] !== undefined) {
-                    metrics[status]++;
-                }
-            });
-            setTicketMetrics(metrics);
-        }
-        
-        if (tenantsData.tenants) {
-          setTenants(tenantsData.tenants.slice(0, 5));
-        }
+            const ticketsData = await ticketsRes.json();
+            const tenantsData = await tenantsRes.json();
+            const usersData = await usersRes.json();
+            
+            if (ticketsData.tickets) {
+            setTickets(ticketsData.tickets.slice(0, 5));
+            const metrics = { New: 0, 'In Progress': 0, Completed: 0, 'Pending Review': 0 };
+                ticketsData.tickets.forEach((ticket: Ticket) => {
+                    const status = ticket.status as TicketStatus;
+                    if (metrics[status] !== undefined) {
+                        metrics[status]++;
+                    }
+                });
+                setTicketMetrics(metrics);
+            }
+            
+            if (tenantsData.tenants) {
+            setTenants(tenantsData.tenants.slice(0, 5));
+            }
 
-        if (usersData.users) {
-          setUserCount(usersData.users.length);
-        }
+            if (usersData.users) {
+            setUserCount(usersData.users.length);
+            }
 
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+        } catch (error) {
+            console.error("Failed to fetch dashboard data:", error);
+        } finally {
+            setLoading(false);
+        }
     };
-  
-    fetchData();
-
-    return () => {
-      isMounted = false;
-      savePreferences.cancel();
-    };
-  }, [user, savePreferences, secureFetch]);
+    if (user) {
+        fetchData();
+    }
+  }, [user, secureFetch]);
 
   const onLayoutChange = (currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
     if (isEditMode && hasLoadedPrefs.current) {
@@ -247,13 +247,7 @@ export default function DashboardPage() {
   const removeWidget = (widgetId: string) => {
     const newWidgets = activeWidgets.filter(id => id !== widgetId);
     setActiveWidgets(newWidgets);
-    // Also remove the layout for the widget
-    const newLayouts = { ...layouts };
-    Object.keys(newLayouts).forEach(breakpoint => {
-        newLayouts[breakpoint] = newLayouts[breakpoint].filter(l => l.i !== widgetId);
-    });
-    setLayouts(newLayouts);
-    savePreferences({ layouts: newLayouts, widgets: newWidgets });
+    savePreferences({ layouts, widgets: newWidgets });
   };
 
 
@@ -469,19 +463,16 @@ export default function DashboardPage() {
   };
 
   const getLayoutsForCurrentWidgets = () => {
-    const currentBreakpoint = 'lg'; // Or determine dynamically
+    const currentBreakpoint = 'lg';
     const savedLayout = layouts[currentBreakpoint] || [];
     
-    // Filter saved layouts to only include active widgets
-    const filteredSavedLayout = savedLayout.filter(l => activeWidgets.includes(l.i));
-    
-    // Find which active widgets don't have a layout defined yet
-    const widgetsWithoutLayout = activeWidgets.filter(id => !filteredSavedLayout.some(l => l.i === id));
+    // Combine saved layouts with default layouts for any new widgets
+    const finalLayout = activeWidgets.map(widgetId => {
+      const existingLayout = savedLayout.find(l => l.i === widgetId);
+      return existingLayout || WIDGET_DEFINITIONS[widgetId]?.defaultLayout;
+    }).filter(Boolean) as Layout[];
 
-    // Create default layouts for these new widgets
-    const newDefaultLayouts = widgetsWithoutLayout.map(id => WIDGET_DEFINITIONS[id]?.defaultLayout).filter(Boolean) as Layout[];
-
-    return { [currentBreakpoint]: [...filteredSavedLayout, ...newDefaultLayouts] };
+    return { lg: finalLayout };
   };
 
 

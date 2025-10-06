@@ -15,7 +15,7 @@ import { AlertTriangle, RefreshCw, Bell, MailWarning } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ResendInviteDialog } from '../resend-invite-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useSecureFetch } from '@/lib/use-secure-fetch';
+import { useSecureFetch } from '@/hooks/use-secure-fetch';
 
 type TenantInvite = {
   id: string;
@@ -79,7 +79,7 @@ export function NotificationsWidget() {
         }
         
       } catch (e: any) {
-        console.error('expiring-invites-widget load failed:', e?.message || e);
+        console.error("Error fetching notifications:", e.message);
       } finally {
         if (alive) setLoading(false);
       }
@@ -128,10 +128,6 @@ export function NotificationsWidget() {
                 Expiring invites and pending submissions needing attention
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => location.reload()}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
           </div>
         </CardHeader>
         <CardContent className="flex-1 pt-0">

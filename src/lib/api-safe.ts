@@ -5,8 +5,7 @@ import { logger } from './logger';
 export async function apiSafe<T>(fn: () => Promise<T>): Promise<NextResponse> {
   try {
     const data = await fn();
-    // Ensure we always return a JSON response, even if data is null/undefined
-    return NextResponse.json({ ok: true, ...(data as object || {}) });
+    return NextResponse.json({ ok: true, ...data });
   } catch (e: any) {
     logger.error('API Error in apiSafe', {
         message: e.message,
@@ -15,7 +14,7 @@ export async function apiSafe<T>(fn: () => Promise<T>): Promise<NextResponse> {
     });
     
     // Determine status code from error if possible, otherwise default to 500
-    const status = typeof e.status === 'number' ? e.status : 500;
+    const status = typeof e.status === 'number' ? e.status : /auth|role|missing|forbid|unauthor/i.test(e.message) ? 401 : /not found/i.test(e.message) ? 404 : 500;
 
     return new NextResponse(
       JSON.stringify({

@@ -1,11 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    // Allow Firebase Studio’s proxy origin(s) during dev
-      'https://*.cloudworkstations.dev',
-      'http://localhost:9000',
-      'https://*.web.app',
-    ],
-  },
+  reactStrictMode: true,
+  // NOTE:
+  // - Do NOT add experimental.allowedDevOrigins here on Next 15.3.3.
+  //   It's not supported and will trigger "Invalid next.config.js options".
+  // - The cross-origin message you're seeing is just a warning for a FUTURE major version.
 };
+
 module.exports = nextConfig;

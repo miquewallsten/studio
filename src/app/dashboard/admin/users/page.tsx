@@ -40,9 +40,6 @@ export default function AdminUsersPage() {
         try {
             const res = await secureFetch('/api/users');
             const data = await res.json();
-            if (data.error) {
-                throw new Error(data.error);
-            }
             setUsers(data.users);
             setAllTags(data.allTags || []);
         } catch (err: any) {
@@ -125,31 +122,11 @@ export default function AdminUsersPage() {
             {error && (
                  <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{isCredentialError ? 'Configuration Required: Service Account Key Invalid' : 'Error Fetching Data'}</AlertTitle>
+                    <AlertTitle>{isCredentialError ? 'Configuration Required' : 'Error Fetching Data'}</AlertTitle>
                     <AlertDescription>
-                        <p className="font-mono text-xs bg-muted p-2 rounded">{error}</p>
+                        {error}
                         {isCredentialError && (
-                            <div className="mt-4 text-sm">
-                                <p className="font-semibold">Action Required: Add Firebase Admin Credentials</p>
-                                <p className="mt-2">To use server-side features like user management, you must provide a valid, base64-encoded Firebase Service Account key in your <code className="font-mono text-xs bg-muted p-1 rounded">.env</code> file under the variable <code className="font-mono text-xs bg-muted p-1 rounded">FIREBASE_SERVICE_ACCOUNT_B64</code>.</p>
-                                <ol className="list-decimal list-inside space-y-2 mt-3">
-                                    <li>
-                                        In the Firebase Console, go to your project, click the <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Gear icon</span> next to "Project Overview", then select <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Project settings</span>.
-                                    </li>
-                                    <li>
-                                        Go to the <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Service accounts</span> tab.
-                                    </li>
-                                    <li>
-                                        Click the <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">Generate new private key</span> button to download a JSON file.
-                                    </li>
-                                     <li>
-                                        Base64-encode the entire content of that JSON file into a single-line string.
-                                     </li>
-                                     <li>
-                                        Paste the resulting string as the value for <code className="font-mono text-xs bg-muted p-1 rounded">FIREBASE_SERVICE_ACCOUNT_B64</code> in your <code className="font-mono text-xs bg-muted p-1 rounded">.env</code> file.
-                                    </li>
-                                </ol>
-                            </div>
+                            <p className="mt-2">Please ensure your Firebase Admin credentials are correctly set in your environment variables.</p>
                         )}
                     </AlertDescription>
                 </Alert>

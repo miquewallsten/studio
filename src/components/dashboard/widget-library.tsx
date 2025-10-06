@@ -54,10 +54,12 @@ export function WidgetLibrary({
                 <p className="font-medium">
                   {allWidgets[widgetId]?.title || widgetId}
                 </p>
-                <Button size="sm" onClick={() => onAddWidget(widgetId)}>
-                  <PlusCircle className="mr-2" />
-                  Add
-                </Button>
+                <SheetTrigger asChild>
+                    <Button size="sm" onClick={() => onAddWidget(widgetId)}>
+                        <PlusCircle className="mr-2" />
+                        Add
+                    </Button>
+                </SheetTrigger>
               </div>
             ))
           ) : (

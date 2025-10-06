@@ -1,8 +1,11 @@
+
 import { getAdminDb } from '@/lib/firebaseAdmin';
 import { apiSafe } from '@/lib/api-safe';
 import { requireAuth } from '@/lib/authApi';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { NextRequest } from 'next/server';
+import { requireRole } from '@/lib/rbac';
+import admin from 'firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +34,7 @@ export async function POST(request: NextRequest) {
     return apiSafe(async () => {
         checkRateLimit(request);
         const decodedToken = await requireAuth(request);
-//         requireRole( (decodedToken as any).role || 'Unassigned', 'Admin');
+        requireRole( (decodedToken as any).role || 'Unassigned', 'Admin');
 
         const { name, description } = await request.json();
         
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
             name,
             description,
             fields: [],
-            createdAt: new Date(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         return { id: docRef.id, message: 'Form created successfully.' };
