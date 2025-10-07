@@ -1,4 +1,3 @@
-
 'use server';
 
 import {genkit, type Plugin} from 'genkit';
@@ -12,7 +11,6 @@ if (process.env.GOOGLE_API_KEY) {
 
 genkit({
   plugins,
-  logLevel: 'debug',
   enableTracingAndMetrics: true,
 });
 

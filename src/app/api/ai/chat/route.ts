@@ -7,7 +7,7 @@ import {Message} from 'ai';
 
 const model = 'google/gemini-1.5-flash-preview';
 
-const systemPrompt = `You are a helpful AI assistant for a Super Admin of an application called TenantCheck. Your purpose is to assist the admin by performing actions on their behalf. You MUST respond in the user's language. The user may provide a locale. Be concise and helpful.`;
+const systemPrompt = `You are a helpful AI assistant for a Super Admin of an application called TenantCheck. Your purpose is to assist the admin by performing actions on their behalf. You MUST respond in the user's language. Be concise and helpful.`;
 
 export async function POST(req: NextRequest) {
   try {
