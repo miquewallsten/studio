@@ -33,10 +33,12 @@ export function AssistantWidget() {
         setIsLoading(true);
 
         try {
+            const messagesForApi = currentHistory.map(h => ({ role: h.role, content: h.text }));
+
             const res = await fetch('/api/ai/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ history, prompt: currentPrompt, locale }),
+              body: JSON.stringify({ messages: messagesForApi }),
             });
 
             if (!res.ok) {
@@ -45,9 +47,9 @@ export function AssistantWidget() {
             }
             
             const json = await res.json();
-            const response = json.text ?? '';
+            const responseText = json.text ?? '';
 
-            const newModelMessage: Message = { role: 'model', text: response };
+            const newModelMessage: Message = { role: 'model', text: responseText };
             setHistory(prev => [...prev, newModelMessage]);
         } catch (error: any) {
             console.error("Error calling AI assistant:", error);
