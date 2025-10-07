@@ -1,6 +1,7 @@
+
 import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import type { Role } from '@/lib/ai-bus/types';
+import type { Role } from './rbac';
 import { adminAuth } from '@/lib/firebaseAdmin';
 
 export type Decoded = {

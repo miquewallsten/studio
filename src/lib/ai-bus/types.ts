@@ -1,6 +1,5 @@
-export type Role =
-  | 'Super Admin' | 'Admin' | 'Manager' | 'Analyst' | 'View Only'
-  | 'Tenant Admin' | 'Tenant User' | 'End User' | 'Unassigned';
+
+import type { Role } from '@/lib/rbac';
 
 export type Decoded = { uid: string; email?: string; role?: Role; tenantId?: string };
 

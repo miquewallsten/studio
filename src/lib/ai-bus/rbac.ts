@@ -1,4 +1,6 @@
+
 import type { Decoded, Tool } from './types';
+import type { Role } from '@/lib/rbac';
 
 export function canRun(tool: Tool, user: Decoded) {
   try { return tool.allow(user) === true; } catch { return false; }
@@ -9,6 +11,6 @@ export function mustTenant(u: Decoded) {
   return u.tenantId;
 }
 
-export function hasAnyRole(user: Decoded, roles: string[]) {
+export function hasAnyRole(user: Decoded, roles: Role[]) {
   return !!user.role && roles.includes(user.role);
 }
