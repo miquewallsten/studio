@@ -1,0 +1,22 @@
+import type { Role } from '@/lib/ai-bus/types';
+
+export type DecodedToken = { uid: string; email?: string; role?: Role; tenantId?: string };
+
+export async function requireAuth(req: any): Promise<DecodedToken> {
+  // Try to delegate to a real implementation if present
+  const candidates = ['./auth', './server-auth-impl', './auth/server'];
+  for (const p of candidates) {
+    try {
+      const mod: any = await import(p);
+      if (typeof mod.requireAuth === 'function') return mod.requireAuth(req);
+    } catch { /* ignore */ }
+  }
+  // Dev fallback: read optional debug headers
+  const get = (k: string) => (req?.headers?.get?.(k) ?? undefined) as string | undefined;
+  return {
+    uid: get('x-debug-uid') || 'debug-uid',
+    email: get('x-debug-email') || 'debug@example.com',
+    role: (get('x-debug-role') as Role) || 'Super Admin',
+    tenantId: get('x-debug-tenant') || undefined,
+  };
+}

@@ -1,30 +1,37 @@
-
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { checkRateLimit } from '@/lib/rateLimit';
-import { logger } from '@/lib/logger';
-import { apiSafe } from '@/lib/api-safe';
 
-export const dynamic = 'force-dynamic';
-
-export async function POST(request: NextRequest) {
-  return apiSafe(async () => {
-    checkRateLimit(request);
-    const cookieStore = cookies();
-    const impersonatorToken =  cookieStore.get('impersonatorToken')?.value;
-    const impersonatorUid =  cookieStore.get('impersonatorUid')?.value;
-
-    if (!impersonatorToken || !impersonatorUid) {
-      throw { status: 400, message: 'No active impersonation session found.' };
-    }
-    
-    const response = NextResponse.json({ originalToken: impersonatorToken });
-
-    response.cookies.delete('impersonatorUid');
-    response.cookies.delete('impersonatorToken');
-    
-    logger.info('Impersonation stopped', { adminUid: impersonatorUid });
-
-    return response;
-  });
+function deleteCookie(name: string) {
+  // expire now; mirror default cookie scope
+  // (adjust domain/secure if you set them on write)
+  return {
+    name,
+    value: '',
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    expires: new Date(0),
+  };
 }
+
+async function handler() {
+  const jar = await cookies(); // Next 15: cookies() is async
+
+  // Clear the 3 impersonation cookies we use in tests
+  const toDelete = [
+    deleteCookie('impersonatorToken'),
+    deleteCookie('impersonatorUid'),
+    // a boolean flag some UIs read to show the “impersonating” banner
+    { ...deleteCookie('impersonating'), httpOnly: false },
+  ];
+
+  for (const c of toDelete) {
+    jar.set(c);
+  }
+
+  return NextResponse.json({ ok: true, message: 'Stopped impersonating.' });
+}
+
+// Support both GET (links/buttons) and POST (forms/XHR)
+export const GET = handler;
+export const POST = handler;

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, User } from 'lucide-react';
+import { Bot, Send, User, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/language-context';
 
 interface Message {
@@ -25,21 +25,18 @@ export function AssistantWidget() {
         if (!prompt.trim()) return;
 
         const newUserMessage: Message = { role: 'user', text: prompt };
-        setHistory(prev => [...prev, newUserMessage]);
+        const currentHistory = [...history, newUserMessage];
+        setHistory(currentHistory);
         
         const currentPrompt = prompt;
         setPrompt('');
         setIsLoading(true);
 
         try {
-            const systemPrompt = `You are a helpful AI assistant for a Super Admin of the TenantCheck platform. Your purpose is to assist the admin with managing the application by answering questions about metrics and performing actions on their behalf. If the user asks to seed the database, you cannot do that. Be conversational and confirm when you have completed an action. If you are asked to do something you don't have a tool for, clearly state that you do not have that capability. You MUST respond in the user's language. The user's current language is: ${locale}.`;
-            const historyText = history.map(h => `${h.role}: ${h.text}`).join('\n');
-            const fullPrompt = `${systemPrompt}\n\n${historyText}\nuser: ${currentPrompt}\nmodel:`;
-            
-            const res = await fetch('/api/ai/echo', {
+            const res = await fetch('/api/ai/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: fullPrompt }),
+              body: JSON.stringify({ history, prompt: currentPrompt, locale }),
             });
 
             if (!res.ok) {
@@ -97,8 +94,10 @@ export function AssistantWidget() {
                          {isLoading && (
                             <div className="flex items-start gap-3">
                                 <Bot className="flex-shrink-0 animate-pulse" />
-                                <div className="px-4 py-2 rounded-lg bg-muted">
-                                    <p className="text-sm">{t('common.loading')}...</p>
+                                <div className="px-4 py-2 rounded-lg bg-muted flex items-center">
+                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse [animation-delay:-0.3s]"></div>
+                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse [animation-delay:-0.15s] mx-1"></div>
+                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                                 </div>
                             </div>
                         )}
@@ -113,7 +112,7 @@ export function AssistantWidget() {
                         disabled={isLoading}
                     />
                     <Button onClick={handleSend} disabled={isLoading}>
-                        <Send />
+                         {isLoading ? <Loader2 className="animate-spin" /> : <Send />}
                     </Button>
                 </div>
             </CardContent>

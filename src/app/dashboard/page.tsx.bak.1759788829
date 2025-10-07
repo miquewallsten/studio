@@ -506,8 +506,8 @@ export default function DashboardPage() {
             rowHeight={150}
             isDraggable={isEditMode}
             isResizable={isEditMode}
-            /* draggableCancel=".non-draggable" */
-         compactType={null} preventCollision={false}>
+            draggableCancel=".non-draggable"
+        >
             {activeWidgets.map((widgetId) => (
                 <div key={widgetId} className="group/widget relative">
                     {isEditMode && (

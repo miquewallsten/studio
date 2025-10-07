@@ -1,8 +1,9 @@
-"use client";
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
+// NOTE: On the client, Next.js only exposes env vars prefixed with NEXT_PUBLIC_
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
@@ -12,18 +13,9 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
 };
 
-if (Object.values(firebaseConfig).some(v => !v)) {
-  console.error("Missing NEXT_PUBLIC_FIREBASE_* env vars in client init");
-}
+const app: FirebaseApp = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
 
-let firebaseApp: FirebaseApp;
-if (getApps().length === 0) {
-  firebaseApp = initializeApp(firebaseConfig);
-} else {
-  firebaseApp = getApp();
-}
-
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
-
-export { firebaseApp, auth, db };
+export const firebaseApp = app;
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
